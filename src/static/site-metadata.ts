@@ -12,7 +12,7 @@ interface ISiteMetadataResult {
 const data: ISiteMetadataResult = {
   siteTitle: '我的跑步日志',
   siteUrl: 'https://dylan632.github.io/running_page/',
-  logo: 'https://github.com/Dylan632/running_page/blob/master/logo.jpeg',
+  logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQTtc69JxHNcmN1ETpMUX4dozAgAN6iPjWalQ&usqp=CAU',
   description: 'Personal site',
   navLinks: [
     {
