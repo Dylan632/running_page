@@ -53,7 +53,7 @@ class Nike:
         #         response.raise_for_status()
         #
         #         access_token = response.json()["access_token"]
-        access_token = "The content of 'access_token' that you just copied."
+        access_token = "The content of 'eyJhbGciOiJSUzI1NiIsImtpZCI6ImQyYWY1YTkzLTNlODktNDc2OS04NTIyLTg1NDVhNzgyYzcyNXNpZyJ9.eyJpYXQiOjE3MjI2ODQ0NjIsImV4cCI6MTcyMjY4ODA2MiwiaXNzIjoib2F1dGgyYWNjIiwianRpIjoiZmYzY2E1MjgtNzQ2MS00NDBkLTk4MTItN2JjMzA3YmIxNjEwIiwiYXVkIjoiY29tLm5pa2UuZGlnaXRhbCIsInNidCI6Im5pa2U6YXBwIiwidHJ1c3QiOjEwMCwibGF0IjoxNzIyNjg0NDYwLCJzY3AiOlsibmlrZS5kaWdpdGFsIl0sInN1YiI6ImNvbS5uaWtlLmNvbW1lcmNlLm5pa2Vkb3Rjb20ud2ViIiwicHJuIjoiMzYwZTg0YTktZTRlMi00MmFlLWEyM2YtYjEyYTQ5YWM5NTZkIiwicHJ0IjoibmlrZTpwbHVzIiwibHJzY3AiOiJvcGVuaWQgbmlrZS5kaWdpdGFsIHByb2ZpbGUgZW1haWwgcGhvbmUgZmxvdyBjb3VudHJ5In0.HPnzE76nlBsrqurSAcODPnczY7p-Eie_XBuQMYIRC5O3L5xMLtuzWuP_3DP_YQNW_DJiX5t_REA0gYvR99a78yiMEcMzwE3QGBkAOdReywha2bCtQ4_NLK7yQjV99jT5iZlR6rwUk6Z4RVglm_U0X52BhHCstRe1XC4v69xadNHNSDAEk1bCPyWDgxdHWPRASvWK83ahoDhrQpbPQ4DyWGd-aoJ_4ubqY6A7tj6rFGH39hiiUYS3JYw4V_oHi6w3UeTiwTRklh3M51y9FgAcxRBulBzG95R75MmXDd5xUrmu577jW5jnyQXIgm1l7tcw19qTGYAVuBk_BeWCCG638g' that you just copied."
         self.client.headers.update({"Authorization": f"Bearer {access_token}"})
 
     def get_activities_since_timestamp(self, timestamp):
