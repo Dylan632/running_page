@@ -16,12 +16,12 @@ const data: ISiteMetadataResult = {
   description: 'Personal site',
   navLinks: [
     {
-      name: 'Blog',
+      name: 'Github',
       url: 'https://github.com/Dylan632',
     },
     {
       name: 'About',
-      url: 'https://github.com/Dylan632/running_page',
+      url: 'https://github.com/yihong0618/running_page',
     },
   ],
 };
