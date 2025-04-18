@@ -131,7 +131,7 @@ def parse_raw_data_to_nametuple(
                 p["longitude"] = run_points_data[i][1]
 
         for p in run_points_data_gpx:
-            p_hr = find_nearest_hr(decoded_hr_data, int(p["timestamp"]), start_time)
+            p_hr = find_nearest_hr(decoded_hr_data, int(p["unixTimestamp"]), start_time)
             if p_hr:
                 p["hr"] = p_hr
         if with_download_gpx:
@@ -220,7 +220,7 @@ def parse_points_to_gpx(run_points_data, start_time, sport_type):
     points_dict_list = []
     # early timestamp fields in keep's data stands for delta time, but in newly data timestamp field stands for exactly time,
     # so it does'nt need to plus extra start_time
-    if run_points_data[0]["timestamp"] > TIMESTAMP_THRESHOLD_IN_DECISECOND:
+    if run_points_data[0]["unixTimestamp"] > TIMESTAMP_THRESHOLD_IN_DECISECOND:
         start_time = 0
 
     for point in run_points_data:
@@ -228,7 +228,7 @@ def parse_points_to_gpx(run_points_data, start_time, sport_type):
             "latitude": point["latitude"],
             "longitude": point["longitude"],
             "time": datetime.utcfromtimestamp(
-                (point["timestamp"] * 100 + start_time)
+                (point["unixTimestamp"] * 100 + start_time)
                 / 1000  # note that the timestamp of a point is decisecond(分秒)
             ),
             "elevation": point.get("verticalAccuracy"),
@@ -292,8 +292,8 @@ def find_nearest_hr(
         ) / 100  # note that the unit of target_time is decisecond(分秒) and the unit of start_time is normal millsecond
 
     for item in hr_data_list:
-        timestamp = item["timestamp"]
-        difference = abs(timestamp - target_time)
+        unixTimestamp = item["unixTimestamp"]
+        difference = abs(unixTimestamp - target_time)
 
         if difference <= threshold and difference < min_difference:
             closest_element = item
