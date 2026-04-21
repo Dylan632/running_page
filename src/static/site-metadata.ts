@@ -9,6 +9,11 @@ interface ISiteMetadataResult {
   }[];
 }
 
+const getBasePath = () => {
+  const baseUrl = import.meta.env.BASE_URL;
+  return baseUrl === '/' ? '' : baseUrl;
+};
+
 const data: ISiteMetadataResult = {
   siteTitle: '我的跑步日志',
   siteUrl: 'https://dylan632.github.io/running_page/',
