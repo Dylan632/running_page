@@ -2,8 +2,8 @@ name: Run Data Sync
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *'
+  # Keep sync manual so upstream code updates do not rewrite personal activity data.
+  # Re-enable the schedule when automatic daily data updates are wanted again.
   push:
     branches:
       - master
