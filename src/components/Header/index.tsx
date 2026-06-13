@@ -53,25 +53,26 @@ const Header = () => {
 
   return (
     <>
-      <nav className="mx-auto mt-12 flex w-full max-w-screen-2xl min-w-max items-center justify-between pl-6 lg:px-16">
-        <div className="w-1/4">
-          <Link to={siteUrl}>
+      <nav className="running-header mx-auto mt-4 flex w-full max-w-7xl flex-col items-center justify-between gap-4 px-4 md:mt-12 md:flex-row md:gap-0 md:px-6 lg:px-16">
+        <div className="flex w-full items-center gap-3 md:w-auto md:gap-4">
+          <Link className="running-brand flex items-center gap-3 md:gap-4" to={siteUrl}>
             <picture>
-              <img className="h-16 w-16 rounded-full" alt="logo" src={logo} />
+              <img
+                className="h-10 w-10 rounded-full md:h-16 md:w-16"
+                alt="logo"
+                src={logo}
+              />
             </picture>
+            <span className="running-brand-name">Dylan</span>
           </Link>
         </div>
-        <div className="flex w-3/4 items-center justify-end text-right">
+        <div className="flex w-full items-center justify-end gap-3 text-right md:w-auto">
           {navLinks.map((n) => (
-            <a
-              key={n.url}
-              href={n.url}
-              className="mr-3 text-lg lg:mr-4 lg:text-base"
-            >
+            <a key={n.url} href={n.url} className="running-header-link text-lg lg:text-base">
               {n.name}
             </a>
           ))}
-          <div className="ml-4 flex items-center space-x-2">
+          <div className="ml-1 flex items-center space-x-2">
             <button
               type="button"
               onClick={handleToggle}
