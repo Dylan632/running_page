@@ -1,0 +1,223 @@
+:root {
+  --running-sidebar-font:
+    'IBM Plex Sans', 'TsangerJinKai02', 'KaiTi', 'STKaiti', 'Songti SC',
+    'Noto Serif CJK SC', 'Source Han Serif SC', Georgia, serif;
+  --running-sidebar-ink: #024a70;
+  --running-sidebar-rule: #d4d4d4;
+  --running-sidebar-dark-ink: #e0ed5e;
+  --running-sidebar-dark-rule: #262626;
+}
+
+.running-header {
+  color: var(--running-sidebar-ink);
+  font-family: var(--running-sidebar-font);
+  letter-spacing: normal;
+}
+
+.running-brand {
+  color: inherit;
+  text-decoration: none;
+}
+
+.running-brand img {
+  animation: running-avatar-spin 10s linear infinite;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.running-brand-name {
+  color: var(--running-sidebar-ink);
+  font-family: var(--running-sidebar-font);
+  font-size: 44px;
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: normal;
+  line-height: 48px;
+}
+
+.running-header-link {
+  color: var(--running-sidebar-ink);
+  font-family: var(--running-sidebar-font);
+  letter-spacing: normal;
+  text-decoration: none;
+}
+
+.kami-shell {
+  margin-top: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-theme='dark'] .kami-shell {
+  backdrop-filter: none;
+}
+
+.kami-shell::before {
+  display: none;
+}
+
+.kami-shell > div:first-child > h1 {
+  display: none;
+}
+
+.kami-sidebar {
+  padding-right: 3.5rem;
+  color: var(--running-sidebar-ink);
+  font-family: var(--running-sidebar-font);
+  letter-spacing: normal;
+}
+
+.kami-sidebar-intro {
+  max-width: none;
+  color: var(--running-sidebar-ink);
+  font-family: var(--running-sidebar-font);
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 30px;
+}
+
+.kami-sidebar-rule {
+  margin: 2rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--running-sidebar-rule);
+}
+
+.kami-year-stat {
+  cursor: pointer;
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--running-sidebar-rule);
+}
+
+.kami-year-stat section {
+  display: block;
+}
+
+.kami-year-stat:hover .kami-stat-value,
+.kami-year-stat:hover .kami-stat-desc {
+  color: var(--running-sidebar-ink);
+}
+
+.kami-stat {
+  width: 100%;
+  padding-bottom: 8px;
+  color: var(--running-sidebar-ink);
+  font-family: var(--running-sidebar-font);
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 24px;
+  white-space: nowrap;
+}
+
+.kami-stat-value {
+  color: var(--running-sidebar-ink);
+  font-family: var(--running-sidebar-font);
+  font-size: 48px;
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: normal;
+  line-height: 48px;
+}
+
+.kami-stat-desc {
+  display: inline;
+  margin-left: 0;
+  color: var(--running-sidebar-ink);
+  font-family: var(--running-sidebar-font);
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 700;
+  letter-spacing: normal;
+  line-height: 28px;
+  vertical-align: baseline;
+}
+
+.kami-year-stat .year-svg,
+.kami-year-stat .github-year-svg {
+  margin-top: 1.6rem;
+}
+
+[data-theme='dark'] .running-header,
+[data-theme='dark'] .running-brand-name,
+[data-theme='dark'] .running-header-link,
+[data-theme='dark'] .kami-sidebar,
+[data-theme='dark'] .kami-sidebar-intro,
+[data-theme='dark'] .kami-stat,
+[data-theme='dark'] .kami-stat-value,
+[data-theme='dark'] .kami-stat-desc {
+  color: var(--running-sidebar-dark-ink);
+}
+
+[data-theme='dark'] .kami-sidebar-rule,
+[data-theme='dark'] .kami-year-stat {
+  border-color: var(--running-sidebar-dark-rule);
+}
+
+[data-theme='dark'] .kami-stat-value {
+  text-shadow: none;
+}
+
+[data-theme='dark'] .kami-year-stat:hover .kami-stat-value,
+[data-theme='dark'] .kami-year-stat:hover .kami-stat-desc {
+  color: var(--running-sidebar-dark-ink);
+}
+
+@keyframes running-avatar-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .running-brand img {
+    animation: none;
+    will-change: auto;
+  }
+}
+
+@media only screen and (max-width: 768px) {
+  .running-brand-name {
+    font-size: 30px;
+    line-height: 36px;
+  }
+
+  .kami-sidebar {
+    padding-right: 0;
+  }
+
+  .kami-sidebar-intro {
+    max-width: none;
+  }
+
+  .kami-year-stat {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .kami-year-stat section {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 1.5rem;
+    row-gap: 0.75rem;
+  }
+
+  .kami-stat {
+    padding-bottom: 8px;
+  }
+
+  .kami-stat-value {
+    font-size: 36px;
+    line-height: 40px;
+  }
+
+  .kami-stat-desc {
+    font-size: 14px;
+    line-height: 20px;
+  }
+}

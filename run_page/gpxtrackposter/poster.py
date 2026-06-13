@@ -52,7 +52,7 @@ class Poster:
             "special": "#FFFF00",
             "track": "#4DD2FF",
         }
-        self.special_distance = {"special_distance": 10, "special_distance2": 20}
+        self.special_distance = {"special_distance": 10, "special_distance2": 21.0975}
         self.width = 200
         self.height = 300
         self.years = None
@@ -201,7 +201,7 @@ class Poster:
 
             d.add(
                 d.text(
-                    f"Over {special_distance1:.1f} {self.u()}",
+                    self.__format_special_distance_label(special_distance1),
                     insert=(70, self.height - 14.5),
                     fill=text_color,
                     style=small_value_style,
@@ -214,7 +214,7 @@ class Poster:
 
             d.add(
                 d.text(
-                    f"Over {special_distance2:.1f} {self.u()}",
+                    self.__format_special_distance_label(special_distance2),
                     insert=(70, self.height - 10.5),
                     fill=text_color,
                     style=small_value_style,
@@ -297,6 +297,11 @@ class Poster:
             length_range.upper(),
             len(weeks),
         )
+
+    def __format_special_distance_label(self, distance):
+        if self.units == "metric" and abs(distance - 21.0975) < 0.0001:
+            return "Half Marathon"
+        return f"Over {distance:.1f} {self.u()}"
 
     def __compute_years(self, tracks):
         if self.years is not None:

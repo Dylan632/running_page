@@ -8,6 +8,10 @@ interface IStatProperties {
   onClick?: () => void;
 }
 
+const formatDescription = (description: string) => {
+  return description.trim().toLowerCase() === 'km' ? ' KM' : description;
+};
+
 const Stat = ({
   value,
   description,
@@ -15,11 +19,19 @@ const Stat = ({
   citySize,
   onClick,
 }: IStatProperties) => (
-  <div className={`${className}`} onClick={onClick}>
-    <span className={`text-${citySize || 5}xl font-bold italic`}>
+  <div className={`kami-stat running-stat ${className}`} onClick={onClick}>
+    <span
+      className={
+        citySize
+          ? `kami-stat-value running-stat-number text-${citySize}xl`
+          : 'kami-stat-value running-stat-number'
+      }
+    >
       {intComma(value.toString())}
     </span>
-    <span className="text-lg font-semibold italic">{description}</span>
+    <span className="kami-stat-desc running-stat-label">
+      {formatDescription(description)}
+    </span>
   </div>
 );
 

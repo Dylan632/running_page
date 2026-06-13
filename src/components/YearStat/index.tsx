@@ -147,7 +147,7 @@ const YearStat = ({
   if (!summary) return null;
 
   return (
-    <div className="cursor-pointer" onClick={() => onClick(year)}>
+    <div className="kami-year-stat" onClick={() => onClick(year)}>
       <section {...eventHandlers}>
         <Stat value={year} description=" Journey" />
         <Stat value={summary.runCount} description=" Runs" />
@@ -173,7 +173,6 @@ const YearStat = ({
           <GithubYearSVG className="github-year-svg my-4 h-auto w-full border-0 p-0" />
         </Suspense>
       )}
-      <hr />
     </div>
   );
 };

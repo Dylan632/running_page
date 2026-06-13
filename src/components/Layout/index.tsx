@@ -19,9 +19,9 @@ const Layout = ({ children }: React.PropsWithChildren) => {
         />
       </Helmet>
       <Header />
-      <div className="mx-auto mb-16 max-w-screen-2xl p-4 lg:flex lg:p-16">
+      <main className="kami-shell mx-auto mb-16 max-w-7xl px-4 py-4 md:px-6 md:py-8 lg:flex lg:gap-16 lg:px-16">
         {children}
-      </div>
+      </main>
     </>
   );
 };

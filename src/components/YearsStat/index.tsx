@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import YearStat from '@/components/YearStat';
 import useActivities from '@/hooks/useActivities';
 import { INFO_MESSAGE } from '@/utils/const';
+import './style.css';
 
 const YearsStat = ({
   year,
@@ -26,16 +27,15 @@ const YearsStat = ({
     return INFO_MESSAGE(years.length, year);
   }, [years.length, year]);
 
-  // for short solution need to refactor
   return (
-    <div className="w-full pr-16 pb-16 lg:w-full lg:pr-16">
+    <div className="running-sidebar kami-sidebar w-full pb-16 lg:w-full">
       <section className="pb-0">
-        <p className="leading-relaxed">
+        <p className="kami-sidebar-intro running-sidebar-hero">
           {infoMessage}
           <br />
         </p>
       </section>
-      <hr />
+      <hr className="kami-sidebar-rule running-sidebar-rule" />
       {yearsArrayUpdate.map((yearItem) => (
         <YearStat key={yearItem} year={yearItem} onClick={onClick} />
       ))}
