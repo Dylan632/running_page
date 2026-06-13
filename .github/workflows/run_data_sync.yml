@@ -89,6 +89,12 @@ jobs:
         run: |
           python run_page/gen_svg.py --from-db --type year_summary --output assets/year_summary.svg --athlete "${{ env.ATHLETE }}"
 
+      - name: Drop raw activity files before committing
+        run: |
+          rm -rf activities GPX_OUT TCX_OUT FIT_OUT
+          mkdir -p activities GPX_OUT TCX_OUT FIT_OUT
+          touch activities/.gitkeep GPX_OUT/.gitkeep TCX_OUT/.gitkeep FIT_OUT/.gitkeep
+
       - name: Push regenerated running data
         run: |
           git config --local user.email 'action@github.com'
