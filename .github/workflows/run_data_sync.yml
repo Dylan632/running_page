@@ -58,7 +58,7 @@ jobs:
           rm -f run_page/data.db src/static/activities.json imported.json
           rm -rf activities GPX_OUT TCX_OUT FIT_OUT
           mkdir -p activities GPX_OUT TCX_OUT FIT_OUT assets src/static
-          find assets -maxdepth 1 -name '*.svg' -delete
+          find assets -maxdepth 1 -name '*.svg' ! -name 'start.svg' ! -name 'end.svg' -delete
 
       - name: Run sync Keep script for running only
         run: |
