@@ -28,14 +28,14 @@ const YearsStat = ({
   }, [years.length, year]);
 
   return (
-    <div className="kami-sidebar w-full pb-16 lg:w-full">
+    <div className="running-sidebar kami-sidebar w-full pb-16 lg:w-full">
       <section className="pb-0">
-        <p className="kami-sidebar-intro">
+        <p className="kami-sidebar-intro running-sidebar-hero">
           {infoMessage}
           <br />
         </p>
       </section>
-      <hr className="kami-sidebar-rule" />
+      <hr className="kami-sidebar-rule running-sidebar-rule" />
       {yearsArrayUpdate.map((yearItem) => (
         <YearStat key={yearItem} year={yearItem} onClick={onClick} />
       ))}
