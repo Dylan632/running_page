@@ -14,6 +14,7 @@
   --kami-olive: #504e49;
   --kami-stone: #6b6a64;
   --kami-tag-bg: #e4ecf5;
+  --kami-shell-bg: linear-gradient(135deg, rgba(250, 249, 245, 0.96), rgba(245, 244, 237, 0.9));
   --kami-shadow: 0 18px 60px rgba(27, 54, 93, 0.08);
   --kami-whisper-shadow: 0 1px 0 rgba(27, 54, 93, 0.08),
     0 10px 30px rgba(27, 54, 93, 0.05);
@@ -42,21 +43,28 @@
 }
 
 [data-theme='dark'] {
-  --kami-parchment: #141413;
-  --kami-ivory: #30302e;
-  --kami-sand: #3d3d3a;
-  --kami-border: #504e49;
-  --kami-border-strong: #6b6a64;
-  --kami-ink: #e8e6dc;
-  --kami-ink-light: #faf9f5;
-  --kami-near-black: #faf9f5;
-  --kami-dark-warm: #e8e6dc;
-  --kami-olive: #d8d3c4;
-  --kami-stone: #bdb8aa;
-  --kami-tag-bg: #26364a;
-  --kami-shadow: 0 18px 60px rgba(0, 0, 0, 0.25);
+  --kami-parchment: #0b1220;
+  --kami-ivory: rgba(17, 26, 43, 0.86);
+  --kami-sand: rgba(36, 54, 82, 0.76);
+  --kami-border: rgba(141, 161, 190, 0.18);
+  --kami-border-strong: rgba(170, 190, 220, 0.34);
+  --kami-ink: #dcecff;
+  --kami-ink-light: #8db7e8;
+  --kami-near-black: #eef5ff;
+  --kami-dark-warm: #d4deef;
+  --kami-olive: #aebbd0;
+  --kami-stone: #8fa0ba;
+  --kami-tag-bg: rgba(74, 122, 184, 0.18);
+  --kami-shell-bg: linear-gradient(
+      145deg,
+      rgba(16, 28, 48, 0.96),
+      rgba(9, 16, 29, 0.94)
+    ),
+    radial-gradient(circle at 8% 0%, rgba(77, 132, 196, 0.2), transparent 22rem);
+  --kami-shadow: 0 24px 90px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(170, 190, 220, 0.08);
   --kami-whisper-shadow: 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 10px 30px rgba(0, 0, 0, 0.18);
+    0 18px 45px rgba(0, 0, 0, 0.22);
 
   --color-primary: var(--kami-ink);
   --color-secondary: var(--kami-ink-light);
@@ -66,11 +74,11 @@
   --color-selected: var(--kami-ink);
   --color-run-date: var(--kami-stone);
   --color-run-table-thead: var(--kami-dark-warm);
-  --color-run-row-hover-background: var(--kami-sand);
+  --color-run-row-hover-background: rgba(74, 122, 184, 0.14);
   --color-activity-card: var(--kami-border);
-  --svg-color-inactive-cell: var(--kami-border);
-  --svg-color-active-cell: var(--kami-ink);
-  --svg-special-color: var(--kami-ink-light);
+  --svg-color-inactive-cell: rgba(141, 161, 190, 0.18);
+  --svg-color-active-cell: #8db7e8;
+  --svg-special-color: #dcecff;
   --svg-special-color2: #d8b894;
 }
 
@@ -91,6 +99,14 @@
     transition:
       background-color 0.2s ease,
       color 0.2s ease;
+  }
+
+  [data-theme='dark'],
+  [data-theme='dark'] body {
+    background:
+      radial-gradient(circle at 12% 8%, rgba(72, 118, 174, 0.22), transparent 26rem),
+      radial-gradient(circle at 88% 12%, rgba(216, 184, 148, 0.1), transparent 22rem),
+      linear-gradient(180deg, #0b1220 0%, #09111e 52%, #070d17 100%);
   }
 
   body {
@@ -134,16 +150,12 @@ hr {
   margin-top: 2rem;
   border: 1px solid var(--kami-border);
   border-radius: 2rem;
-  background:
-    linear-gradient(135deg, rgba(250, 249, 245, 0.96), rgba(245, 244, 237, 0.9)),
-    var(--kami-ivory);
+  background: var(--kami-shell-bg), var(--kami-ivory);
   box-shadow: var(--kami-shadow);
 }
 
 [data-theme='dark'] .kami-shell {
-  background:
-    linear-gradient(135deg, rgba(48, 48, 46, 0.98), rgba(20, 20, 19, 0.95)),
-    var(--kami-ivory);
+  backdrop-filter: blur(18px) saturate(130%);
 }
 
 .kami-shell::before {
@@ -156,6 +168,10 @@ hr {
   font-size: 0.72rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+}
+
+[data-theme='dark'] .kami-shell::before {
+  color: rgba(220, 236, 255, 0.42);
 }
 
 .kami-shell h1 {
@@ -172,6 +188,11 @@ hr {
 
 .kami-shell h1 a {
   text-decoration: none;
+}
+
+[data-theme='dark'] .kami-shell h1 {
+  color: #f2f7ff;
+  text-shadow: 0 10px 38px rgba(101, 152, 215, 0.28);
 }
 
 .kami-shell h1::after {
@@ -194,10 +215,23 @@ hr {
   padding: 1rem;
 }
 
+[data-theme='dark'] .kami-shell #map-container,
+[data-theme='dark'] .kami-shell #svgStat {
+  background: linear-gradient(180deg, rgba(17, 27, 45, 0.9), rgba(12, 20, 35, 0.88));
+  border-color: rgba(170, 190, 220, 0.2);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
 .kami-shell .mapboxgl-map {
   overflow: hidden;
   border: 1px solid var(--kami-border);
   border-radius: 1.15rem;
+}
+
+[data-theme='dark'] .kami-shell .mapboxgl-map {
+  border-color: rgba(170, 190, 220, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
 .kami-shell #svgStat {
@@ -218,6 +252,10 @@ hr {
 
 .svg-color-bg {
   fill: var(--kami-ivory);
+}
+
+[data-theme='dark'] .svg-color-bg {
+  fill: rgba(12, 20, 35, 0.88);
 }
 
 .svg-color-inactive-cell {
@@ -258,8 +296,25 @@ hr {
   box-shadow: var(--kami-whisper-shadow) !important;
 }
 
+[data-theme='dark'] .mapboxgl-ctrl-group {
+  background-color: rgba(18, 29, 48, 0.88) !important;
+  border-color: rgba(170, 190, 220, 0.22) !important;
+}
+
 .mapboxgl-ctrl button {
   color: var(--kami-ink) !important;
+}
+
+[data-theme='dark'] .mapboxgl-ctrl button,
+[data-theme='dark'] .mapboxgl-ctrl button span {
+  color: #dcecff !important;
+  filter: invert(1) opacity(0.82);
+}
+
+[data-theme='dark'] .mapboxgl-ctrl-attrib,
+[data-theme='dark'] .mapboxgl-ctrl-attrib a {
+  color: rgba(220, 236, 255, 0.62) !important;
+  background: rgba(12, 20, 35, 0.68) !important;
 }
 
 @media only screen and (max-width: 768px) {
