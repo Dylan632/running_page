@@ -1,70 +1,134 @@
+:root {
+  --running-sidebar-font: 'IBM Plex Sans', 'TsangerJinKai02', 'KaiTi',
+    'STKaiti', 'Songti SC', 'Noto Serif CJK SC', 'Source Han Serif SC',
+    Georgia, serif;
+  --running-sidebar-ink: #024a70;
+  --running-sidebar-rule: #d4d4d4;
+  --running-sidebar-dark-ink: #e0ed5e;
+  --running-sidebar-dark-rule: #262626;
+}
+
+.running-header {
+  color: var(--running-sidebar-ink);
+  font-family: var(--running-sidebar-font);
+  letter-spacing: normal;
+}
+
+.running-brand {
+  color: inherit;
+  text-decoration: none;
+}
+
+.running-brand-name {
+  color: var(--running-sidebar-ink);
+  font-family: var(--running-sidebar-font);
+  font-size: 36px;
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: normal;
+  line-height: 40px;
+}
+
+.running-header-link {
+  color: var(--running-sidebar-ink);
+  font-family: var(--running-sidebar-font);
+  letter-spacing: normal;
+  text-decoration: none;
+}
+
+.kami-shell {
+  margin-top: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-theme='dark'] .kami-shell {
+  backdrop-filter: none;
+}
+
+.kami-shell::before {
+  display: none;
+}
+
+.kami-shell > div:first-child > h1 {
+  display: none;
+}
+
 .kami-sidebar {
-  padding-right: clamp(2rem, 4vw, 4.5rem);
+  padding-right: 3.5rem;
+  color: var(--running-sidebar-ink);
+  font-family: var(--running-sidebar-font);
+  letter-spacing: normal;
 }
 
 .kami-sidebar-intro {
-  max-width: 19rem;
-  color: var(--kami-olive);
-  font-family: var(--font-serif);
-  font-size: clamp(1rem, 1.05vw, 1.15rem);
+  max-width: none;
+  color: var(--running-sidebar-ink);
+  font-family: var(--running-sidebar-font);
+  font-size: 16px;
+  font-style: normal;
   font-weight: 400;
-  letter-spacing: 0.08em;
-  line-height: 1.8;
+  letter-spacing: normal;
+  line-height: 26px;
 }
 
 .kami-sidebar-rule {
-  margin: 2.35rem 0 2.6rem;
+  margin: 2rem 0;
   border: 0;
-  border-bottom: 1px solid rgba(27, 54, 93, 0.13);
+  border-bottom: 1px solid var(--running-sidebar-rule);
 }
 
 .kami-year-stat {
   cursor: pointer;
-  margin-bottom: 2.85rem;
-  padding-bottom: 2.35rem;
-  border-bottom: 1px solid rgba(27, 54, 93, 0.12);
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--running-sidebar-rule);
 }
 
 .kami-year-stat section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.18rem;
+  display: block;
 }
 
 .kami-year-stat:hover .kami-stat-value,
 .kami-year-stat:hover .kami-stat-desc {
-  color: var(--kami-ink);
+  color: var(--running-sidebar-ink);
 }
 
 .kami-stat {
   width: 100%;
-  padding-bottom: 0.12rem;
-  line-height: 0.95;
+  padding-bottom: 8px;
+  color: var(--running-sidebar-ink);
+  font-family: var(--running-sidebar-font);
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 24px;
   white-space: nowrap;
 }
 
 .kami-stat-value {
-  color: #171715;
-  font-family: 'Times New Roman', 'Baskerville', 'TsangerJinKai02', 'Songti SC',
-    'STSong', Georgia, serif;
-  font-size: clamp(2.85rem, 4vw, 4.4rem);
+  color: var(--running-sidebar-ink);
+  font-family: var(--running-sidebar-font);
+  font-size: 48px;
   font-style: italic;
-  font-weight: 500;
-  letter-spacing: -0.055em;
-  line-height: 0.96;
+  font-weight: 700;
+  letter-spacing: normal;
+  line-height: 48px;
 }
 
 .kami-stat-desc {
-  display: inline-block;
-  margin-left: 0.22rem;
-  color: #22211f;
-  font-family: 'Times New Roman', 'Baskerville', 'TsangerJinKai02', 'Songti SC',
-    'STSong', Georgia, serif;
-  font-size: clamp(0.86rem, 1.05vw, 1.08rem);
+  display: inline;
+  margin-left: 0;
+  color: var(--running-sidebar-ink);
+  font-family: var(--running-sidebar-font);
+  font-size: 18px;
   font-style: italic;
-  font-weight: 700;
-  letter-spacing: -0.035em;
-  line-height: 1;
+  font-weight: 600;
+  letter-spacing: normal;
+  line-height: 28px;
   vertical-align: baseline;
 }
 
@@ -73,30 +137,37 @@
   margin-top: 1.6rem;
 }
 
-[data-theme='dark'] .kami-sidebar-intro {
-  color: rgba(237, 229, 214, 0.74);
+[data-theme='dark'] .running-header,
+[data-theme='dark'] .running-brand-name,
+[data-theme='dark'] .running-header-link,
+[data-theme='dark'] .kami-sidebar,
+[data-theme='dark'] .kami-sidebar-intro,
+[data-theme='dark'] .kami-stat,
+[data-theme='dark'] .kami-stat-value,
+[data-theme='dark'] .kami-stat-desc {
+  color: var(--running-sidebar-dark-ink);
 }
 
 [data-theme='dark'] .kami-sidebar-rule,
 [data-theme='dark'] .kami-year-stat {
-  border-color: rgba(237, 229, 214, 0.14);
+  border-color: var(--running-sidebar-dark-rule);
 }
 
 [data-theme='dark'] .kami-stat-value {
-  color: #f4eadc;
-  text-shadow: 0 8px 28px rgba(0, 0, 0, 0.26);
-}
-
-[data-theme='dark'] .kami-stat-desc {
-  color: rgba(244, 234, 220, 0.86);
+  text-shadow: none;
 }
 
 [data-theme='dark'] .kami-year-stat:hover .kami-stat-value,
 [data-theme='dark'] .kami-year-stat:hover .kami-stat-desc {
-  color: #fff7ec;
+  color: var(--running-sidebar-dark-ink);
 }
 
 @media only screen and (max-width: 768px) {
+  .running-brand-name {
+    font-size: 24px;
+    line-height: 32px;
+  }
+
   .kami-sidebar {
     padding-right: 0;
   }
@@ -106,11 +177,28 @@
   }
 
   .kami-year-stat {
-    margin-bottom: 2.1rem;
-    padding-bottom: 1.75rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .kami-year-stat section {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 1.5rem;
+    row-gap: 0.75rem;
+  }
+
+  .kami-stat {
+    padding-bottom: 8px;
   }
 
   .kami-stat-value {
-    font-size: clamp(2.55rem, 13vw, 3.65rem);
+    font-size: 36px;
+    line-height: 40px;
+  }
+
+  .kami-stat-desc {
+    font-size: 14px;
+    line-height: 20px;
   }
 }
