@@ -2,6 +2,7 @@
   .tableContainer {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    padding: 0.75rem;
   }
 
   .runTable {
@@ -11,7 +12,7 @@
 
   .runTable th,
   .runTable td {
-    padding: 0.25rem !important;
+    padding: 0.45rem !important;
     white-space: nowrap;
     min-width: 60px;
   }
@@ -27,82 +28,102 @@
   }
 }
 
+.tableContainer {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 1.25rem;
+  border: 1px solid var(--kami-border);
+  border-radius: 1.25rem;
+  background: var(--kami-ivory);
+  box-shadow: var(--kami-whisper-shadow);
+  padding: 1rem;
+}
+
 .runTable {
   width: 100%;
-  margin: 2rem 0 5rem 0;
+  margin: 0;
   color: var(--color-run-table-thead);
-  background-color: var(--color-background);
+  background-color: transparent;
   font-family: var(--font-mono);
   table-layout: auto;
-  :is(thead) {
-    color: var(--color-run-table-thead);
+  border-collapse: collapse;
+}
 
-    :is(th) {
-      padding: 0.5rem;
-      white-space: nowrap;
-      text-align: center;
-    }
+.runTable thead {
+  color: var(--color-run-table-thead);
+  border-bottom: 1px solid var(--kami-border);
+}
 
-    .sortableHeader {
-      cursor: pointer;
-      user-select: none;
-      transition: color 0.2s ease;
-    }
+.runTable th {
+  padding: 0.55rem 0.5rem;
+  white-space: nowrap;
+  text-align: center;
+  color: var(--kami-stone);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 
-    .sortableHeader:hover {
-      color: var(--color-primary);
-    }
+.sortableHeader {
+  cursor: pointer;
+  user-select: none;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
 
-    :is(th):first-child {
-      text-align: left;
-    }
+.sortableHeader:hover {
+  color: var(--color-primary);
+  background: var(--kami-tag-bg);
+}
 
-    :is(th):last-child {
-      text-align: right;
-    }
-  }
-  :is(th, td) {
-    white-space: nowrap;
-    text-align: center;
-  }
+.runTable th:first-child,
+.runTable td:first-child {
+  text-align: left;
+}
 
-  :is(th, td):first-child {
-    text-align: left;
-  }
+.runTable th:last-child,
+.runTable td:last-child {
+  text-align: right;
+}
 
-  :is(th, td):last-child {
-    text-align: right;
-  }
+.runTable th,
+.runTable td {
+  white-space: nowrap;
+  text-align: center;
 }
 
 .runRow {
   cursor: pointer;
-  :is(td) {
-    padding: 0.5rem;
-    border: 0;
-    text-align: center; /* 默认居中 */
-  }
+  border-bottom: 1px solid var(--kami-border);
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
 
-  :is(td):first-child {
-    text-align: left;
-  }
+.runRow:last-child {
+  border-bottom: 0;
+}
 
-  :is(td):last-child {
-    text-align: right;
-  }
+.runRow td {
+  padding: 0.62rem 0.5rem;
+  border: 0;
+  color: var(--kami-dark-warm);
+  text-align: center;
+}
 
-  &:hover {
-    background-color: var(--color-run-row-hover-background);
-  }
+.runRow:hover {
+  background-color: var(--color-run-row-hover-background);
 }
 
 .selected {
   color: var(--color-primary);
+  background: var(--kami-tag-bg);
 }
 
-.tableContainer {
-  width: 100%;
-  overflow-x: auto;
+.selected td {
+  color: var(--color-primary);
 }
 
 .runDate {
