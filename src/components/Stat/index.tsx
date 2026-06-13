@@ -15,11 +15,13 @@ const Stat = ({
   citySize,
   onClick,
 }: IStatProperties) => (
-  <div className={`${className}`} onClick={onClick}>
-    <span className={`text-${citySize || 5}xl font-bold italic`}>
+  <div className={`kami-stat ${className}`} onClick={onClick}>
+    <span
+      className={citySize ? `kami-stat-value text-${citySize}xl` : 'kami-stat-value'}
+    >
       {intComma(value.toString())}
     </span>
-    <span className="text-lg font-semibold italic">{description}</span>
+    <span className="kami-stat-desc">{description}</span>
   </div>
 );
 
