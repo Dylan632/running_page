@@ -14,6 +14,11 @@ interface ProcessedActivities {
   thisYear: string;
 }
 
+const RUNNING_ACTIVITY_TYPES = new Set(['Run', 'VirtualRun', 'running']);
+
+const isRunningActivity = (activity: Activity): boolean =>
+  RUNNING_ACTIVITY_TYPES.has(activity.type);
+
 const standardizeCountryName = (country: string): string => {
   for (const [pattern, standardName] of COUNTRY_STANDARDIZATION) {
     if (country.includes(pattern)) {
@@ -36,8 +41,8 @@ const loadActivityData = () => {
       return response.json() as Promise<Activity[]>;
     })
     .then((activityData) => {
-      activityDataCache = activityData;
-      return activityData;
+      activityDataCache = activityData.filter(isRunningActivity);
+      return activityDataCache;
     })
     .catch((error: unknown) => {
       activityDataError = error;
