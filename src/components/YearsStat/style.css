@@ -1,0 +1,116 @@
+.kami-sidebar {
+  padding-right: clamp(2rem, 4vw, 4.5rem);
+}
+
+.kami-sidebar-intro {
+  max-width: 19rem;
+  color: var(--kami-olive);
+  font-family: var(--font-serif);
+  font-size: clamp(1rem, 1.05vw, 1.15rem);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  line-height: 1.8;
+}
+
+.kami-sidebar-rule {
+  margin: 2.35rem 0 2.6rem;
+  border: 0;
+  border-bottom: 1px solid rgba(27, 54, 93, 0.13);
+}
+
+.kami-year-stat {
+  cursor: pointer;
+  margin-bottom: 2.85rem;
+  padding-bottom: 2.35rem;
+  border-bottom: 1px solid rgba(27, 54, 93, 0.12);
+}
+
+.kami-year-stat section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.kami-year-stat:hover .kami-stat-value,
+.kami-year-stat:hover .kami-stat-desc {
+  color: var(--kami-ink);
+}
+
+.kami-stat {
+  width: 100%;
+  padding-bottom: 0.12rem;
+  line-height: 0.95;
+  white-space: nowrap;
+}
+
+.kami-stat-value {
+  color: #171715;
+  font-family: 'Times New Roman', 'Baskerville', 'TsangerJinKai02', 'Songti SC',
+    'STSong', Georgia, serif;
+  font-size: clamp(2.85rem, 4vw, 4.4rem);
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 0.96;
+}
+
+.kami-stat-desc {
+  display: inline-block;
+  margin-left: 0.22rem;
+  color: #22211f;
+  font-family: 'Times New Roman', 'Baskerville', 'TsangerJinKai02', 'Songti SC',
+    'STSong', Georgia, serif;
+  font-size: clamp(0.86rem, 1.05vw, 1.08rem);
+  font-style: italic;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  vertical-align: baseline;
+}
+
+.kami-year-stat .year-svg,
+.kami-year-stat .github-year-svg {
+  margin-top: 1.6rem;
+}
+
+[data-theme='dark'] .kami-sidebar-intro {
+  color: rgba(237, 229, 214, 0.74);
+}
+
+[data-theme='dark'] .kami-sidebar-rule,
+[data-theme='dark'] .kami-year-stat {
+  border-color: rgba(237, 229, 214, 0.14);
+}
+
+[data-theme='dark'] .kami-stat-value {
+  color: #f4eadc;
+  text-shadow: 0 8px 28px rgba(0, 0, 0, 0.26);
+}
+
+[data-theme='dark'] .kami-stat-desc {
+  color: rgba(244, 234, 220, 0.86);
+}
+
+[data-theme='dark'] .kami-year-stat:hover .kami-stat-value,
+[data-theme='dark'] .kami-year-stat:hover .kami-stat-desc {
+  color: #fff7ec;
+}
+
+@media only screen and (max-width: 768px) {
+  .kami-sidebar {
+    padding-right: 0;
+  }
+
+  .kami-sidebar-intro {
+    max-width: none;
+  }
+
+  .kami-year-stat {
+    margin-bottom: 2.1rem;
+    padding-bottom: 1.75rem;
+  }
+
+  .kami-stat-value {
+    font-size: clamp(2.55rem, 13vw, 3.65rem);
+  }
+}
