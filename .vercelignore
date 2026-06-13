@@ -1,2 +1,14 @@
-requirements.txt  
-requirements-dev.txt  
+# Python dependency files are installed by GitHub Actions, not needed by Vercel.
+requirements.txt
+requirements-dev.txt
+
+# Raw activity files are intermediate data for GitHub Actions.
+# The web app only needs src/static/activities.json and assets/*.svg.
+GPX_OUT/
+TCX_OUT/
+FIT_OUT/
+activities/
+run_page/data.db
+imported.json
+*.fit
+*.tcx
