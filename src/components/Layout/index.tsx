@@ -19,7 +19,7 @@ const Layout = ({ children }: React.PropsWithChildren) => {
         />
       </Helmet>
       <Header />
-      <main className="kami-shell mx-auto mb-16 max-w-screen-2xl p-5 lg:flex lg:gap-8 lg:p-10 xl:p-12">
+      <main className="kami-shell mx-auto mb-16 max-w-7xl px-4 py-4 md:px-6 md:py-8 lg:flex lg:gap-16 lg:px-16">
         {children}
       </main>
     </>
