@@ -1,7 +1,7 @@
 :root {
-  --running-sidebar-font: 'IBM Plex Sans', 'TsangerJinKai02', 'KaiTi',
-    'STKaiti', 'Songti SC', 'Noto Serif CJK SC', 'Source Han Serif SC',
-    Georgia, serif;
+  --running-sidebar-font:
+    'IBM Plex Sans', 'TsangerJinKai02', 'KaiTi', 'STKaiti', 'Songti SC',
+    'Noto Serif CJK SC', 'Source Han Serif SC', Georgia, serif;
   --running-sidebar-ink: #024a70;
   --running-sidebar-rule: #d4d4d4;
   --running-sidebar-dark-ink: #e0ed5e;
