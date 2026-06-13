@@ -19,14 +19,20 @@
   text-decoration: none;
 }
 
+.running-brand img {
+  animation: running-avatar-spin 10s linear infinite;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
 .running-brand-name {
   color: var(--running-sidebar-ink);
   font-family: var(--running-sidebar-font);
-  font-size: 36px;
+  font-size: 44px;
   font-style: italic;
   font-weight: 800;
   letter-spacing: normal;
-  line-height: 40px;
+  line-height: 48px;
 }
 
 .running-header-link {
@@ -162,10 +168,23 @@
   color: var(--running-sidebar-dark-ink);
 }
 
+@keyframes running-avatar-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .running-brand img {
+    animation: none;
+    will-change: auto;
+  }
+}
+
 @media only screen and (max-width: 768px) {
   .running-brand-name {
-    font-size: 24px;
-    line-height: 32px;
+    font-size: 30px;
+    line-height: 36px;
   }
 
   .kami-sidebar {
