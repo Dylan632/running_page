@@ -41,7 +41,17 @@
   transition:
     color 0.2s ease,
     background-color 0.2s ease,
+    border-color 0.2s ease,
     transform 0.2s ease;
+}
+
+:global([data-theme='dark']) .button {
+  background: rgba(16, 27, 46, 0.82);
+  border-color: rgba(170, 190, 220, 0.2);
+  color: rgba(220, 236, 255, 0.68);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
 }
 
 @media only screen and (max-width: 768px) {
@@ -57,10 +67,22 @@
   transform: translateY(-1px);
 }
 
+:global([data-theme='dark']) .button:hover {
+  border-color: rgba(220, 236, 255, 0.34);
+  color: #eef5ff;
+  background: rgba(74, 122, 184, 0.24);
+}
+
 .selected {
   color: var(--color-primary);
   background: var(--kami-tag-bg);
   border-color: var(--kami-border-strong);
+}
+
+:global([data-theme='dark']) .selected {
+  color: #f2f7ff;
+  background: rgba(74, 122, 184, 0.28);
+  border-color: rgba(220, 236, 255, 0.36);
 }
 
 .runTitle {
@@ -75,6 +97,11 @@
   font-size: 0.9rem;
   letter-spacing: 0.06em;
   text-shadow: 0 1px 0 var(--kami-ivory);
+}
+
+:global([data-theme='dark']) .runTitle {
+  color: rgba(238, 245, 255, 0.88);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
 }
 
 @media only screen and (max-width: 768px) {
@@ -99,6 +126,13 @@
   box-shadow: var(--kami-whisper-shadow);
 }
 
+:global([data-theme='dark']) .lights {
+  background-color: rgba(16, 27, 46, 0.86);
+  border-color: rgba(170, 190, 220, 0.2);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
 .lightsOn {
   height: 38px !important;
   background-image: url("data:image/svg+xml,<svg xmlns='http%3A//www.w3.org/2000/svg' height='32px' viewBox='0 0 384 512'><style>svg%7Bfill%3A%23000000%7D<%2Fstyle><path d='M297.2 248.9C311.6 228.3 320 203.2 320 176c0-70.7-57.3-128-128-128S64 105.3 64 176c0 27.2 8.4 52.3 22.8 72.9c3.7 5.3 8.1 11.3 12.8 17.7l0 0c12.9 17.7 28.3 38.9 39.8 59.8c10.4 19 15.7 38.8 18.3 57.5H109c-2.2-12-5.9-23.7-11.8-34.5c-9.9-18-22.2-34.9-34.5-51.8l0 0 0 0c-5.2-7.1-10.4-14.2-15.4-21.4C27.6 247.9 16 213.3 16 176C16 78.8 94.8 0 192 0s176 78.8 176 176c0 37.3-11.6 71.9-31.4 100.3c-5 7.2-10.2 14.3-15.4 21.4l0 0 0 0c-12.3 16.8-24.6 33.7-34.5 51.8c-5.9 10.8-9.6 22.5-11.8 34.5H226.4c2.6-18.7 7.9-38.6 18.3-57.5c11.5-20.9 26.9-42.1 39.8-59.8l0 0 0 0 0 0c4.7-6.4 9-12.4 12.7-17.7zM192 128c-26.5 0-48 21.5-48 48c0 8.8-7.2 16-16 16s-16-7.2-16-16c0-44.2 35.8-80 80-80c8.8 0 16 7.2 16 16s-7.2 16-16 16zm0 384c-44.2 0-80-35.8-80-80V416H272v16c0 44.2-35.8 80-80 80z'/><%2Fsvg>");
@@ -113,6 +147,11 @@
   background-repeat: no-repeat;
   background-position: center center;
   opacity: 1;
+}
+
+:global([data-theme='dark']) .lightsOn,
+:global([data-theme='dark']) .lightsOff {
+  filter: invert(1) opacity(0.86);
 }
 
 .mapErrorNotification {
@@ -133,6 +172,12 @@
   font-size: 14px;
 }
 
+:global([data-theme='dark']) .mapErrorNotification {
+  background: rgba(32, 24, 26, 0.94);
+  color: #f3c7b4;
+  border-color: rgba(243, 199, 180, 0.22);
+}
+
 .mapErrorNotification button,
 .mapErrorNotification a {
   background: var(--kami-ivory);
@@ -144,6 +189,13 @@
   text-decoration: none;
   font-weight: 500;
   transition: opacity 0.2s;
+}
+
+:global([data-theme='dark']) .mapErrorNotification button,
+:global([data-theme='dark']) .mapErrorNotification a {
+  background: rgba(16, 27, 46, 0.86);
+  color: #f3c7b4;
+  border-color: rgba(243, 199, 180, 0.24);
 }
 
 .mapErrorNotification button:hover,
