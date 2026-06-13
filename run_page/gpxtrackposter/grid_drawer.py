@@ -53,20 +53,21 @@ class GridDrawer(TracksDrawer):
             )
 
     def _draw_track(self, dr: svgwrite.Drawing, tr: Track, size: XY, offset: XY):
-        color = self.color(self.poster.length_range, tr.length, tr.special)
-
         str_length = format_float(self.poster.m2u(tr.length))
 
         date_title = f"{str(tr.start_time_local)[:10]} {str_length}{self.poster.u()}"
         for line in project(tr.bbox(), size, offset, tr.polylines):
             distance1 = self.poster.special_distance["special_distance"]
             distance2 = self.poster.special_distance["special_distance2"]
-            has_special = distance1 < self.poster.m2u(tr.length) < distance2
-            color = self.color(self.poster.length_range_by_date, tr.length, has_special)
-            if self.poster.m2u(tr.length) >= distance2:
+            distance = self.poster.m2u(tr.length)
+            if distance >= distance2:
                 color = self.poster.colors.get("special2") or self.poster.colors.get(
                     "special"
                 )
+            elif distance >= distance1:
+                color = self.poster.colors.get("special")
+            else:
+                color = self.color(self.poster.length_range_by_date, tr.length)
             is_indoor = getattr(tr, "subtype", None) == "indoor"
             polyline = dr.polyline(
                 points=line,

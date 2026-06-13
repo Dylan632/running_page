@@ -123,13 +123,14 @@ def main():
         "--special-color",
         dest="special_color",
         metavar="COLOR",
-        default="#FFFF00",
-        help='Special track color (default: "#FFFF00").',
+        default="#ffa400",
+        help='Special track color (default: "#ffa400").',
     )
     args_parser.add_argument(
         "--special-color2",
         dest="special_color2",
         metavar="COLOR",
+        default="#ff0000",
         help="Secondary color of special tracks (default: none).",
     )
     args_parser.add_argument(
@@ -158,8 +159,8 @@ def main():
         dest="special_distance2",
         metavar="DISTANCE",
         type=float,
-        default=20.0,
-        help="Special Distance2 by km and corlor with the special_color2",
+        default=21.0975,
+        help="Special Distance2 by km and color with the special_color2",
     )
     args_parser.add_argument(
         "--min-distance",

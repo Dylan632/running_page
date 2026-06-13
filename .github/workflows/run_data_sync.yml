@@ -71,11 +71,11 @@ jobs:
           ATHLETE: ${{ env.ATHLETE }}
           MIN_GRID_DISTANCE: ${{ env.MIN_GRID_DISTANCE }}
         run: |
-          python run_page/gen_svg.py --from-db --title "$TITLE" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 10 --special-distance2 20 --special-color yellow --special-color2 red --output assets/github.svg --use-localtime --min-distance 0.5
-          python run_page/gen_svg.py --from-db --title "$TITLE_GRID" --type grid --athlete "$ATHLETE" --output assets/grid.svg --special-color yellow --special-color2 red --special-distance 20 --special-distance2 40 --use-localtime --min-distance "$MIN_GRID_DISTANCE"
+          python run_page/gen_svg.py --from-db --title "$TITLE" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 10 --special-distance2 21.0975 --special-color "#ffa400" --special-color2 "#ff0000" --output assets/github.svg --use-localtime --min-distance 0.5
+          python run_page/gen_svg.py --from-db --title "$TITLE_GRID" --type grid --athlete "$ATHLETE" --output assets/grid.svg --special-color "#ffa400" --special-color2 "#ff0000" --special-distance 10 --special-distance2 21.0975 --use-localtime --min-distance "$MIN_GRID_DISTANCE"
           python run_page/gen_svg.py --from-db --type circular --use-localtime
           for year in $(seq 2015 $(date +"%Y")); do
-            python run_page/gen_svg.py --from-db --year "$year" --language zh_CN --title "${year} Running" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 10 --special-distance2 20 --special-color yellow --special-color2 red --output "assets/github_${year}.svg" --use-localtime --min-distance 0.5
+            python run_page/gen_svg.py --from-db --year "$year" --language zh_CN --title "${year} Running" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 10 --special-distance2 21.0975 --special-color "#ffa400" --special-color2 "#ff0000" --output "assets/github_${year}.svg" --use-localtime --min-distance 0.5
           done
 
       - name: Make month of life
