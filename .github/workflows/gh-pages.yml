@@ -132,6 +132,7 @@ jobs:
           python run_page/gen_svg.py --from-db --type monthoflife --birth "1989-03" --special-color "#f9d367" --special-color2 "#f0a1a8" --special-distance 20 --special-distance2 50 --output assets/mol_cycling.svg --use-localtime --athlete "$ATHLETE" --title "Cycling Month of Life" --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
           python run_page/gen_svg.py --from-db --type monthoflife --birth "1989-03" --special-color "#f9d367" --special-color2 "#f0a1a8" --special-distance 20 --special-distance2 50 --output assets/mol.svg --use-localtime --athlete "$ATHLETE" --title "Month of Life" --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
           python run_page/gen_svg.py --from-db --type year_summary --output assets/year_summary.svg --athlete "$ATHLETE" --special-distance 20 --special-distance2 50 --special-color "#ffa400" --special-color2 "#ff0000" --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
+          python run_page/patch_year_summary_svg.py
 
       - name: Drop raw cycling files before build
         run: |
