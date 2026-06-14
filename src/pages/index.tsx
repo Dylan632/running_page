@@ -35,6 +35,7 @@ import {
   type IViewState,
 } from '@/utils/geoUtils';
 import { useTheme, useThemeChangeCounter } from '@/hooks/useTheme';
+import { selectedActivityCopy } from '@/utils/activityMode';
 
 const HASH_RUN_CHANGE_EVENT = 'running-page-hash-run-change';
 
@@ -186,7 +187,7 @@ const Index = () => {
       }
       setCurrentFilter({ item, func });
       setRunIndex(-1);
-      setTitle(`${item} ${name} Running Heatmap`);
+      setTitle(`${item} ${name} ${selectedActivityCopy.heatmapTitle}`);
       // Reset single run state when changing filters
       clearRunHash();
     },

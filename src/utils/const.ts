@@ -1,4 +1,5 @@
 import { getEffectiveTheme } from './themeUtils';
+import { selectedActivityCopy } from './activityMode';
 
 // Constants
 export const MAPBOX_TOKEN =
@@ -51,10 +52,10 @@ export const USE_ANIMATION_FOR_GRID = false;
 
 const CHINESE_INFO_MESSAGE = (yearLength: number, year: string): string => {
   const yearStr = year === 'Total' ? '所有' : ` ${year} `;
-  return `记录自己跑步 ${yearLength} 年了，下面列表展示的是${yearStr}的数据`;
+  return `记录自己${selectedActivityCopy.chineseVerb} ${yearLength} 年了，下面列表展示的是${yearStr}的数据`;
 };
 const ENGLISH_INFO_MESSAGE = (yearLength: number, year: string): string =>
-  `Running Journey with ${yearLength} Years, the table shows year ${year} data`;
+  `${selectedActivityCopy.journeyTitle} with ${yearLength} Years, the table shows year ${year} data`;
 
 export const CHINESE_LOCATION_INFO_MESSAGE_FIRST =
   '跑过了一些地方，希望随着时间推移，点亮的地方越来越多';

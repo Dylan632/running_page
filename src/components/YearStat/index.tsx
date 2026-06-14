@@ -8,6 +8,7 @@ import { yearStats, githubYearStats } from '@assets/index';
 import { loadSvgComponent } from '@/utils/svgUtils';
 import { SHOW_ELEVATION_GAIN } from '@/utils/const';
 import { DIST_UNIT, M_TO_DIST, M_TO_ELEV } from '@/utils/utils';
+import { ACTIVITY_MODE, selectedActivityCopy } from '@/utils/activityMode';
 
 const yearSvgs = Object.fromEntries(
   Object.keys(yearStats).map((path) => [
@@ -37,6 +38,7 @@ interface YearStatAccumulator {
 interface YearStatSummary {
   averageHeartRate: string;
   averagePace: string;
+  averageSpeed: string;
   hasHeartRate: boolean;
   runCount: number;
   streak: number;
@@ -83,14 +85,17 @@ const finalizeYearStat = (
   accumulator: YearStatAccumulator
 ): YearStatSummary => {
   const heartRateCount = accumulator.runCount - accumulator.heartRateNullCount;
+  const averageMovingSpeed =
+    accumulator.totalSecondsForPace > 0
+      ? accumulator.totalMetersForPace / accumulator.totalSecondsForPace
+      : 0;
 
   return {
     averageHeartRate: (
       accumulator.averageHeartRateTotal / heartRateCount
     ).toFixed(0),
-    averagePace: formatPace(
-      accumulator.totalMetersForPace / accumulator.totalSecondsForPace
-    ),
+    averagePace: averageMovingSpeed ? formatPace(averageMovingSpeed) : '0',
+    averageSpeed: (averageMovingSpeed * (3600 / M_TO_DIST)).toFixed(1),
     hasHeartRate: accumulator.averageHeartRateTotal !== 0,
     runCount: accumulator.runCount,
     streak: accumulator.streak,
@@ -146,11 +151,19 @@ const YearStat = ({
 
   if (!summary) return null;
 
+  const averageMetricValue =
+    ACTIVITY_MODE === 'cycling' ? summary.averageSpeed : summary.averagePace;
+  const averageMetricDescription =
+    ACTIVITY_MODE === 'cycling' ? ` ${DIST_UNIT}/h Avg Speed` : ' Avg Pace';
+
   return (
     <div className="kami-year-stat" onClick={() => onClick(year)}>
       <section {...eventHandlers}>
         <Stat value={year} description=" Journey" />
-        <Stat value={summary.runCount} description=" Runs" />
+        <Stat
+          value={summary.runCount}
+          description={selectedActivityCopy.countDescription}
+        />
         <Stat value={summary.totalDistance} description={` ${DIST_UNIT}`} />
         {SHOW_ELEVATION_GAIN && (
           <Stat
@@ -158,7 +171,10 @@ const YearStat = ({
             description=" Elevation Gain"
           />
         )}
-        <Stat value={summary.averagePace} description=" Avg Pace" />
+        <Stat
+          value={averageMetricValue}
+          description={averageMetricDescription}
+        />
         <Stat value={`${summary.streak} day`} description=" Streak" />
         {summary.hasHeartRate && (
           <Stat

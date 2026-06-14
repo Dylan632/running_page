@@ -3,6 +3,7 @@ import type { Activity } from '@/utils/utils';
 import { locationForRun, titleForRun } from '@/utils/utils';
 import activitiesUrl from '@/static/activities.json?url';
 import { COUNTRY_STANDARDIZATION } from '@/static/city';
+import { isSelectedActivity } from '@/utils/activityMode';
 
 interface ProcessedActivities {
   activities: Activity[];
@@ -13,11 +14,6 @@ interface ProcessedActivities {
   runPeriod: Record<string, number>;
   thisYear: string;
 }
-
-const RUNNING_ACTIVITY_TYPES = new Set(['Run', 'VirtualRun', 'running']);
-
-const isRunningActivity = (activity: Activity): boolean =>
-  RUNNING_ACTIVITY_TYPES.has(activity.type);
 
 const standardizeCountryName = (country: string): string => {
   for (const [pattern, standardName] of COUNTRY_STANDARDIZATION) {
@@ -41,7 +37,7 @@ const loadActivityData = () => {
       return response.json() as Promise<Activity[]>;
     })
     .then((activityData) => {
-      activityDataCache = activityData.filter(isRunningActivity);
+      activityDataCache = activityData.filter(isSelectedActivity);
       return activityDataCache;
     })
     .catch((error: unknown) => {
