@@ -32,7 +32,7 @@ class Poster:
         tracks_drawer: drawer used to draw the poster.
 
     Methods:
-        set_tracks: Associate the Poster with a set of tracks
+        set_tracks: Associate the set of tracks with this poster
         draw: Draw the tracks on the poster.
         m2u: Convert meters to kilometers or miles based on units
         u: Return distance unit (km or mi)
@@ -189,33 +189,33 @@ class Poster:
             d.add(
                 d.text(
                     self.trans("SPECIAL TRACKS"),
-                    insert=(65, self.height - 20),
+                    insert=(60, self.height - 20),
                     fill=text_color,
                     style=header_style,
                 )
             )
 
             d.add(
-                d.rect((65, self.height - 17), (2.6, 2.6), fill=self.colors["special"])
+                d.rect((60, self.height - 17), (2.6, 2.6), fill=self.colors["special"])
             )
 
             d.add(
                 d.text(
                     self.__format_special_distance_label(special_distance1),
-                    insert=(70, self.height - 14.5),
+                    insert=(65, self.height - 14.5),
                     fill=text_color,
                     style=small_value_style,
                 )
             )
 
             d.add(
-                d.rect((65, self.height - 13), (2.6, 2.6), fill=self.colors["special2"])
+                d.rect((60, self.height - 13), (2.6, 2.6), fill=self.colors["special2"])
             )
 
             d.add(
                 d.text(
                     self.__format_special_distance_label(special_distance2),
-                    insert=(70, self.height - 10.5),
+                    insert=(65, self.height - 10.5),
                     fill=text_color,
                     style=small_value_style,
                 )
@@ -224,7 +224,7 @@ class Poster:
         d.add(
             d.text(
                 self.trans("STATISTICS"),
-                insert=(120, self.height - 20),
+                insert=(112, self.height - 20),
                 fill=text_color,
                 style=header_style,
             )
@@ -232,7 +232,7 @@ class Poster:
         d.add(
             d.text(
                 self.trans("Number") + f": {len(self.tracks)}",
-                insert=(120, self.height - 15),
+                insert=(112, self.height - 15),
                 fill=text_color,
                 style=small_value_style,
             )
@@ -240,7 +240,7 @@ class Poster:
         d.add(
             d.text(
                 self.trans("Weekly") + ": " + format_float(len(self.tracks) / weeks),
-                insert=(120, self.height - 10),
+                insert=(112, self.height - 10),
                 fill=text_color,
                 style=small_value_style,
             )
@@ -248,7 +248,7 @@ class Poster:
         d.add(
             d.text(
                 self.trans("Total") + ": " + self.format_distance(total_length),
-                insert=(141, self.height - 15),
+                insert=(136, self.height - 15),
                 fill=text_color,
                 style=small_value_style,
             )
@@ -256,7 +256,7 @@ class Poster:
         d.add(
             d.text(
                 self.trans("Avg") + ": " + self.format_distance(average_length),
-                insert=(141, self.height - 10),
+                insert=(136, self.height - 10),
                 fill=text_color,
                 style=small_value_style,
             )
@@ -264,7 +264,7 @@ class Poster:
         d.add(
             d.text(
                 self.trans("Min") + ": " + self.format_distance(min_length),
-                insert=(167, self.height - 15),
+                insert=(171, self.height - 15),
                 fill=text_color,
                 style=small_value_style,
             )
@@ -272,7 +272,7 @@ class Poster:
         d.add(
             d.text(
                 self.trans("Max") + ": " + self.format_distance(max_length),
-                insert=(167, self.height - 10),
+                insert=(171, self.height - 10),
                 fill=text_color,
                 style=small_value_style,
             )
