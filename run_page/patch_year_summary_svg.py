@@ -2,8 +2,8 @@
 
 The upstream year summary drawer uses fixed x positions that work for short
 running stats, but cycling stats often have longer values. This script adds
-more horizontal room for units and shortens the footer so labels do not overlap
-in the left status area of the SVG.
+more horizontal room for units and replaces the cramped bottom-left status area
+with a compact three-line legend for the cycling heatmap and route map.
 """
 
 from pathlib import Path
@@ -20,18 +20,8 @@ def replace_text_attr(fragment: str, attr: str, value: str) -> str:
     return fragment
 
 
-def patch_svg_text(svg: str) -> str:
-    # Keep the footer compact. The original text can be long after the repo was
-    # renamed from running_page to cycling_page.
-    svg = re.sub(r">(?:running_page|cycling_page)/(\d{4})<", r">cycling / \1<", svg)
-    svg = svg.replace(">Running for ", ">Cycling for ")
-    svg = svg.replace(">Runs<", ">Rides<")
-    svg = svg.replace(">Runner<", ">Cyclist<")
-    svg = svg.replace(">Avg Pace<", ">Avg Speed<")
-
-    # Unit labels in the status block are emitted with fixed positions. Move
-    # them to the right so larger cycling totals such as 1000+ km / 100+ h do
-    # not collide with the numeric value.
+def patch_units(svg: str) -> str:
+    """Move fixed-position unit labels away from longer cycling values."""
     unit_moves = {
         ("km", "114"): "42",
         ("h", "170"): "36",
@@ -48,23 +38,41 @@ def patch_svg_text(svg: str) -> str:
             return match.group(0)
         return f"<text{replace_text_attr(tag_attrs, 'x', new_x)}>{text}</text>"
 
-    svg = re.sub(r"<text([^>]*)>(km|h|d)</text>", move_unit, svg)
+    return re.sub(r"<text([^>]*)>(km|h|d)</text>", move_unit, svg)
 
-    # Make the bottom footer slightly smaller and keep it away from the athlete
-    # name. This prevents the last status text from looking cramped.
-    def patch_footer(match: re.Match[str]) -> str:
-        attrs = match.group(1)
-        text = match.group(2)
-        attrs = replace_text_attr(attrs, "y", "288")
-        attrs = re.sub(r"font-size:[0-9.]+px", "font-size:5.5px", attrs)
-        return f"<text{attrs}>{text}</text>"
 
+def replace_bottom_status_with_legend(svg: str) -> str:
+    """Replace cramped bottom-left status strings with a three-line legend."""
+    # Remove the original bottom-left status labels such as
+    # Runner/Cyclist, Dylan, and running_page/2025 or cycling_page/2025.
     svg = re.sub(
-        r"<text([^>]*y=\"285\.[^>]*?)>(cycling / \d{4})</text>",
-        patch_footer,
+        r'<text[^>]*x="11"[^>]*y="(?:24[0-9]|25[0-9]|26[0-9]|27[0-9]|28[0-9])(?:\.[^"]*)?"[^>]*>[^<]*</text>',
+        "",
         svg,
     )
 
+    legend = (
+        '<text fill="#4DD2FF" style="font-size:5px; font-family:Arial;" x="11" y="250">'
+        'Heatmap: Blue &lt;20km</text>'
+        '<text fill="#ffa400" style="font-size:5px; font-family:Arial;" x="11" y="262">'
+        'Orange 20-50 / Red &gt;50</text>'
+        '<text fill="#FFFFFF" style="font-size:5px; font-family:Arial;" x="11" y="274">'
+        'Routes: Over 10km</text>'
+    )
+
+    # Insert the legend before the first calendar circle so it remains in the
+    # left metadata area without affecting the heatmap itself.
+    if legend not in svg:
+        svg = svg.replace("<circle", legend + "<circle", 1)
+    return svg
+
+
+def patch_svg_text(svg: str) -> str:
+    svg = svg.replace(">Running for ", ">Cycling for ")
+    svg = svg.replace(">Runs<", ">Rides<")
+    svg = svg.replace(">Avg Pace<", ">Avg Speed<")
+    svg = patch_units(svg)
+    svg = replace_bottom_status_with_legend(svg)
     return svg
 
 
