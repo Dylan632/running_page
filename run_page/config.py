@@ -21,6 +21,20 @@ JSON_FILE = os.path.join(parent, "src", "static", "activities.json")
 SYNCED_FILE = os.path.join(parent, "imported.json")
 
 
+def _prepare_manual_taihu_gpx():
+    route_file = os.path.join(parent, "manual_gpx", "taihu_route.polyline.b64")
+    if not os.path.exists(route_file):
+        return
+    try:
+        from write_taihu_manual_gpx import main as write_taihu_manual_gpx
+
+        write_taihu_manual_gpx()
+    except Exception as exc:
+        print(f"Skip manual Taihu GPX generation: {exc}")
+
+
+_prepare_manual_taihu_gpx()
+
 BASE_TIMEZONE = "Asia/Shanghai"
 UTC_TIMEZONE = "UTC"
 
