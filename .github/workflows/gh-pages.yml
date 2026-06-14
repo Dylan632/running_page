@@ -101,7 +101,7 @@ jobs:
 
       - name: Sync Keep cycling data over 5km
         run: |
-          python run_page/keep_sync.py ${{ secrets.KEEP_MOBILE }} ${{ secrets.KEEP_PASSWORD }} --with-gpx --sync-types cycling
+          python run_page/keep_sync.py ${{ secrets.KEEP_MOBILE }} ${{ secrets.KEEP_PASSWORD }} --sync-types cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS"
           python run_page/filter_activity_data.py --types Ride VirtualRide cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS"
 
       - name: Make cycling SVGs

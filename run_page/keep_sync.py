@@ -66,7 +66,20 @@ def login(session, mobile, password):
         return session, headers
 
 
-def get_to_download_runs_ids(session, headers, sport_type):
+def meets_min_distance(stats, min_distance):
+    if min_distance <= 0:
+        return True
+    raw_distance = stats.get("distance")
+    if raw_distance is None:
+        return True
+    try:
+        distance = float(raw_distance)
+    except (TypeError, ValueError):
+        return True
+    return distance > min_distance
+
+
+def get_to_download_runs_ids(session, headers, sport_type, min_distance=0):
     last_date = 0
     result = []
 
@@ -80,7 +93,11 @@ def get_to_download_runs_ids(session, headers, sport_type):
 
             for i in run_logs:
                 logs = [j["stats"] for j in i["logs"]]
-                result.extend(k["id"] for k in logs if not k["isDoubtful"])
+                result.extend(
+                    k["id"]
+                    for k in logs
+                    if not k["isDoubtful"] and meets_min_distance(k, min_distance)
+                )
             last_date = r.json()["data"]["lastTimestamp"]
             since_time = datetime.fromtimestamp(last_date // 1000, tz=timezone.utc)
             print(f"pares keep ids data since {since_time}")
@@ -217,6 +234,7 @@ def get_all_keep_tracks(
     keep_sports_data_api,
     with_gpx=False,
     with_tcx=False,
+    min_distance=0,
 ):
     if with_gpx and not os.path.exists(GPX_FOLDER):
         os.mkdir(GPX_FOLDER)
@@ -226,7 +244,7 @@ def get_all_keep_tracks(
     s, headers = login(s, email, password)
     tracks = []
     for api in keep_sports_data_api:
-        runs = get_to_download_runs_ids(s, headers, api)
+        runs = get_to_download_runs_ids(s, headers, api, min_distance)
         runs = [run for run in runs if run.split("_")[1] not in old_tracks_ids]
         print(f"{len(runs)} new keep {api} data to generate")
         old_gpx_ids = []
@@ -493,12 +511,23 @@ def download_keep_tcx(tcx_data, keep_id):
 
 
 def run_keep_sync(
-    email, password, keep_sports_data_api, with_gpx=False, with_tcx=False
+    email,
+    password,
+    keep_sports_data_api,
+    with_gpx=False,
+    with_tcx=False,
+    min_distance=0,
 ):
     generator = Generator(SQL_FILE)
     old_tracks_ids = generator.get_old_tracks_ids()
     new_tracks = get_all_keep_tracks(
-        email, password, old_tracks_ids, keep_sports_data_api, with_gpx, with_tcx
+        email,
+        password,
+        old_tracks_ids,
+        keep_sports_data_api,
+        with_gpx,
+        with_tcx,
+        min_distance,
     )
     generator.sync_from_app(new_tracks)
 
@@ -530,6 +559,13 @@ if __name__ == "__main__":
         action="store_true",
         help="get all keep data to tcx and download",
     )
+    parser.add_argument(
+        "--min-distance",
+        dest="min_distance",
+        type=float,
+        default=0,
+        help="only sync activities with distance strictly greater than this many meters",
+    )
     options = parser.parse_args()
     for _tpye in options.sync_types:
         assert (
@@ -541,4 +577,5 @@ if __name__ == "__main__":
         options.sync_types,
         options.with_gpx,
         options.with_tcx,
+        options.min_distance,
     )
