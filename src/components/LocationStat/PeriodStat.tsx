@@ -1,5 +1,6 @@
 import Stat from '@/components/Stat';
 import useActivities from '@/hooks/useActivities';
+import { selectedActivityCopy } from '@/utils/activityMode';
 
 const PeriodStat = ({ onClick }: { onClick: (_period: string) => void }) => {
   const { runPeriod } = useActivities();
@@ -13,7 +14,7 @@ const PeriodStat = ({ onClick }: { onClick: (_period: string) => void }) => {
           <Stat
             key={period}
             value={period}
-            description={` ${times} Runs`}
+            description={` ${times}${selectedActivityCopy.countDescription}`}
             citySize={3}
             onClick={() => onClick(period)}
           />
