@@ -56,9 +56,14 @@ function patchTextColumns(svg) {
   });
 }
 
-function patchSpecialLegendSquares(svg) {
+function isHeatmapFile(filePath) {
+  return path.basename(filePath).startsWith('github');
+}
+
+function patchSpecialLegendSquares(svg, filePath) {
   const height = getSvgHeight(svg);
   const footerStart = height - 25;
+  const markerX = isHeatmapFile(filePath) ? 57 : 60;
 
   return svg.replace(/<rect\b[^>]*(?:\/>|>[\s\S]*?<\/rect>)/g, (tag) => {
     const yMatch = tag.match(/\by="(-?[0-9.]+)"/);
@@ -72,7 +77,7 @@ function patchSpecialLegendSquares(svg) {
     const rectHeight = Number(heightMatch[1]);
 
     if (y >= footerStart && width <= 3 && rectHeight <= 3) {
-      return setAttr(tag, 'x', 60);
+      return setAttr(tag, 'x', markerX);
     }
 
     return tag;
@@ -81,7 +86,7 @@ function patchSpecialLegendSquares(svg) {
 
 function patchSvg(filePath) {
   const original = fs.readFileSync(filePath, 'utf8');
-  const patched = patchSpecialLegendSquares(patchTextColumns(original));
+  const patched = patchSpecialLegendSquares(patchTextColumns(original), filePath);
 
   if (patched !== original) {
     fs.writeFileSync(filePath, patched, 'utf8');
