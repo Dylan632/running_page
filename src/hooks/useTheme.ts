@@ -1,18 +1,24 @@
 import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { MAP_TILE_STYLE_LIGHT, MAP_TILE_STYLE_DARK } from '@/utils/const';
+import {
+  getAsiaShanghaiTheme,
+  getEffectiveTheme,
+  getStoredManualTheme,
+  persistManualTheme,
+  syncThemeStorage,
+  THEME_PREFERENCE_STORAGE_KEY,
+  THEME_STORAGE_KEY,
+} from '@/utils/themeUtils';
+import type { Theme } from '@/utils/themeUtils';
 
-export type Theme = 'light' | 'dark';
+export type { Theme } from '@/utils/themeUtils';
 
 // Custom event name for theme changes
 export const THEME_CHANGE_EVENT = 'theme-change';
 
 const getCurrentThemeSnapshot = () => {
-  if (typeof window === 'undefined') return 'dark';
-  return (
-    document.documentElement.getAttribute('data-theme') ||
-    localStorage.getItem('theme') ||
-    'dark'
-  );
+  if (typeof window === 'undefined') return getAsiaShanghaiTheme();
+  return getEffectiveTheme();
 };
 
 const subscribeToThemeChanges = (onStoreChange: () => void) => {
@@ -37,7 +43,7 @@ const subscribeToThemeChanges = (onStoreChange: () => void) => {
 
   const handleThemeChange = () => onStoreChange();
   const handleStorageChange = (e: StorageEvent) => {
-    if (e.key === 'theme') {
+    if (e.key === THEME_STORAGE_KEY || e.key === THEME_PREFERENCE_STORAGE_KEY) {
       onStoreChange();
     }
   };
@@ -83,16 +89,17 @@ export const useMapTheme = () => {
  * @returns Object with current theme and function to change theme
  */
 export const useTheme = () => {
-  // Initialize theme from localStorage or default to dark
+  // Initialize from a manual choice, otherwise use Asia/Shanghai day/night.
   const [themeState, setThemeState] = useState<Theme>(() => {
-    if (typeof window === 'undefined') return 'dark';
-    return (localStorage.getItem('theme') as Theme) || 'dark';
+    if (typeof window === 'undefined') return getAsiaShanghaiTheme();
+    return getEffectiveTheme();
   });
 
   /**
    * Set theme and dispatch event to notify other components
    */
   const setTheme = useCallback((newTheme: Theme) => {
+    persistManualTheme(newTheme);
     setThemeState(newTheme);
 
     // Dispatch custom event for theme change
@@ -108,8 +115,22 @@ export const useTheme = () => {
 
     // Set attribute and save to localStorage for both themes
     root.setAttribute('data-theme', themeState);
-    localStorage.setItem('theme', themeState);
+    syncThemeStorage(themeState);
   }, [themeState]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const syncAutomaticTheme = () => {
+      if (!getStoredManualTheme()) {
+        setThemeState(getAsiaShanghaiTheme());
+      }
+    };
+
+    syncAutomaticTheme();
+    const timer = window.setInterval(syncAutomaticTheme, 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   return {
     theme: themeState,

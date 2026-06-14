@@ -13,7 +13,6 @@ import {
   HIKING_COLOR,
   INDOOR_COLOR,
   MAIN_COLOR,
-  MAP_TILE_STYLE_DARK,
   MAP_TILE_STYLES,
   NEED_FIX_MAP,
   RUN_TRAIL_COLOR,
@@ -22,6 +21,7 @@ import {
 } from './const';
 import type { Activity } from './utils';
 import { locationForRun } from './utils';
+import { getEffectiveTheme } from './themeUtils';
 
 export type Coordinate = [number, number];
 
@@ -199,19 +199,5 @@ export const isTouchDevice = () => {
 };
 
 export const getMapTheme = (): string => {
-  if (typeof window === 'undefined') return MAP_TILE_STYLE_DARK;
-
-  const dataTheme = document.documentElement.getAttribute('data-theme') as
-    | 'light'
-    | 'dark'
-    | null;
-  const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-
-  if (dataTheme) {
-    return getMapThemeFromCurrentTheme(dataTheme);
-  }
-  if (savedTheme) {
-    return getMapThemeFromCurrentTheme(savedTheme);
-  }
-  return getMapThemeFromCurrentTheme('dark');
+  return getMapThemeFromCurrentTheme(getEffectiveTheme());
 };

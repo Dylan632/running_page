@@ -42,22 +42,6 @@
   text-decoration: none;
 }
 
-.kami-shell {
-  margin-top: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-[data-theme='dark'] .kami-shell {
-  backdrop-filter: none;
-}
-
-.kami-shell::before {
-  display: none;
-}
-
 .kami-shell > div:first-child > h1 {
   display: none;
 }
@@ -88,9 +72,17 @@
 
 .kami-year-stat {
   cursor: pointer;
-  margin-bottom: 2rem;
-  padding-bottom: 2rem;
-  border-bottom: 1px solid var(--running-sidebar-rule);
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--kami-border);
+  border-radius: 1.25rem;
+  background: rgba(250, 249, 245, 0.72);
+  box-shadow: var(--kami-whisper-shadow);
+  padding: 1.15rem 1.25rem;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 .kami-year-stat section {
@@ -100,6 +92,12 @@
 .kami-year-stat:hover .kami-stat-value,
 .kami-year-stat:hover .kami-stat-desc {
   color: var(--running-sidebar-ink);
+}
+
+.kami-year-stat:hover {
+  border-color: var(--kami-border-strong);
+  background: var(--kami-ivory);
+  transform: translateY(-1px);
 }
 
 .kami-stat {
@@ -159,6 +157,17 @@
   border-color: var(--running-sidebar-dark-rule);
 }
 
+[data-theme='dark'] .kami-year-stat {
+  background: linear-gradient(
+    180deg,
+    rgba(17, 27, 45, 0.72),
+    rgba(12, 20, 35, 0.62)
+  );
+  box-shadow:
+    0 16px 44px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
 [data-theme='dark'] .kami-stat-value {
   text-shadow: none;
 }
@@ -166,6 +175,15 @@
 [data-theme='dark'] .kami-year-stat:hover .kami-stat-value,
 [data-theme='dark'] .kami-year-stat:hover .kami-stat-desc {
   color: var(--running-sidebar-dark-ink);
+}
+
+[data-theme='dark'] .kami-year-stat:hover {
+  border-color: rgba(224, 237, 94, 0.26);
+  background: linear-gradient(
+    180deg,
+    rgba(21, 34, 56, 0.82),
+    rgba(12, 20, 35, 0.72)
+  );
 }
 
 @keyframes running-avatar-spin {
@@ -197,7 +215,8 @@
 
   .kami-year-stat {
     margin-bottom: 0.75rem;
-    padding-bottom: 0.75rem;
+    border-radius: 1rem;
+    padding: 0.9rem;
   }
 
   .kami-year-stat section {

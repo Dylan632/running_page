@@ -1,120 +1,148 @@
-/* IBM Plex Sans and IBM Plex Mono fonts */
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap');
-
 @import 'tailwindcss';
 @import './mobile.css';
 
 :root {
-  /* global */
-  --color-primary: var(--color-brand);
-  --color-secondary: var(--color-secondary);
-  --color-background: var(--color-bg);
-  --color-text-primary: var(--color-tx);
-  --color-hr-primary: var(--color-hr);
-  --color-selected: var(--color-selected);
-  /* table */
-  --color-run-date: var(--color-run-date);
-  --color-run-table-thead: var(--color-run-table-thead);
-  --color-run-row-hover-background: var(--color-run-row-hover-background);
-  /* activity-card */
-  --color-activity-card: var(--color-activity-card);
-  /* svg */
-  --svg-color-active-cell: var(--svg-color-inactive-cell);
-  /* fonts */
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
-}
+  --kami-parchment: #f5f4ed;
+  --kami-ivory: #faf9f5;
+  --kami-sand: #e8e6dc;
+  --kami-border: #e5e3d8;
+  --kami-border-strong: #d8d3c4;
+  --kami-ink: #1b365d;
+  --kami-ink-light: #2d5a8a;
+  --kami-near-black: #141413;
+  --kami-dark-warm: #3d3d3a;
+  --kami-olive: #504e49;
+  --kami-stone: #6b6a64;
+  --kami-tag-bg: #e4ecf5;
+  --kami-shell-bg: linear-gradient(
+    135deg,
+    rgba(250, 249, 245, 0.96),
+    rgba(245, 244, 237, 0.9)
+  );
+  --kami-shadow: 0 18px 60px rgba(27, 54, 93, 0.08);
+  --kami-whisper-shadow:
+    0 1px 0 rgba(27, 54, 93, 0.08), 0 10px 30px rgba(27, 54, 93, 0.05);
 
-/* 1. System Theme (Base) */
-@media (prefers-color-scheme: light) {
-  :root {
-    --color-brand: var(--color-sky-900);
-    --color-secondary: var(--color-sky-800);
-    --color-bg: var(--color-neutral-100);
-    --color-tx: var(--color-sky-900);
-    --color-hr: var(--color-neutral-300);
-    --color-selected: var(--color-sky-900);
-    --color-run-date: var(--color-neutral-800);
-    --color-run-table-thead: var(--color-neutral-800);
-    --color-run-row-hover-background: var(--color-neutral-200);
-    --color-activity-card: var(--color-neutral-300);
-    --svg-color-active-cell: var(--color-neutral-400);
-    --svg-special-color: #d4a574;
-    --svg-special-color2: #c5756b;
-    --font-sans: 'IBM Plex Sans', sans-serif;
-    --font-mono: 'IBM Plex Mono', monospace;
-  }
-}
+  --color-primary: var(--kami-ink);
+  --color-secondary: var(--kami-ink-light);
+  --color-background: var(--kami-parchment);
+  --color-text-primary: var(--kami-near-black);
+  --color-hr-primary: var(--kami-border);
+  --color-selected: var(--kami-ink);
+  --color-run-date: var(--kami-stone);
+  --color-run-table-thead: var(--kami-dark-warm);
+  --color-run-row-hover-background: var(--kami-sand);
+  --color-activity-card: var(--kami-border);
+  --svg-color-inactive-cell: var(--kami-border);
+  --svg-color-active-cell: var(--kami-ink);
+  --svg-special-color: var(--kami-ink-light);
+  --svg-special-color2: #8b4513;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* const nike = 'rgb(224,237,94)'; */
-    --color-brand: #e0ed5e;
-    --color-secondary: #ccd94a;
-    --color-bg: var(--color-neutral-900);
-    --color-tx: var(--color-brand);
-    --color-hr: var(--color-red-500);
-    --color-selected: var(--color-brand);
-    --color-run-date: var(--color-neutral-300);
-    --color-run-table-thead: var(--color-zinc-300);
-    --color-run-row-hover-background: var(--color-neutral-800);
-    --color-activity-card: var(--color-neutral-700);
-    --svg-color-active-cell: #4dd2ff;
-    --svg-special-color: #f7d02c;
-    --svg-special-color2: #f56c6c;
-    --font-sans: 'IBM Plex Sans', sans-serif;
-    --font-mono: 'IBM Plex Mono', monospace;
-  }
-}
-
-/* 2. Manual Override (Higher Priority) */
-[data-theme='light'] {
-  --color-brand: var(--color-sky-900);
-  --color-secondary: var(--color-sky-800);
-  --color-bg: var(--color-neutral-100);
-  --color-tx: var(--color-sky-900);
-  --color-hr: var(--color-neutral-300);
-  --color-selected: var(--color-sky-900);
-  --color-run-date: var(--color-neutral-800);
-  --color-run-table-thead: var(--color-neutral-800);
-  --color-run-row-hover-background: var(--color-neutral-200);
-  --color-activity-card: var(--color-neutral-300);
-  --svg-color-inactive-cell: var(--color-neutral-600);
-  --svg-color-active-cell: var(--color-neutral-400);
-  --svg-special-color: #d4a574;
-  --svg-special-color2: #c5756b;
-  --font-sans: 'IBM Plex Sans', sans-serif;
-  --font-mono: 'IBM Plex Mono', monospace;
+  --font-serif:
+    'TsangerJinKai02', 'Source Han Serif SC', 'Noto Serif CJK SC', 'Songti SC',
+    'STSong', Georgia, serif;
+  --font-sans:
+    'TsangerJinKai02', 'Source Han Serif SC', 'Noto Serif CJK SC', 'Songti SC',
+    'STSong', Georgia, serif;
+  --font-mono:
+    'JetBrains Mono', 'SF Mono', 'Fira Code', Consolas, Monaco,
+    'TsangerJinKai02', 'Source Han Serif SC', monospace;
 }
 
 [data-theme='dark'] {
-  /* const nike = 'rgb(224,237,94)'; */
-  --color-brand: #e0ed5e;
-  --color-secondary: #ccd94a;
-  --color-bg: var(--color-neutral-900);
-  --color-tx: var(--color-brand);
-  --color-hr: var(--color-red-500);
-  --color-selected: var(--color-brand);
-  --color-run-date: var(--color-neutral-300);
-  --color-run-table-thead: var(--color-zinc-300);
-  --color-run-row-hover-background: var(--color-neutral-800);
-  --color-activity-card: var(--color-neutral-700);
-  --svg-color-active-cell: #4dd2ff;
-  --svg-special-color: #f7d02c;
-  --svg-special-color2: #f56c6c;
-  --font-sans: 'IBM Plex Sans', sans-serif;
-  --font-mono: 'IBM Plex Mono', monospace;
+  --kami-parchment: #0b1220;
+  --kami-ivory: rgba(17, 26, 43, 0.86);
+  --kami-sand: rgba(36, 54, 82, 0.76);
+  --kami-border: rgba(141, 161, 190, 0.18);
+  --kami-border-strong: rgba(170, 190, 220, 0.34);
+  --kami-ink: #dcecff;
+  --kami-ink-light: #8db7e8;
+  --kami-near-black: #eef5ff;
+  --kami-dark-warm: #d4deef;
+  --kami-olive: #aebbd0;
+  --kami-stone: #8fa0ba;
+  --kami-tag-bg: rgba(74, 122, 184, 0.18);
+  --kami-shell-bg:
+    linear-gradient(145deg, rgba(16, 28, 48, 0.96), rgba(9, 16, 29, 0.94)),
+    radial-gradient(circle at 8% 0%, rgba(77, 132, 196, 0.2), transparent 22rem);
+  --kami-shadow:
+    0 24px 90px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(170, 190, 220, 0.08);
+  --kami-whisper-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05), 0 18px 45px rgba(0, 0, 0, 0.22);
+
+  --color-primary: var(--kami-ink);
+  --color-secondary: var(--kami-ink-light);
+  --color-background: var(--kami-parchment);
+  --color-text-primary: var(--kami-near-black);
+  --color-hr-primary: var(--kami-border);
+  --color-selected: var(--kami-ink);
+  --color-run-date: var(--kami-stone);
+  --color-run-table-thead: var(--kami-dark-warm);
+  --color-run-row-hover-background: rgba(74, 122, 184, 0.14);
+  --color-activity-card: var(--kami-border);
+  --svg-color-inactive-cell: rgba(141, 161, 190, 0.18);
+  --svg-color-active-cell: #8db7e8;
+  --svg-special-color: #dcecff;
+  --svg-special-color2: #d8b894;
 }
 
 @layer base {
   html,
   body {
-    background-color: var(--color-background);
-    color: var(--color-brand);
+    min-height: 100%;
+    background:
+      radial-gradient(
+        circle at 18% 12%,
+        rgba(27, 54, 93, 0.06),
+        transparent 30rem
+      ),
+      radial-gradient(
+        circle at 80% 8%,
+        rgba(139, 69, 19, 0.05),
+        transparent 24rem
+      ),
+      var(--color-background);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    letter-spacing: 0.03em;
+    text-rendering: optimizeLegibility;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-font-smoothing: antialiased;
     transition:
-      background-color 0.1s ease,
-      color 0.1s ease;
+      background-color 0.2s ease,
+      color 0.2s ease;
+  }
+
+  [data-theme='dark'],
+  [data-theme='dark'] body {
+    background:
+      radial-gradient(
+        circle at 12% 8%,
+        rgba(72, 118, 174, 0.22),
+        transparent 26rem
+      ),
+      radial-gradient(
+        circle at 88% 12%,
+        rgba(216, 184, 148, 0.1),
+        transparent 22rem
+      ),
+      linear-gradient(180deg, #0b1220 0%, #09111e 52%, #070d17 100%);
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  a {
+    color: var(--color-primary);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.25em;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
     font-family: var(--font-sans);
   }
 }
@@ -127,35 +155,136 @@ img::-moz-selection {
   background: transparent;
 }
 
-body {
-  text-rendering: optimizeLegibility;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-font-smoothing: antialiased;
-}
-
 iframe {
   border: none;
 }
 
 hr {
   border-top: none;
-  border-bottom: 1px solid;
-  border-color: var(--color-hr-primary);
+  border-bottom: 1px solid var(--color-hr-primary);
   margin: 2rem 0;
+}
+
+.kami-shell {
+  position: relative;
+  margin-top: 2rem;
+  border: 1px solid var(--kami-border);
+  border-radius: 2rem;
+  background: var(--kami-shell-bg), var(--kami-ivory);
+  box-shadow: var(--kami-shadow);
+}
+
+[data-theme='dark'] .kami-shell {
+  backdrop-filter: blur(18px) saturate(130%);
+}
+
+.kami-shell::before {
+  content: 'Running Log';
+  position: absolute;
+  top: 1.25rem;
+  right: 1.5rem;
+  color: var(--kami-stone);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+[data-theme='dark'] .kami-shell::before {
+  color: rgba(220, 236, 255, 0.42);
+}
+
+.kami-shell h1 {
+  margin-top: 1.5rem;
+  margin-bottom: 1.25rem;
+  color: var(--color-primary);
+  font-family: var(--font-serif);
+  font-size: clamp(2.5rem, 5vw, 5.5rem);
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 1.08;
+}
+
+.kami-shell h1 a {
+  text-decoration: none;
+}
+
+[data-theme='dark'] .kami-shell h1 {
+  color: #f2f7ff;
+  text-shadow: 0 10px 38px rgba(101, 152, 215, 0.28);
+}
+
+.kami-shell h1::after {
+  content: '只记录真正的跑步轨迹、热力与年份';
+  display: block;
+  max-width: 24rem;
+  margin-top: 1rem;
+  color: var(--kami-olive);
+  font-size: clamp(0.95rem, 1.5vw, 1.15rem);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  line-height: 1.55;
+}
+
+.kami-shell #map-container {
+  border: 1px solid var(--kami-border);
+  border-radius: 1.5rem;
+  background: var(--kami-ivory);
+  box-shadow: var(--kami-whisper-shadow);
+  padding: 1rem;
+}
+
+[data-theme='dark'] .kami-shell #map-container,
+[data-theme='dark'] .kami-shell #svgStat {
+  background: linear-gradient(
+    180deg,
+    rgba(17, 27, 45, 0.9),
+    rgba(12, 20, 35, 0.88)
+  );
+  border-color: rgba(170, 190, 220, 0.2);
+  box-shadow:
+    0 20px 70px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.kami-shell .mapboxgl-map {
+  overflow: hidden;
+  border: 1px solid var(--kami-border);
+  border-radius: 1.15rem;
+}
+
+[data-theme='dark'] .kami-shell .mapboxgl-map {
+  border-color: rgba(170, 190, 220, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.kami-shell #svgStat {
+  margin-top: 1.25rem;
+  border: 1px solid var(--kami-border);
+  border-radius: 1.5rem;
+  background: var(--kami-ivory);
+  box-shadow: var(--kami-whisper-shadow);
+  padding: 1rem;
 }
 
 .github-svg text,
 .grid-svg text,
 .year-svg text {
   fill: var(--color-run-date);
+  font-family: var(--font-mono);
 }
 
 .svg-color-bg {
-  fill: var(--color-run-row-hover-background);
+  fill: var(--kami-ivory);
+}
+
+[data-theme='dark'] .svg-color-bg {
+  fill: rgba(12, 20, 35, 0.88);
 }
 
 .svg-color-inactive-cell {
-  fill: var(--color-activity-card);
+  fill: var(--svg-color-inactive-cell);
 }
 
 .svg-color-active-cell {
@@ -185,14 +314,56 @@ hr {
   stroke: var(--svg-special-color2);
 }
 
-/* Mobile-specific improvements */
+.mapboxgl-ctrl-group {
+  border: 1px solid var(--kami-border) !important;
+  border-radius: 0.75rem !important;
+  background-color: var(--kami-ivory) !important;
+  box-shadow: var(--kami-whisper-shadow) !important;
+}
+
+[data-theme='dark'] .mapboxgl-ctrl-group {
+  background-color: rgba(18, 29, 48, 0.88) !important;
+  border-color: rgba(170, 190, 220, 0.22) !important;
+}
+
+.mapboxgl-ctrl button {
+  color: var(--kami-ink) !important;
+}
+
+[data-theme='dark'] .mapboxgl-ctrl button,
+[data-theme='dark'] .mapboxgl-ctrl button span {
+  color: #dcecff !important;
+  filter: invert(1) opacity(0.82);
+}
+
+[data-theme='dark'] .mapboxgl-ctrl-attrib,
+[data-theme='dark'] .mapboxgl-ctrl-attrib a {
+  color: rgba(220, 236, 255, 0.62) !important;
+  background: rgba(12, 20, 35, 0.68) !important;
+}
+
 @media only screen and (max-width: 768px) {
-  .mobile-map-container {
-    margin-bottom: 1rem;
+  .kami-shell {
+    margin-top: 1rem;
+    border-radius: 1.25rem;
   }
 
-  /* Ensure mobile layout doesn't require min-width */
-  body {
-    overflow-x: hidden;
+  .kami-shell::before {
+    display: none;
+  }
+
+  .kami-shell h1 {
+    margin-top: 0.5rem;
+    font-size: 2.4rem;
+  }
+
+  .kami-shell #map-container,
+  .kami-shell #svgStat {
+    border-radius: 1.1rem;
+    padding: 0.75rem;
+  }
+
+  .mobile-map-container {
+    margin-bottom: 1rem;
   }
 }

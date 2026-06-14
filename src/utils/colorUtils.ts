@@ -1,6 +1,7 @@
 /**
  * Color utility functions for theme-aware color adjustments
  */
+import { getEffectiveTheme } from './themeUtils';
 
 export type Theme = 'light' | 'dark';
 
@@ -122,22 +123,7 @@ export const hslToRgb = (
  * @returns The current effective theme
  */
 export const getCurrentTheme = (): 'light' | 'dark' => {
-  if (typeof window === 'undefined') return 'dark';
-
-  const dataTheme = document.documentElement.getAttribute('data-theme');
-  const savedTheme = localStorage.getItem('theme');
-
-  // Determine current theme based on priority
-  if (dataTheme === 'dark' || dataTheme === 'light') {
-    return dataTheme;
-  }
-
-  if (savedTheme === 'dark' || savedTheme === 'light') {
-    return savedTheme;
-  }
-
-  // Default to dark theme
-  return 'dark';
+  return getEffectiveTheme();
 };
 
 /**

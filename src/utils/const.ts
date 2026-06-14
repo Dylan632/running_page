@@ -1,3 +1,5 @@
+import { getEffectiveTheme } from './themeUtils';
+
 // Constants
 export const MAPBOX_TOKEN =
   'pk.eyJ1IjoieWlob25nMDYxOCIsImEiOiJjbWYxdXR4YncwMTJtMm5zOTE4eTZpMGdtIn0.OnsXdwkZFztR8a5Ph_T-xg';
@@ -160,16 +162,7 @@ export const SINGLE_RUN_COLOR_LIGHT = '#52c41a';
 export const SINGLE_RUN_COLOR_DARK = '#ff4d4f';
 
 const isDarkTheme = (): boolean => {
-  if (typeof window === 'undefined') return true;
-
-  const dataTheme = document.documentElement.getAttribute('data-theme');
-  const savedTheme = localStorage.getItem('theme');
-
-  return (
-    dataTheme === 'dark' ||
-    (!dataTheme && savedTheme === 'dark') ||
-    (!dataTheme && !savedTheme)
-  );
+  return getEffectiveTheme() === 'dark';
 };
 
 export const getRuntimeRunColor = (): string =>
