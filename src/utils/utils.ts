@@ -51,7 +51,13 @@ const titleForShow = (run: Activity): string => {
 };
 
 const formatPace = (d: number): string => {
-  if (Number.isNaN(d)) return '0';
+  if (Number.isNaN(d) || d <= 0) {
+    return ACTIVITY_MODE === 'cycling' ? `0.0 ${DIST_UNIT}/h` : '0';
+  }
+  if (ACTIVITY_MODE === 'cycling') {
+    const speed = (d * 3.6 * 1000) / M_TO_DIST;
+    return `${speed.toFixed(1)} ${DIST_UNIT}/h`;
+  }
   const pace = (M_TO_DIST / 60.0) * (1.0 / d);
   const minutes = Math.floor(pace);
   const seconds = Math.floor((pace - minutes) * 60.0);
