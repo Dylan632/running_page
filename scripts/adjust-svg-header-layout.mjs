@@ -3,6 +3,7 @@ import path from 'node:path';
 
 const ASSETS_DIR = path.resolve('assets');
 const SVG_FILES = ['github.svg', 'grid.svg'];
+// Keep generated SVG footer layout aligned after each build.
 
 function readDirSafe(dir) {
   try {
