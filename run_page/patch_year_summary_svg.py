@@ -1,17 +1,39 @@
 """Post-process generated year summary SVGs for cycling pages.
 
-The upstream year summary drawer uses fixed x positions that work for short
-running stats, but cycling stats often have longer values. This script adds
-more horizontal room for units and replaces the cramped bottom-left status area
-with a compact three-line legend for the cycling heatmap and route map.
+The upstream year summary drawer uses a compact footer designed for running.
+With cycling distances, the bottom-left status text can overlap. This script
+parses each generated year-summary SVG, removes the old bottom-left footer text,
+and replaces it with a three-line cycling legend.
 """
 
 from pathlib import Path
 import re
+import xml.etree.ElementTree as ET
 
 
 ASSETS_DIR = Path("assets")
 YEAR_SUMMARY_GLOB = "year_summary*.svg"
+SVG_NS = "http://www.w3.org/2000/svg"
+ET.register_namespace("", SVG_NS)
+
+
+LEGEND_LINES = [
+    ("Heatmap: Blue <20km", "#4DD2FF", 250),
+    ("Orange 20-50 / Red >50", "#ffa400", 262),
+    ("Routes: Over 10km", "#FFFFFF", 274),
+]
+
+
+def local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1]
+
+
+def number_attr(element: ET.Element, attr: str) -> float | None:
+    value = element.get(attr)
+    if value is None:
+        return None
+    match = re.search(r"-?\d+(?:\.\d+)?", value)
+    return float(match.group(0)) if match else None
 
 
 def replace_text_attr(fragment: str, attr: str, value: str) -> str:
@@ -41,30 +63,65 @@ def patch_units(svg: str) -> str:
     return re.sub(r"<text([^>]*)>(km|h|d)</text>", move_unit, svg)
 
 
+def is_bottom_left_footer_text(element: ET.Element) -> bool:
+    if local_name(element.tag) != "text":
+        return False
+
+    x = number_attr(element, "x")
+    y = number_attr(element, "y")
+    if x is None or y is None:
+        return False
+
+    text = "".join(element.itertext()).strip()
+    if not text:
+        return False
+
+    if text.startswith(("Heatmap:", "Orange ", "Routes:")):
+        return True
+
+    # Remove only the compact footer/status area on the lower-left side.
+    # This catches Runner/Cyclist, Dylan, and cycling_page/year labels even if
+    # the upstream drawer slightly changes the exact coordinates.
+    return x <= 180 and 225 <= y <= 292
+
+
+def remove_footer_texts(root: ET.Element) -> None:
+    for parent in root.iter():
+        for child in list(parent):
+            if is_bottom_left_footer_text(child):
+                parent.remove(child)
+
+
+def add_legend(root: ET.Element) -> None:
+    for text, fill, y in LEGEND_LINES:
+        element = ET.Element(f"{{{SVG_NS}}}text")
+        element.set("x", "11")
+        element.set("y", str(y))
+        element.set("fill", fill)
+        element.set("style", "font-size:5px; font-family:Arial;")
+        element.text = text
+        root.append(element)
+
+
 def replace_bottom_status_with_legend(svg: str) -> str:
-    """Replace cramped bottom-left status strings with a three-line legend."""
-    # Remove the original bottom-left status labels such as
-    # Runner/Cyclist, Dylan, and running_page/2025 or cycling_page/2025.
-    svg = re.sub(
-        r'<text[^>]*x="11"[^>]*y="(?:24[0-9]|25[0-9]|26[0-9]|27[0-9]|28[0-9])(?:\.[^"]*)?"[^>]*>[^<]*</text>',
-        "",
-        svg,
-    )
+    try:
+        root = ET.fromstring(svg)
+    except ET.ParseError:
+        # Fallback: keep build working, but still try a simple text cleanup.
+        svg = re.sub(
+            r'<text[^>]*x="(?:\d+(?:\.\d+)?)"[^>]*y="(?:22[5-9]|2[3-8][0-9]|29[0-2])(?:\.[^"]*)?"[^>]*>[^<]*</text>',
+            "",
+            svg,
+        )
+        legend = "".join(
+            f'<text fill="{fill}" style="font-size:5px; font-family:Arial;" x="11" y="{y}">{text.replace("<", "&lt;").replace(">", "&gt;")}</text>'
+            for text, fill, y in LEGEND_LINES
+        )
+        return svg.replace("</svg>", legend + "</svg>")
 
-    legend = (
-        '<text fill="#4DD2FF" style="font-size:5px; font-family:Arial;" x="11" y="250">'
-        'Heatmap: Blue &lt;20km</text>'
-        '<text fill="#ffa400" style="font-size:5px; font-family:Arial;" x="11" y="262">'
-        'Orange 20-50 / Red &gt;50</text>'
-        '<text fill="#FFFFFF" style="font-size:5px; font-family:Arial;" x="11" y="274">'
-        'Routes: Over 10km</text>'
-    )
-
-    # Insert the legend before the first calendar circle so it remains in the
-    # left metadata area without affecting the heatmap itself.
-    if legend not in svg:
-        svg = svg.replace("<circle", legend + "<circle", 1)
-    return svg
+    remove_footer_texts(root)
+    add_legend(root)
+    return ET.tostring(root, encoding="unicode")
 
 
 def patch_svg_text(svg: str) -> str:
