@@ -1,15 +1,16 @@
 import Stat from '@/components/Stat';
 import useActivities from '@/hooks/useActivities';
+import { ACTIVITY_MODE } from '@/utils/activityMode';
 
 // only support China for now
 const LocationSummary = () => {
   const { years, countries, provinces, cities } = useActivities();
+  const yearsDescription = ACTIVITY_MODE === 'cycling' ? ' 年里我骑过' : ' 年里我跑过';
+
   return (
     <div className="cursor-pointer">
       <section>
-        {years ? (
-          <Stat value={`${years.length}`} description=" 年里我跑过" />
-        ) : null}
+        {years ? <Stat value={`${years.length}`} description={yearsDescription} /> : null}
         {countries ? (
           <Stat value={countries.length} description=" 个国家" />
         ) : null}
