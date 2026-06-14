@@ -34,9 +34,9 @@ concurrency:
 env:
   ATHLETE: Dylan
   TITLE: Dylan's Cycling Records
-  MIN_GRID_DISTANCE: 5
-  TITLE_GRID: Over 5km Rides
-  CYCLING_MIN_DISTANCE_METERS: 5000
+  MIN_GRID_DISTANCE: 10
+  TITLE_GRID: Over 10km Rides
+  CYCLING_MIN_DISTANCE_METERS: 10000
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -99,7 +99,7 @@ jobs:
           mkdir -p activities GPX_OUT TCX_OUT FIT_OUT assets src/static
           find assets -maxdepth 1 -name '*.svg' ! -name 'start.svg' ! -name 'end.svg' -delete
 
-      - name: Sync Keep cycling data over 5km
+      - name: Sync Keep cycling data over 10km
         run: |
           python run_page/keep_sync.py ${{ secrets.KEEP_MOBILE }} ${{ secrets.KEEP_PASSWORD }} --sync-types cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS"
           python run_page/filter_activity_data.py --types Ride VirtualRide cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS"
@@ -123,15 +123,15 @@ jobs:
           ATHLETE: ${{ env.ATHLETE }}
           MIN_GRID_DISTANCE: ${{ env.MIN_GRID_DISTANCE }}
         run: |
-          python run_page/gen_svg.py --from-db --title "$TITLE" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 10 --special-distance2 21.0975 --special-color "#ffa400" --special-color2 "#ff0000" --output assets/github.svg --use-localtime --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
-          python run_page/gen_svg.py --from-db --title "$TITLE_GRID" --type grid --athlete "$ATHLETE" --output assets/grid.svg --special-color "#ffa400" --special-color2 "#ff0000" --special-distance 10 --special-distance2 21.0975 --use-localtime --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
-          python run_page/gen_svg.py --from-db --type circular --use-localtime --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
+          python run_page/gen_svg.py --from-db --title "$TITLE" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 20 --special-distance2 50 --special-color "#ffa400" --special-color2 "#ff0000" --output assets/github.svg --use-localtime --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
+          python run_page/gen_svg.py --from-db --title "$TITLE_GRID" --type grid --athlete "$ATHLETE" --output assets/grid.svg --special-color "#ffa400" --special-color2 "#ff0000" --special-distance 20 --special-distance2 50 --use-localtime --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
+          python run_page/gen_svg.py --from-db --type circular --use-localtime --min-distance "$MIN_GRID_DISTANCE" --special-distance 20 --special-distance2 50 --sport-type cycling
           for year in $(seq 2015 $(date +"%Y")); do
-            python run_page/gen_svg.py --from-db --year "$year" --language zh_CN --title "${year} Cycling" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 10 --special-distance2 21.0975 --special-color "#ffa400" --special-color2 "#ff0000" --output "assets/github_${year}.svg" --use-localtime --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
+            python run_page/gen_svg.py --from-db --year "$year" --language zh_CN --title "${year} Cycling" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 20 --special-distance2 50 --special-color "#ffa400" --special-color2 "#ff0000" --output "assets/github_${year}.svg" --use-localtime --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
           done
-          python run_page/gen_svg.py --from-db --type monthoflife --birth "1989-03" --special-color "#f9d367" --special-color2 "#f0a1a8" --output assets/mol_cycling.svg --use-localtime --athlete "$ATHLETE" --title "Cycling Month of Life" --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
-          python run_page/gen_svg.py --from-db --type monthoflife --birth "1989-03" --special-color "#f9d367" --special-color2 "#f0a1a8" --output assets/mol.svg --use-localtime --athlete "$ATHLETE" --title "Month of Life" --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
-          python run_page/gen_svg.py --from-db --type year_summary --output assets/year_summary.svg --athlete "$ATHLETE" --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
+          python run_page/gen_svg.py --from-db --type monthoflife --birth "1989-03" --special-color "#f9d367" --special-color2 "#f0a1a8" --special-distance 20 --special-distance2 50 --output assets/mol_cycling.svg --use-localtime --athlete "$ATHLETE" --title "Cycling Month of Life" --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
+          python run_page/gen_svg.py --from-db --type monthoflife --birth "1989-03" --special-color "#f9d367" --special-color2 "#f0a1a8" --special-distance 20 --special-distance2 50 --output assets/mol.svg --use-localtime --athlete "$ATHLETE" --title "Month of Life" --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
+          python run_page/gen_svg.py --from-db --type year_summary --output assets/year_summary.svg --athlete "$ATHLETE" --special-distance 20 --special-distance2 50 --special-color "#ffa400" --special-color2 "#ff0000" --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
 
       - name: Drop raw cycling files before build
         run: |
