@@ -225,6 +225,10 @@ hr {
   line-height: 1.55;
 }
 
+[data-activity-mode='cycling'] .kami-shell h1::after {
+  content: '只记录真正的骑行轨迹、热力与年份';
+}
+
 .kami-shell #map-container {
   border: 1px solid var(--kami-border);
   border-radius: 1.5rem;

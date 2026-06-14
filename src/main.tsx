@@ -8,6 +8,7 @@ import {
 } from './utils/analytics';
 import '@/styles/index.css';
 import { withOptionalGAPageTracking } from './utils/trackRoute';
+import { ACTIVITY_MODE } from './utils/activityMode';
 
 const Index = lazy(() => import('./pages'));
 const HomePage = lazy(() => import('@/pages/total'));
@@ -19,6 +20,8 @@ const createRouteElement = (element: React.ReactElement) =>
 if (USE_GOOGLE_ANALYTICS) {
   void initializeGoogleAnalytics();
 }
+
+document.documentElement.dataset.activityMode = ACTIVITY_MODE;
 
 const routes = createBrowserRouter(
   [
