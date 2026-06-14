@@ -11,7 +11,7 @@ interface ISiteMetadataResult {
   }[]
 }
 
-const CYCLING_SITE_URL = 'https://dylan632.github.io/running_page/';
+const CYCLING_SITE_URL = 'https://dylan632.github.io/cycling_page/';
 const RUNNING_SITE_URL =
   'https://running-page-git-master-dylans-projects-7285da27.vercel.app/';
 
