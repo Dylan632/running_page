@@ -20,7 +20,7 @@ export const ACTIVITY_MIN_DISTANCE_METERS = Number.isFinite(parsedMinDistance)
 
 const ACTIVITY_TYPE_MAP: Record<ActivityMode, Set<string>> = {
   running: new Set(['Run', 'VirtualRun', 'running']),
-  cycling: new Set(['Ride', 'VirtualRide', 'cycling']),
+  cycling: new Set(['Ride', 'VirtualRide', 'cycling', 'Biking']),
 };
 
 export const ACTIVITY_COPY = {
