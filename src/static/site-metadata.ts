@@ -8,7 +8,7 @@ interface ISiteMetadataResult {
   navLinks: {
     name: string;
     url: string;
-  }[]
+  }[];
 }
 
 const CYCLING_SITE_URL = 'https://dylan632.github.io/cycling_page/';
