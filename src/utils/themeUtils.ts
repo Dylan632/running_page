@@ -3,7 +3,6 @@ export type Theme = 'light' | 'dark';
 export const THEME_STORAGE_KEY = 'theme';
 export const THEME_PREFERENCE_STORAGE_KEY = 'theme-preference';
 
-const MANUAL_THEME_PREFERENCE = 'manual';
 const SHANGHAI_TIME_ZONE = 'Asia/Shanghai';
 const DAY_START_HOUR = 6;
 const NIGHT_START_HOUR = 18;
@@ -32,43 +31,23 @@ export const getAsiaShanghaiTheme = (date = new Date()): Theme => {
   return hour >= DAY_START_HOUR && hour < NIGHT_START_HOUR ? 'light' : 'dark';
 };
 
-export const getStoredManualTheme = (): Theme | null => {
-  if (typeof window === 'undefined') return null;
-  if (
-    localStorage.getItem(THEME_PREFERENCE_STORAGE_KEY) !==
-    MANUAL_THEME_PREFERENCE
-  ) {
-    return null;
-  }
-
-  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-  return isTheme(savedTheme) ? savedTheme : null;
-};
-
 export const getEffectiveTheme = (): Theme => {
   if (typeof window === 'undefined') return getAsiaShanghaiTheme();
 
   const dataTheme = document.documentElement.getAttribute('data-theme');
   if (isTheme(dataTheme)) return dataTheme;
 
-  return getStoredManualTheme() ?? getAsiaShanghaiTheme();
+  return getAsiaShanghaiTheme();
 };
 
-export const persistManualTheme = (theme: Theme): void => {
+export const persistManualTheme = (_theme: Theme): void => {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(THEME_PREFERENCE_STORAGE_KEY, MANUAL_THEME_PREFERENCE);
-  localStorage.setItem(THEME_STORAGE_KEY, theme);
+  localStorage.removeItem(THEME_PREFERENCE_STORAGE_KEY);
+  localStorage.removeItem(THEME_STORAGE_KEY);
 };
 
-export const syncThemeStorage = (theme: Theme): void => {
+export const syncThemeStorage = (_theme: Theme): void => {
   if (typeof window === 'undefined') return;
-  if (
-    localStorage.getItem(THEME_PREFERENCE_STORAGE_KEY) ===
-    MANUAL_THEME_PREFERENCE
-  ) {
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
-    return;
-  }
-
+  localStorage.removeItem(THEME_PREFERENCE_STORAGE_KEY);
   localStorage.removeItem(THEME_STORAGE_KEY);
 };

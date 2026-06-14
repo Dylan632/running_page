@@ -2,26 +2,27 @@
 @import './mobile.css';
 
 :root {
-  --kami-parchment: #f5f4ed;
-  --kami-ivory: #faf9f5;
-  --kami-sand: #e8e6dc;
-  --kami-border: #e5e3d8;
-  --kami-border-strong: #d8d3c4;
+  --kami-parchment: #f4e8bf;
+  --kami-ivory: #fff6dc;
+  --kami-sand: #ead7a1;
+  --kami-border: #e5ca82;
+  --kami-border-strong: #d3ad5f;
   --kami-ink: #1b365d;
   --kami-ink-light: #2d5a8a;
   --kami-near-black: #141413;
   --kami-dark-warm: #3d3d3a;
-  --kami-olive: #504e49;
-  --kami-stone: #6b6a64;
-  --kami-tag-bg: #e4ecf5;
+  --kami-olive: #5f5437;
+  --kami-stone: #746841;
+  --kami-tag-bg: #f2dfa6;
   --kami-shell-bg: linear-gradient(
     135deg,
-    rgba(250, 249, 245, 0.96),
-    rgba(245, 244, 237, 0.9)
+    rgba(255, 247, 221, 0.98),
+    rgba(242, 224, 174, 0.94)
   );
-  --kami-shadow: 0 18px 60px rgba(27, 54, 93, 0.08);
+  --kami-shadow:
+    0 22px 70px rgba(101, 73, 24, 0.14), 0 1px 0 rgba(255, 255, 255, 0.6) inset;
   --kami-whisper-shadow:
-    0 1px 0 rgba(27, 54, 93, 0.08), 0 10px 30px rgba(27, 54, 93, 0.05);
+    0 1px 0 rgba(255, 255, 255, 0.58) inset, 0 12px 34px rgba(101, 73, 24, 0.1);
 
   --color-primary: var(--kami-ink);
   --color-secondary: var(--kami-ink-light);
@@ -92,14 +93,20 @@
     min-height: 100%;
     background:
       radial-gradient(
-        circle at 18% 12%,
-        rgba(27, 54, 93, 0.06),
-        transparent 30rem
+        ellipse at 18% 10%,
+        rgba(255, 253, 232, 0.88),
+        transparent 34rem
       ),
       radial-gradient(
-        circle at 80% 8%,
-        rgba(139, 69, 19, 0.05),
-        transparent 24rem
+        ellipse at 82% 6%,
+        rgba(221, 171, 72, 0.24),
+        transparent 26rem
+      ),
+      linear-gradient(
+        180deg,
+        rgba(255, 248, 225, 0.96) 0%,
+        rgba(244, 232, 191, 0.98) 42%,
+        rgba(238, 218, 166, 0.96) 100%
       ),
       var(--color-background);
     color: var(--color-text-primary);
@@ -170,7 +177,14 @@ hr {
   margin-top: 2rem;
   border: 1px solid var(--kami-border);
   border-radius: 2rem;
-  background: var(--kami-shell-bg), var(--kami-ivory);
+  background:
+    var(--kami-shell-bg),
+    radial-gradient(
+      circle at 12% 0%,
+      rgba(255, 255, 245, 0.72),
+      transparent 18rem
+    ),
+    var(--kami-ivory);
   box-shadow: var(--kami-shadow);
 }
 
@@ -230,7 +244,7 @@ hr {
 .kami-shell #map-container {
   border: 1px solid var(--kami-border);
   border-radius: 1.5rem;
-  background: var(--kami-ivory);
+  background: linear-gradient(180deg, #fff8e3, #fff2d0);
   box-shadow: var(--kami-whisper-shadow);
   padding: 1rem;
 }
@@ -263,7 +277,7 @@ hr {
   margin-top: 1.25rem;
   border: 1px solid var(--kami-border);
   border-radius: 1.5rem;
-  background: var(--kami-ivory);
+  background: linear-gradient(180deg, #fff8e3, #fff2d0);
   box-shadow: var(--kami-whisper-shadow);
   padding: 1rem;
 }

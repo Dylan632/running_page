@@ -119,7 +119,7 @@ export const hslToRgb = (
 };
 
 /**
- * Gets the current theme from the DOM and localStorage
+ * Gets the current theme from the DOM or Asia/Shanghai day/night.
  * @returns The current effective theme
  */
 export const getCurrentTheme = (): 'light' | 'dark' => {

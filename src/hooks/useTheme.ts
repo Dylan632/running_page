@@ -3,7 +3,6 @@ import { MAP_TILE_STYLE_LIGHT, MAP_TILE_STYLE_DARK } from '@/utils/const';
 import {
   getAsiaShanghaiTheme,
   getEffectiveTheme,
-  getStoredManualTheme,
   persistManualTheme,
   syncThemeStorage,
   THEME_PREFERENCE_STORAGE_KEY,
@@ -89,7 +88,7 @@ export const useMapTheme = () => {
  * @returns Object with current theme and function to change theme
  */
 export const useTheme = () => {
-  // Initialize from a manual choice, otherwise use Asia/Shanghai day/night.
+  // Initialize from Asia/Shanghai day/night so opening the site follows China time.
   const [themeState, setThemeState] = useState<Theme>(() => {
     if (typeof window === 'undefined') return getAsiaShanghaiTheme();
     return getEffectiveTheme();
@@ -109,11 +108,11 @@ export const useTheme = () => {
     window.dispatchEvent(event);
   }, []);
 
-  // Apply theme changes to DOM and localStorage
+  // Apply theme changes to DOM and clear stale saved theme values.
   useEffect(() => {
     const root = window.document.documentElement;
 
-    // Set attribute and save to localStorage for both themes
+    // Set attribute and clear any old persisted theme preference.
     root.setAttribute('data-theme', themeState);
     syncThemeStorage(themeState);
   }, [themeState]);
@@ -122,9 +121,7 @@ export const useTheme = () => {
     if (typeof window === 'undefined') return;
 
     const syncAutomaticTheme = () => {
-      if (!getStoredManualTheme()) {
-        setThemeState(getAsiaShanghaiTheme());
-      }
+      setThemeState(getAsiaShanghaiTheme());
     };
 
     syncAutomaticTheme();

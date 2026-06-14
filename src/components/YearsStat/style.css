@@ -3,7 +3,7 @@
     'IBM Plex Sans', 'TsangerJinKai02', 'KaiTi', 'STKaiti', 'Songti SC',
     'Noto Serif CJK SC', 'Source Han Serif SC', Georgia, serif;
   --running-sidebar-ink: #024a70;
-  --running-sidebar-rule: #d4d4d4;
+  --running-sidebar-rule: #d8bc78;
   --running-sidebar-dark-ink: #e0ed5e;
   --running-sidebar-dark-rule: #262626;
 }
@@ -75,7 +75,13 @@
   margin-bottom: 1.25rem;
   border: 1px solid var(--kami-border);
   border-radius: 1.25rem;
-  background: rgba(250, 249, 245, 0.72);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 248, 224, 0.9),
+      rgba(252, 237, 196, 0.82)
+    ),
+    var(--kami-ivory);
   box-shadow: var(--kami-whisper-shadow);
   padding: 1.15rem 1.25rem;
   transition:
@@ -96,7 +102,13 @@
 
 .kami-year-stat:hover {
   border-color: var(--kami-border-strong);
-  background: var(--kami-ivory);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 251, 232, 0.98),
+      rgba(255, 242, 206, 0.9)
+    ),
+    var(--kami-ivory);
   transform: translateY(-1px);
 }
 
@@ -105,11 +117,11 @@
   padding-bottom: 8px;
   color: var(--running-sidebar-ink);
   font-family: var(--running-sidebar-font);
-  font-size: 16px;
+  font-size: 20px;
   font-style: normal;
   font-weight: 400;
   letter-spacing: normal;
-  line-height: 24px;
+  line-height: 28px;
   white-space: nowrap;
 }
 
@@ -128,11 +140,11 @@
   margin-left: 0;
   color: var(--running-sidebar-ink);
   font-family: var(--running-sidebar-font);
-  font-size: 18px;
+  font-size: 22px;
   font-style: italic;
   font-weight: 700;
   letter-spacing: normal;
-  line-height: 28px;
+  line-height: 32px;
   vertical-align: baseline;
 }
 
@@ -228,6 +240,8 @@
 
   .kami-stat {
     padding-bottom: 8px;
+    font-size: 18px;
+    line-height: 26px;
   }
 
   .kami-stat-value {
@@ -236,7 +250,7 @@
   }
 
   .kami-stat-desc {
-    font-size: 14px;
-    line-height: 20px;
+    font-size: 18px;
+    line-height: 24px;
   }
 }
