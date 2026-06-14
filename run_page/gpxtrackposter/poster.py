@@ -152,6 +152,12 @@ class Poster:
         title_style = "font-size:12px; font-family:Arial; font-weight:bold;"
         d.add(d.text(self.title, insert=(10, 20), fill=text_color, style=title_style))
 
+    def __activity_label(self):
+        title = self.title or ""
+        if "Cycling" in title or "Rides" in title:
+            return "Cyclist"
+        return self.trans("Runner")
+
     def __draw_footer(self, d):
         text_color = self.colors["text"]
         header_style = "font-size:4px; font-family:Arial"
@@ -171,7 +177,7 @@ class Poster:
 
         d.add(
             d.text(
-                self.trans("Runner"),
+                self.__activity_label(),
                 insert=(10, self.height - 20),
                 fill=text_color,
                 style=header_style,
