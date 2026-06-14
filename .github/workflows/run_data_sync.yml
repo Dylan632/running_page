@@ -14,8 +14,8 @@ on:
 env:
   # Personal running-page config
   RUN_TYPE: keep
-  ATHLETE: WangFan
-  TITLE: WangFan's Running Records
+  ATHLETE: Dylan
+  TITLE: Dylan's Running Records
   MIN_GRID_DISTANCE: 10
   TITLE_GRID: Over 10km Runs
 
@@ -71,23 +71,23 @@ jobs:
           ATHLETE: ${{ env.ATHLETE }}
           MIN_GRID_DISTANCE: ${{ env.MIN_GRID_DISTANCE }}
         run: |
-          python run_page/gen_svg.py --from-db --title "$TITLE" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 10 --special-distance2 21.0975 --special-color "#ffa400" --special-color2 "#ff0000" --output assets/github.svg --use-localtime --min-distance 0.5
-          python run_page/gen_svg.py --from-db --title "$TITLE_GRID" --type grid --athlete "$ATHLETE" --output assets/grid.svg --special-color "#ffa400" --special-color2 "#ff0000" --special-distance 10 --special-distance2 21.0975 --use-localtime --min-distance "$MIN_GRID_DISTANCE"
-          python run_page/gen_svg.py --from-db --type circular --use-localtime
+          python run_page/gen_svg.py --from-db --title "$TITLE" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 10 --special-distance2 21.0975 --special-color "#ffa400" --special-color2 "#ff0000" --output assets/github.svg --use-localtime --min-distance 0.5 --sport-type running
+          python run_page/gen_svg.py --from-db --title "$TITLE_GRID" --type grid --athlete "$ATHLETE" --output assets/grid.svg --special-color "#ffa400" --special-color2 "#ff0000" --special-distance 10 --special-distance2 21.0975 --use-localtime --min-distance "$MIN_GRID_DISTANCE" --sport-type running
+          python run_page/gen_svg.py --from-db --type circular --use-localtime --sport-type running
           for year in $(seq 2015 $(date +"%Y")); do
-            python run_page/gen_svg.py --from-db --year "$year" --language zh_CN --title "${year} Running" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 10 --special-distance2 21.0975 --special-color "#ffa400" --special-color2 "#ff0000" --output "assets/github_${year}.svg" --use-localtime --min-distance 0.5
+            python run_page/gen_svg.py --from-db --year "$year" --language zh_CN --title "${year} Running" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 10 --special-distance2 21.0975 --special-color "#ffa400" --special-color2 "#ff0000" --output "assets/github_${year}.svg" --use-localtime --min-distance 0.5 --sport-type running
           done
 
       - name: Make month of life
         if: env.GENERATE_MONTH_OF_LIFE == 'true'
         run: |
           python run_page/gen_svg.py --from-db --type monthoflife --birth "${{ env.BIRTHDAY_MONTH }}" --special-color "#f9d367" --special-color2 "#f0a1a8" --output assets/mol_running.svg --use-localtime --athlete "${{ env.ATHLETE }}" --title "Runner Month of Life" --sport-type running
-          python run_page/gen_svg.py --from-db --type monthoflife --birth "${{ env.BIRTHDAY_MONTH }}" --special-color "#f9d367" --special-color2 "#f0a1a8" --output assets/mol.svg --use-localtime --athlete "${{ env.ATHLETE }}" --title "Month of Life" --sport-type all
+          python run_page/gen_svg.py --from-db --type monthoflife --birth "${{ env.BIRTHDAY_MONTH }}" --special-color "#f9d367" --special-color2 "#f0a1a8" --output assets/mol.svg --use-localtime --athlete "${{ env.ATHLETE }}" --title "Month of Life" --sport-type running
 
       - name: Make year summary
         if: env.GENERATE_MONTH_OF_LIFE == 'true'
         run: |
-          python run_page/gen_svg.py --from-db --type year_summary --output assets/year_summary.svg --athlete "${{ env.ATHLETE }}"
+          python run_page/gen_svg.py --from-db --type year_summary --output assets/year_summary.svg --athlete "${{ env.ATHLETE }}" --sport-type running
 
       - name: Drop raw activity files before committing
         run: |
@@ -102,3 +102,15 @@ jobs:
           git add -A
           git commit -m 'rebuild running data only' || echo 'nothing to commit'
           git push || echo 'nothing to push'
+
+  publish_pages:
+    name: Publish GitHub Pages
+    needs: sync
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/gh-pages.yml
+    with:
+      save_data_in_github_cache: false
+      data_cache_prefix: track_data
