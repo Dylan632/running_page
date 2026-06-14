@@ -181,9 +181,11 @@ jobs:
             if (!Number.isFinite(speed) || speed <= 0) return `0.0 ${DIST_UNIT}/h`;
             return `${speed.toFixed(1)} ${DIST_UNIT}/h`;
           };"""
-          if old not in text:
-            raise SystemExit('ActivityList speed formatter pattern not found')
-          path.write_text(text.replace(old, new))
+          if old in text:
+            text = text.replace(old, new)
+          if 'min/${DIST_UNIT}' in text:
+            raise SystemExit('ActivityList still contains min/${DIST_UNIT} after cycling speed patch')
+          path.write_text(text)
           PY
 
       - name: Build
