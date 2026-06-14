@@ -2,27 +2,27 @@
 @import './mobile.css';
 
 :root {
-  --kami-parchment: #f4e8bf;
-  --kami-ivory: #fff6dc;
-  --kami-sand: #ead7a1;
-  --kami-border: #e5ca82;
-  --kami-border-strong: #d3ad5f;
+  --kami-parchment: #f5f4ed;
+  --kami-ivory: #faf9f5;
+  --kami-sand: #e8e6dc;
+  --kami-border: #e8e6dc;
+  --kami-border-strong: #d8d3c4;
   --kami-ink: #1b365d;
   --kami-ink-light: #2d5a8a;
   --kami-near-black: #141413;
   --kami-dark-warm: #3d3d3a;
-  --kami-olive: #5f5437;
-  --kami-stone: #746841;
-  --kami-tag-bg: #f2dfa6;
+  --kami-olive: #504e49;
+  --kami-stone: #6b6a64;
+  --kami-tag-bg: #eef2f7;
   --kami-shell-bg: linear-gradient(
     135deg,
-    rgba(255, 247, 221, 0.98),
-    rgba(242, 224, 174, 0.94)
+    rgba(250, 249, 245, 0.98),
+    rgba(245, 244, 237, 0.94)
   );
   --kami-shadow:
-    0 22px 70px rgba(101, 73, 24, 0.14), 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+    0 18px 60px rgba(20, 20, 19, 0.06), 0 1px 0 rgba(255, 255, 255, 0.72) inset;
   --kami-whisper-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.58) inset, 0 12px 34px rgba(101, 73, 24, 0.1);
+    0 1px 0 rgba(27, 54, 93, 0.08), 0 10px 30px rgba(20, 20, 19, 0.05);
 
   --color-primary: var(--kami-ink);
   --color-secondary: var(--kami-ink-light);
@@ -94,19 +94,19 @@
     background:
       radial-gradient(
         ellipse at 18% 10%,
-        rgba(255, 253, 232, 0.88),
+        rgba(255, 255, 255, 0.7),
         transparent 34rem
       ),
       radial-gradient(
         ellipse at 82% 6%,
-        rgba(221, 171, 72, 0.24),
+        rgba(232, 230, 220, 0.42),
         transparent 26rem
       ),
       linear-gradient(
         180deg,
-        rgba(255, 248, 225, 0.96) 0%,
-        rgba(244, 232, 191, 0.98) 42%,
-        rgba(238, 218, 166, 0.96) 100%
+        rgba(250, 249, 245, 0.98) 0%,
+        rgba(245, 244, 237, 0.98) 45%,
+        rgba(242, 240, 231, 0.96) 100%
       ),
       var(--color-background);
     color: var(--color-text-primary);
@@ -181,7 +181,7 @@ hr {
     var(--kami-shell-bg),
     radial-gradient(
       circle at 12% 0%,
-      rgba(255, 255, 245, 0.72),
+      rgba(255, 255, 255, 0.68),
       transparent 18rem
     ),
     var(--kami-ivory);
@@ -193,7 +193,7 @@ hr {
 }
 
 .kami-shell::before {
-  content: 'Running Log';
+  content: 'Running Page';
   position: absolute;
   top: 1.25rem;
   right: 1.5rem;
@@ -244,7 +244,7 @@ hr {
 .kami-shell #map-container {
   border: 1px solid var(--kami-border);
   border-radius: 1.5rem;
-  background: linear-gradient(180deg, #fff8e3, #fff2d0);
+  background: var(--kami-ivory);
   box-shadow: var(--kami-whisper-shadow);
   padding: 1rem;
 }
@@ -277,7 +277,7 @@ hr {
   margin-top: 1.25rem;
   border: 1px solid var(--kami-border);
   border-radius: 1.5rem;
-  background: linear-gradient(180deg, #fff8e3, #fff2d0);
+  background: var(--kami-ivory);
   box-shadow: var(--kami-whisper-shadow);
   padding: 1rem;
 }
