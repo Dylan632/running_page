@@ -108,10 +108,12 @@ jobs:
         run: |
           if compgen -G "manual_gpx/*.gpx" > /dev/null; then
             cp manual_gpx/*.gpx GPX_OUT/
+          fi
+          if compgen -G "manual_gpx/*.gpx" > /dev/null || [ -f "manual_gpx/taihu_route.polyline.b64" ]; then
             python run_page/gpx_sync.py
-            python run_page/filter_activity_data.py --types Ride VirtualRide cycling Biking --min-distance "$CYCLING_MIN_DISTANCE_METERS"
+            python run_page/filter_activity_data.py --types Ride VirtualRide cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS"
           else
-            echo "No manual GPX files found."
+            echo "No manual GPX cycling data found."
           fi
 
       - name: Make cycling SVGs
