@@ -193,7 +193,7 @@ jobs:
           REPO_NAME: ${{ github.event.repository.name }}
           VITE_ACTIVITY_MODE: cycling
           VITE_ACTIVITY_MIN_DISTANCE_METERS: ${{ env.CYCLING_MIN_DISTANCE_METERS }}
-        run: PATH_PREFIX=/$REPO_NAME pnpm build
+        run: PATH_PREFIX=/$REPO_NAME/ pnpm build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
