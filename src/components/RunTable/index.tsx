@@ -8,9 +8,13 @@ import {
 } from '@/utils/utils';
 import { SHOW_ELEVATION_GAIN } from '@/utils/const';
 import { DIST_UNIT } from '@/utils/utils';
+import { ACTIVITY_MODE } from '@/utils/activityMode';
 
 import RunRow from './RunRow';
 import styles from './style.module.css';
+
+const SPEED_OR_PACE_KEY =
+  ACTIVITY_MODE === 'cycling' ? `Speed(${DIST_UNIT}/h)` : 'Pace';
 
 interface IRunTableProperties {
   runs: Activity[];
@@ -36,7 +40,7 @@ const RunTable = ({
   const [sortState, setSortState] = useState<SortState | null>(null);
 
   const sortKeys = useMemo(() => {
-    const keys = [DIST_UNIT, 'Elev', 'Pace', 'BPM', 'Time', 'Date'];
+    const keys = [DIST_UNIT, 'Elev', SPEED_OR_PACE_KEY, 'BPM', 'Time', 'Date'];
     return SHOW_ELEVATION_GAIN ? keys : keys.filter((key) => key !== 'Elev');
   }, []);
 
@@ -51,7 +55,7 @@ const RunTable = ({
         return (a, b) =>
           ((a.elevation_gain ?? 0) - (b.elevation_gain ?? 0)) * multiplier;
       }
-      if (key === 'Pace') {
+      if (key === SPEED_OR_PACE_KEY) {
         return (a, b) => (a.average_speed - b.average_speed) * multiplier;
       }
       if (key === 'BPM') {
