@@ -17,7 +17,7 @@ const RUNNING_SITE_URL =
 
 const data: ISiteMetadataResult = {
   siteTitle: 'Dylan',
-  siteUrl: ACTIVITY_MODE === 'cycling' ? RUNNING_SITE_URL : CYCLING_SITE_URL,
+  siteUrl: ACTIVITY_MODE === 'cycling' ? CYCLING_SITE_URL : RUNNING_SITE_URL,
   logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQTtc69JxHNcmN1ETpMUX4dozAgAN6iPjWalQ&usqp=CAU',
   description:
     ACTIVITY_MODE === 'cycling'
