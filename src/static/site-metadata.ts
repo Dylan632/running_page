@@ -3,6 +3,7 @@ import { ACTIVITY_MODE } from '@/utils/activityMode';
 interface ISiteMetadataResult {
   siteTitle: string;
   siteUrl: string;
+  activitySwitchUrl: string;
   profileUrl: string;
   description: string;
   logo: string;
@@ -19,6 +20,8 @@ const PROFILE_URL = 'https://github.com/Dylan632';
 const data: ISiteMetadataResult = {
   siteTitle: ACTIVITY_MODE === 'cycling' ? 'Cycling Page' : 'Running Page',
   siteUrl: ACTIVITY_MODE === 'cycling' ? CYCLING_SITE_URL : RUNNING_SITE_URL,
+  activitySwitchUrl:
+    ACTIVITY_MODE === 'cycling' ? RUNNING_SITE_URL : CYCLING_SITE_URL,
   profileUrl: PROFILE_URL,
   logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQTtc69JxHNcmN1ETpMUX4dozAgAN6iPjWalQ&usqp=CAU',
   description:
