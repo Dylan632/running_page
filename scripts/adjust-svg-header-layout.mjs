@@ -69,9 +69,9 @@ function isHeatmapFile(filePath) {
 function patchSpecialLegendSquares(svg, filePath) {
   const height = getSvgHeight(svg);
   const footerStart = height - 25;
-  const markerX = isHeatmapFile(filePath) ? 55 : 60;
+  const markerX = isHeatmapFile(filePath) ? 60 : 65;
 
-  return svg.replace(/<rect\b[^>]*(?:\/>|>[\s\S]*?<\/rect>)/g, (tag) => {
+  return svg.replace(/<rect\b[^>]*?\/>|<rect\b[^>]*>[\s\S]*?<\/rect>/g, (tag) => {
     const yMatch = tag.match(/\by="(-?[0-9.]+)"/);
     const widthMatch = tag.match(/\bwidth="([0-9.]+)"/);
     const heightMatch = tag.match(/\bheight="([0-9.]+)"/);

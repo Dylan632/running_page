@@ -4,7 +4,7 @@ import { useTheme, Theme } from '@/hooks/useTheme';
 import styles from './style.module.css';
 
 const Header = () => {
-  const { logo, siteUrl, navLinks } = getSiteMetadata();
+  const { logo, profileUrl, navLinks } = getSiteMetadata();
   const { theme, setTheme } = useTheme();
 
   const icons: Record<Theme, ReactElement> = {
@@ -56,7 +56,7 @@ const Header = () => {
         <div className="flex w-full items-center gap-3 md:w-auto md:gap-4">
           <a
             className="running-brand flex items-center gap-3 md:gap-4"
-            href={siteUrl}
+            href={profileUrl}
           >
             <picture>
               <img

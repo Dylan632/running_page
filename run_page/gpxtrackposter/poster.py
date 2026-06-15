@@ -192,7 +192,7 @@ class Poster:
             )
         )
         if self.drawer_type != "monthoflife":
-            special_marker_x = 55
+            special_marker_x = 60
             special_label_x = 65
             d.add(
                 d.text(

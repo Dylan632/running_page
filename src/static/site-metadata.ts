@@ -3,6 +3,7 @@ import { ACTIVITY_MODE } from '@/utils/activityMode';
 interface ISiteMetadataResult {
   siteTitle: string;
   siteUrl: string;
+  profileUrl: string;
   description: string;
   logo: string;
   navLinks: {
@@ -12,12 +13,13 @@ interface ISiteMetadataResult {
 }
 
 const CYCLING_SITE_URL = 'https://dylan632.github.io/cycling_page/';
-const RUNNING_SITE_URL =
-  'https://running-page-git-master-dylans-projects-7285da27.vercel.app/';
+const RUNNING_SITE_URL = 'https://running-page-zeta-lake.vercel.app/';
+const PROFILE_URL = 'https://github.com/Dylan632';
 
 const data: ISiteMetadataResult = {
-  siteTitle: 'Dylan',
+  siteTitle: ACTIVITY_MODE === 'cycling' ? 'Cycling Page' : 'Running Page',
   siteUrl: ACTIVITY_MODE === 'cycling' ? CYCLING_SITE_URL : RUNNING_SITE_URL,
+  profileUrl: PROFILE_URL,
   logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQTtc69JxHNcmN1ETpMUX4dozAgAN6iPjWalQ&usqp=CAU',
   description:
     ACTIVITY_MODE === 'cycling'
@@ -26,7 +28,7 @@ const data: ISiteMetadataResult = {
   navLinks: [
     {
       name: 'Github',
-      url: 'https://github.com/Dylan632',
+      url: PROFILE_URL,
     },
     {
       name: 'About',
