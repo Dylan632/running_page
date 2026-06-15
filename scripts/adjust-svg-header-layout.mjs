@@ -71,23 +71,26 @@ function patchSpecialLegendSquares(svg, filePath) {
   const footerStart = height - 25;
   const markerX = isHeatmapFile(filePath) ? 60 : 65;
 
-  return svg.replace(/<rect\b[^>]*?\/>|<rect\b[^>]*>[\s\S]*?<\/rect>/g, (tag) => {
-    const yMatch = tag.match(/\by="(-?[0-9.]+)"/);
-    const widthMatch = tag.match(/\bwidth="([0-9.]+)"/);
-    const heightMatch = tag.match(/\bheight="([0-9.]+)"/);
+  return svg.replace(
+    /<rect\b[^>]*?\/>|<rect\b[^>]*>[\s\S]*?<\/rect>/g,
+    (tag) => {
+      const yMatch = tag.match(/\by="(-?[0-9.]+)"/);
+      const widthMatch = tag.match(/\bwidth="([0-9.]+)"/);
+      const heightMatch = tag.match(/\bheight="([0-9.]+)"/);
 
-    if (!yMatch || !widthMatch || !heightMatch) return tag;
+      if (!yMatch || !widthMatch || !heightMatch) return tag;
 
-    const y = Number(yMatch[1]);
-    const width = Number(widthMatch[1]);
-    const rectHeight = Number(heightMatch[1]);
+      const y = Number(yMatch[1]);
+      const width = Number(widthMatch[1]);
+      const rectHeight = Number(heightMatch[1]);
 
-    if (y >= footerStart && width <= 3 && rectHeight <= 3) {
-      return setAttr(tag, 'x', markerX);
+      if (y >= footerStart && width <= 3 && rectHeight <= 3) {
+        return setAttr(tag, 'x', markerX);
+      }
+
+      return tag;
     }
-
-    return tag;
-  });
+  );
 }
 
 function patchSvg(filePath) {
