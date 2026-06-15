@@ -15,9 +15,22 @@ const colorClassMapping: { [key: string]: string } = {
   '#e1ed5e': 'svg-color-text',
 };
 
+const activityMode =
+  process.env.VITE_ACTIVITY_MODE === 'cycling' ? 'cycling' : 'running';
+const siteTitle = activityMode === 'cycling' ? 'Cycling Page' : 'Running Page';
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
+    {
+      name: 'html-site-title',
+      transformIndexHtml(html) {
+        return html.replace(
+          /<title>.*?<\/title>/,
+          `<title>${siteTitle}</title>`
+        );
+      },
+    },
     react(),
     tailwindcss(),
     svgr({
