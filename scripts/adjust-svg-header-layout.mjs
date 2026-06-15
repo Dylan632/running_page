@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ASSETS_DIR = path.resolve('assets');
-const SVG_FILES = ['github.svg', 'grid.svg'];
+const SVG_FILES = ['github.svg'];
 // Keep generated SVG footer layout aligned after each build.
 
 function readDirSafe(dir) {
@@ -14,7 +14,9 @@ function readDirSafe(dir) {
 }
 
 function getSvgHeight(svg) {
-  const viewBoxMatch = svg.match(/viewBox="\s*[-0-9.]+[,\s]+[-0-9.]+[,\s]+[0-9.]+[,\s]+([0-9.]+)\s*"/);
+  const viewBoxMatch = svg.match(
+    /viewBox="\s*[-0-9.]+[,\s]+[-0-9.]+[,\s]+[0-9.]+[,\s]+([0-9.]+)\s*"/
+  );
   if (viewBoxMatch) return Number(viewBoxMatch[1]);
 
   const heightMatch = svg.match(/\bheight="([0-9.]+)(?:[a-z%]*)"/i);
@@ -30,7 +32,10 @@ function setAttr(tag, attr, value) {
 }
 
 function textContent(raw) {
-  return raw.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').trim();
+  return raw
+    .replace(/<[^>]*>/g, '')
+    .replace(/&amp;/g, '&')
+    .trim();
 }
 
 function patchedTextX(content) {
@@ -64,7 +69,7 @@ function isHeatmapFile(filePath) {
 function patchSpecialLegendSquares(svg, filePath) {
   const height = getSvgHeight(svg);
   const footerStart = height - 25;
-  const markerX = 60;
+  const markerX = isHeatmapFile(filePath) ? 55 : 60;
 
   return svg.replace(/<rect\b[^>]*(?:\/>|>[\s\S]*?<\/rect>)/g, (tag) => {
     const yMatch = tag.match(/\by="(-?[0-9.]+)"/);
@@ -87,16 +92,23 @@ function patchSpecialLegendSquares(svg, filePath) {
 
 function patchSvg(filePath) {
   const original = fs.readFileSync(filePath, 'utf8');
-  const patched = patchSpecialLegendSquares(patchTextColumns(original), filePath);
+  const patched = patchSpecialLegendSquares(
+    patchTextColumns(original),
+    filePath
+  );
 
   if (patched !== original) {
     fs.writeFileSync(filePath, patched, 'utf8');
-    console.log(`Adjusted SVG header/footer layout: ${path.relative(process.cwd(), filePath)}`);
+    console.log(
+      `Adjusted SVG header/footer layout: ${path.relative(process.cwd(), filePath)}`
+    );
   }
 }
 
 const candidates = readDirSafe(ASSETS_DIR)
-  .filter((name) => SVG_FILES.includes(name) || /^github_\d{4}\.svg$/.test(name))
+  .filter(
+    (name) => SVG_FILES.includes(name) || /^github_\d{4}\.svg$/.test(name)
+  )
   .map((name) => path.join(ASSETS_DIR, name));
 
 for (const filePath of candidates) {

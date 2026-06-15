@@ -192,6 +192,8 @@ class Poster:
             )
         )
         if self.drawer_type != "monthoflife":
+            special_marker_x = 55
+            special_label_x = 65
             d.add(
                 d.text(
                     self.trans("SPECIAL TRACKS"),
@@ -202,26 +204,34 @@ class Poster:
             )
 
             d.add(
-                d.rect((60, self.height - 17), (2.6, 2.6), fill=self.colors["special"])
+                d.rect(
+                    (special_marker_x, self.height - 17),
+                    (2.6, 2.6),
+                    fill=self.colors["special"],
+                )
             )
 
             d.add(
                 d.text(
                     self.__format_special_distance_label(special_distance1),
-                    insert=(65, self.height - 14.5),
+                    insert=(special_label_x, self.height - 14.5),
                     fill=text_color,
                     style=small_value_style,
                 )
             )
 
             d.add(
-                d.rect((60, self.height - 13), (2.6, 2.6), fill=self.colors["special2"])
+                d.rect(
+                    (special_marker_x, self.height - 13),
+                    (2.6, 2.6),
+                    fill=self.colors["special2"],
+                )
             )
 
             d.add(
                 d.text(
                     self.__format_special_distance_label(special_distance2),
-                    insert=(65, self.height - 10.5),
+                    insert=(special_label_x, self.height - 10.5),
                     fill=text_color,
                     style=small_value_style,
                 )

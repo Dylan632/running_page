@@ -161,3 +161,145 @@ export const COUNTRY_FILL_COLOR = dark_vanilla;
 // Static color constants
 export const RUN_COLOR_LIGHT = '#47b8e0';
 export const RUN_COLOR_DARK = MAIN_COLOR;
+
+// Single run animation colors
+export const SINGLE_RUN_COLOR_LIGHT = '#52c41a';
+export const SINGLE_RUN_COLOR_DARK = '#ff4d4f';
+
+const isDarkTheme = (): boolean => {
+  return getEffectiveTheme() === 'dark';
+};
+
+export const getRuntimeRunColor = (): string =>
+  isDarkTheme() ? RUN_COLOR_DARK : RUN_COLOR_LIGHT;
+
+export const getRuntimeSingleRunColor = (): string =>
+  isDarkTheme() ? SINGLE_RUN_COLOR_DARK : SINGLE_RUN_COLOR_LIGHT;
+
+// Legacy export for backwards compatibility
+export const RUN_COLOR = '#47b8e0';
+export const RUN_TRAIL_COLOR = 'rgb(255,153,51)';
+export const CYCLING_COLOR = 'rgb(51,255,87)';
+export const HIKING_COLOR = 'rgb(151,51,255)';
+export const WALKING_COLOR = HIKING_COLOR;
+export const SWIMMING_COLOR = 'rgb(255,51,51)';
+export const INDOOR_COLOR = '#8899aa';
+
+// map tiles vendor: mapcn, maptiler, mapbox, or stadiamaps
+export const MAP_TILE_VENDOR = 'mapcn';
+
+// map tiles style name, see MAP_TILE_STYLES for valid combinations
+export const MAP_TILE_STYLE_LIGHT = 'osm-bright';
+export const MAP_TILE_STYLE_DARK = 'dark-matter';
+
+// access token. mapcn is free and does not require a token.
+export const MAP_TILE_ACCESS_TOKEN = '';
+
+export const MAP_TILE_STYLES = {
+  mapcn: {
+    'osm-bright':
+      'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+    'osm-liberty':
+      'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+    'dark-matter':
+      'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  },
+  mapcn_openfreemap: {
+    'osm-bright': 'https://tiles.openfreemap.org/styles/bright',
+    'dark-matter': 'https://tiles.openfreemap.org/styles/dark',
+  },
+  mapcn_maptiler_free: {
+    'osm-bright': 'https://tiles.openfreemap.org/styles/bright',
+    'dark-matter': 'https://tiles.openfreemap.org/styles/dark',
+  },
+  maptiler: {
+    'dataviz-light': 'https://api.maptiler.com/maps/dataviz/style.json?key=',
+    'dataviz-dark':
+      'https://api.maptiler.com/maps/dataviz-dark/style.json?key=',
+    'basic-light': 'https://api.maptiler.com/maps/basic-v2/style.json?key=',
+    'basic-dark': 'https://api.maptiler.com/maps/basic-v2-dark/style.json?key=',
+    'streets-light': 'https://api.maptiler.com/maps/streets-v2/style.json?key=',
+    'streets-dark':
+      'https://api.maptiler.com/maps/streets-v2-dark/style.json?key=',
+    'outdoor-light': 'https://api.maptiler.com/maps/outdoor-v2/style.json?key=',
+    'outdoor-dark':
+      'https://api.maptiler.com/maps/outdoor-v2-dark/style.json?key=',
+    'bright-light': 'https://api.maptiler.com/maps/bright-v2/style.json?key=',
+    'bright-dark':
+      'https://api.maptiler.com/maps/bright-v2-dark/style.json?key=',
+    'topo-light': 'https://api.maptiler.com/maps/topo-v2/style.json?key=',
+    'topo-dark': 'https://api.maptiler.com/maps/topo-v2-dark/style.json?key=',
+    'winter-light': 'https://api.maptiler.com/maps/winter-v2/style.json?key=',
+    'winter-dark':
+      'https://api.maptiler.com/maps/winter-v2-dark/style.json?key=',
+    hybrid: 'https://api.maptiler.com/maps/hybrid/style.json?key=',
+  },
+  stadiamaps: {
+    alidade_smooth:
+      'https://tiles.stadiamaps.com/styles/alidade_smooth.json?api_key=',
+    alidade_smooth_dark:
+      'https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json?api_key=',
+    alidade_satellite:
+      'https://tiles.stadiamaps.com/styles/alidade_satellite.json?api_key=',
+  },
+  mapbox: {
+    'dark-v10': 'mapbox://styles/mapbox/dark-v10',
+    'dark-v11': 'mapbox://styles/mapbox/dark-v11',
+    'light-v10': 'mapbox://styles/mapbox/light-v10',
+    'light-v11': 'mapbox://styles/mapbox/light-v11',
+    'navigation-night': 'mapbox://styles/mapbox/navigation-night-v1',
+    'satellite-streets-v12': 'mapbox://styles/mapbox/satellite-streets-v12',
+  },
+  default: 'mapbox://styles/mapbox/dark-v10',
+};
+
+export const getMapTileVendorStyles = (
+  vendor: string
+): Record<string, string> | undefined => {
+  const styles = MAP_TILE_STYLES[vendor as keyof typeof MAP_TILE_STYLES];
+  return typeof styles === 'object' ? styles : undefined;
+};
+
+// Configuration validation
+if (typeof window !== 'undefined') {
+  if (MAP_TILE_VENDOR === 'mapcn' && MAP_TILE_ACCESS_TOKEN !== '') {
+    console.warn(
+      'MapCN (Carto) does not require an access token.\n' +
+        'You can set MAP_TILE_ACCESS_TOKEN = "" in src/utils/const.ts'
+    );
+  }
+
+  if (
+    ['mapbox', 'maptiler', 'stadiamaps'].includes(MAP_TILE_VENDOR) &&
+    MAP_TILE_ACCESS_TOKEN === ''
+  ) {
+    console.error(
+      `${MAP_TILE_VENDOR.toUpperCase()} requires an access token.\n` +
+        `Please set MAP_TILE_ACCESS_TOKEN in src/utils/const.ts\n` +
+        `See README.md for instructions on getting a token.\n` +
+        `\n` +
+        `TIP: Use MAP_TILE_VENDOR = 'mapcn' for free (no token required)`
+    );
+  }
+
+  const vendorStyles = getMapTileVendorStyles(MAP_TILE_VENDOR);
+  if (vendorStyles && !vendorStyles[MAP_TILE_STYLE_LIGHT]) {
+    console.error(
+      `Style "${MAP_TILE_STYLE_LIGHT}" is not valid for vendor "${MAP_TILE_VENDOR}"\n` +
+        `Available styles: ${Object.keys(vendorStyles).join(', ')}\n` +
+        `Check src/utils/const.ts MAP_TILE_STYLES for valid combinations`
+    );
+  }
+
+  if (
+    MAP_TILE_VENDOR === 'mapcn' &&
+    MAP_TILE_ACCESS_TOKEN === '' &&
+    vendorStyles?.[MAP_TILE_STYLE_LIGHT]
+  ) {
+    console.info(
+      'Using MapCN (Carto Basemaps) - Free, no token required.\n' +
+        'Attribution: Map tiles (c) CARTO, Map data (c) OpenStreetMap contributors\n' +
+        'See docs/CARTO_TERMS.md for usage terms'
+    );
+  }
+}

@@ -36,8 +36,8 @@
   --color-activity-card: var(--kami-border);
   --svg-color-inactive-cell: var(--kami-border);
   --svg-color-active-cell: var(--kami-ink);
-  --svg-special-color: var(--kami-ink-light);
-  --svg-special-color2: #8b4513;
+  --svg-special-color: #ffa400;
+  --svg-special-color2: #ff0000;
 
   --font-serif:
     'TsangerJinKai02', 'Source Han Serif SC', 'Noto Serif CJK SC', 'Songti SC',
@@ -83,8 +83,8 @@
   --color-activity-card: var(--kami-border);
   --svg-color-inactive-cell: rgba(141, 161, 190, 0.18);
   --svg-color-active-cell: #8db7e8;
-  --svg-special-color: #dcecff;
-  --svg-special-color2: #d8b894;
+  --svg-special-color: #ffa400;
+  --svg-special-color2: #ff0000;
 }
 
 @layer base {

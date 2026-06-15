@@ -148,7 +148,18 @@ export const updateSvgSpecialColors = (): void => {
     // Find elements with special colors (typically fill="#FFFF00" or fill="#FF0000")
     // Also check for stroke attributes in case of grid SVG
     const yellowElements = svg.querySelectorAll(
-      '[fill="#FFFF00"], [fill="#ffff00"], [fill="yellow"], [stroke="#FFFF00"], [stroke="#ffff00"], [stroke="yellow"]'
+      [
+        '[fill="#FFFF00"]',
+        '[fill="#ffff00"]',
+        '[fill="#ffa400"]',
+        '[fill="#FFA400"]',
+        '[fill="yellow"]',
+        '[stroke="#FFFF00"]',
+        '[stroke="#ffff00"]',
+        '[stroke="#ffa400"]',
+        '[stroke="#FFA400"]',
+        '[stroke="yellow"]',
+      ].join(', ')
     );
     const redElements = svg.querySelectorAll(
       '[fill="#FF0000"], [fill="#ff0000"], [fill="red"], [stroke="#FF0000"], [stroke="#ff0000"], [stroke="red"]'
