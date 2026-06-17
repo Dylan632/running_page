@@ -11,10 +11,15 @@ import React, {
 import VirtualList from 'rc-virtual-list';
 import { useNavigate } from 'react-router-dom';
 import styles from './style.module.css';
-import { ACTIVITY_TOTAL, LOADING_TEXT } from '@/utils/const';
+import {
+  ACTIVITY_TOTAL,
+  HOME_PAGE_TITLE,
+  LOADING_TEXT,
+  SHOW_ELEVATION_GAIN,
+} from '@/utils/const';
 import { totalStat, yearSummaryStats } from '@assets/index';
 import { loadSvgComponent } from '@/utils/svgUtils';
-import { SHOW_ELEVATION_GAIN, HOME_PAGE_TITLE } from '@/utils/const';
+import { ACTIVITY_MODE } from '@/utils/activityMode';
 import { DIST_UNIT, M_TO_DIST } from '@/utils/utils';
 import type { Activity } from '@/utils/utils';
 import useActivities from '@/hooks/useActivities';
@@ -207,8 +212,15 @@ const formatTime = (seconds: number): string => {
   return `${h}h ${m}m ${s}s`;
 };
 
-const formatPace = (speed: number): string => {
-  if (speed === 0) return `0:00 min/${DIST_UNIT}`;
+const formatSpeedMetric = (speed: number): string => {
+  if (!Number.isFinite(speed) || speed <= 0) {
+    return ACTIVITY_MODE === 'cycling'
+      ? `0.0 ${DIST_UNIT}/h`
+      : `0:00 min/${DIST_UNIT}`;
+  }
+
+  if (ACTIVITY_MODE === 'cycling') return `${speed.toFixed(1)} ${DIST_UNIT}/h`;
+
   const pace = 60 / speed;
   const totalSeconds = Math.round(pace * 60);
   const minutes = Math.floor(totalSeconds / 60);
@@ -663,7 +675,7 @@ const ActivityCardInner: React.FC<ActivityCardProps> = ({
               )}
             <p>
               <strong>{ACTIVITY_TOTAL.AVERAGE_SPEED_TITLE}:</strong>{' '}
-              {formatPace(summary.averageSpeed)}
+              {formatSpeedMetric(summary.averageSpeed)}
             </p>
             <p>
               <strong>{ACTIVITY_TOTAL.TOTAL_TIME_TITLE}:</strong>{' '}
@@ -687,7 +699,7 @@ const ActivityCardInner: React.FC<ActivityCardProps> = ({
                 </p>
                 <p>
                   <strong>{ACTIVITY_TOTAL.MAX_SPEED_TITLE}:</strong>{' '}
-                  {formatPace(summary.maxSpeed)}
+                  {formatSpeedMetric(summary.maxSpeed)}
                 </p>
                 <p>
                   <strong>{ACTIVITY_TOTAL.AVERAGE_DISTANCE_TITLE}:</strong>{' '}

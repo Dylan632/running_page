@@ -18,7 +18,7 @@ def decode_polyline(polyline: str, precision: int = 5):
     index = 0
     lat = 0
     lng = 0
-    factor = 10 ** precision
+    factor = 10**precision
 
     while index < len(polyline):
         result = 0
@@ -51,22 +51,24 @@ def decode_polyline(polyline: str, precision: int = 5):
 
 
 def main():
-    polyline = base64.b64decode(ROUTE_FILE.read_text(encoding="utf-8").strip()).decode("utf-8")
+    polyline = base64.b64decode(ROUTE_FILE.read_text(encoding="utf-8").strip()).decode(
+        "utf-8"
+    )
     points = decode_polyline(polyline, PRECISION)
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
 
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<gpx creator="ChatGPT generated from original Taihu GPX" version="1.1" xmlns="http://www.topografix.com/GPX/1/1">',
-        '  <metadata>',
-        '    <name>环太湖</name>',
-        '    <desc>Route-preserving decimation from the original uploaded GPX; marked as cycling and compressed into one calendar day.</desc>',
-        '    <time>2025-06-16T00:57:03Z</time>',
-        '  </metadata>',
-        '  <trk>',
-        '    <name>环太湖</name>',
-        '    <type>cycling</type>',
-        '    <trkseg>',
+        "  <metadata>",
+        "    <name>环太湖</name>",
+        "    <desc>Route-preserving decimation from the original uploaded GPX; marked as cycling and compressed into one calendar day.</desc>",
+        "    <time>2025-06-16T00:57:03Z</time>",
+        "  </metadata>",
+        "  <trk>",
+        "    <name>环太湖</name>",
+        "    <type>cycling</type>",
+        "    <trkseg>",
     ]
 
     last_index = max(len(points) - 1, 1)
@@ -76,8 +78,8 @@ def main():
             f'      <trkpt lat="{lat:.5f}" lon="{lon:.5f}"><ele>0</ele><time>{timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")}</time></trkpt>'
         )
 
-    lines.extend(['    </trkseg>', '  </trk>', '</gpx>', ''])
-    OUTPUT_FILE.write_text('\n'.join(lines), encoding='utf-8')
+    lines.extend(["    </trkseg>", "  </trk>", "</gpx>", ""])
+    OUTPUT_FILE.write_text("\n".join(lines), encoding="utf-8")
     print(f"Wrote {OUTPUT_FILE} with {len(points)} points.")
 
 

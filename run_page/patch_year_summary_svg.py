@@ -10,7 +10,6 @@ from pathlib import Path
 import re
 import xml.etree.ElementTree as ET
 
-
 ASSETS_DIR = Path("assets")
 YEAR_SUMMARY_GLOB = "year_summary*.svg"
 SVG_NS = "http://www.w3.org/2000/svg"

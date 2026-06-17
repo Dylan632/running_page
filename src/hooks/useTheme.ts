@@ -124,7 +124,6 @@ export const useTheme = () => {
       setThemeState(getAsiaShanghaiTheme());
     };
 
-    syncAutomaticTheme();
     const timer = window.setInterval(syncAutomaticTheme, 60 * 1000);
     return () => window.clearInterval(timer);
   }, []);
