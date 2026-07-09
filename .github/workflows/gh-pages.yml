@@ -165,32 +165,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Patch summary speed display for cycling
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path('src/components/ActivityList/index.tsx')
-          text = path.read_text()
-          old = """const formatPace = (speed: number): string => {
-            if (speed === 0) return `0:00 min/${DIST_UNIT}`;
-            const pace = 60 / speed;
-            const totalSeconds = Math.round(pace * 60);
-            const minutes = Math.floor(totalSeconds / 60);
-            const seconds = totalSeconds % 60;
-            return `${minutes}:${seconds < 10 ? '0' : ''}${seconds} min/${DIST_UNIT}`;
-          };"""
-          new = """const formatPace = (speed: number): string => {
-            if (!Number.isFinite(speed) || speed <= 0) return `0.0 ${DIST_UNIT}/h`;
-            return `${speed.toFixed(1)} ${DIST_UNIT}/h`;
-          };"""
-          if old in text:
-            text = text.replace(old, new)
-          if 'min/${DIST_UNIT}' in text:
-            raise SystemExit('ActivityList still contains min/${DIST_UNIT} after cycling speed patch')
-          path.write_text(text)
-          PY
-
       - name: Build
         env:
           REPO_NAME: ${{ github.event.repository.name }}
