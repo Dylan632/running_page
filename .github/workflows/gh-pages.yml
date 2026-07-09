@@ -2,8 +2,6 @@ name: Publish GitHub Pages
 
 # Controls when the action will run.
 on:
-  schedule:
-    - cron: '0 0 * * *'
   push:
     branches:
       - master
@@ -37,7 +35,8 @@ env:
   ATHLETE: Dylan
   TITLE: Dylan's Cycling Records
   MIN_GRID_DISTANCE: 10
-  TITLE_GRID: Over 10km Rides
+  OVER_GRID_DISTANCE: 20
+  TITLE_GRID: Over 20km Rides
   CYCLING_MIN_DISTANCE_METERS: 10000
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
@@ -124,9 +123,10 @@ jobs:
           TITLE_GRID: ${{ env.TITLE_GRID }}
           ATHLETE: ${{ env.ATHLETE }}
           MIN_GRID_DISTANCE: ${{ env.MIN_GRID_DISTANCE }}
+          OVER_GRID_DISTANCE: ${{ env.OVER_GRID_DISTANCE }}
         run: |
           python run_page/gen_svg.py --from-db --title "$TITLE" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 20 --special-distance2 50 --special-color "#ffa400" --special-color2 "#ff0000" --output assets/github.svg --use-localtime --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
-          python run_page/gen_svg.py --from-db --title "$TITLE_GRID" --type grid --athlete "$ATHLETE" --output assets/grid.svg --special-color "#ffa400" --special-color2 "#ff0000" --special-distance 20 --special-distance2 50 --use-localtime --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
+          python run_page/gen_svg.py --from-db --title "$TITLE_GRID" --type grid --athlete "$ATHLETE" --output assets/grid.svg --special-color "#ffa400" --special-color2 "#ff0000" --special-distance 20 --special-distance2 50 --use-localtime --min-distance "$OVER_GRID_DISTANCE" --sport-type cycling
           python run_page/gen_svg.py --from-db --type circular --use-localtime --min-distance "$MIN_GRID_DISTANCE" --special-distance 20 --special-distance2 50 --sport-type cycling
           for year in $(seq 2015 $(date +"%Y")); do
             python run_page/gen_svg.py --from-db --year "$year" --language zh_CN --title "${year} Cycling" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 20 --special-distance2 50 --special-color "#ffa400" --special-color2 "#ff0000" --output "assets/github_${year}.svg" --use-localtime --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
@@ -164,6 +164,32 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Patch summary speed display for cycling
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/components/ActivityList/index.tsx')
+          text = path.read_text()
+          old = """const formatPace = (speed: number): string => {
+            if (speed === 0) return `0:00 min/${DIST_UNIT}`;
+            const pace = 60 / speed;
+            const totalSeconds = Math.round(pace * 60);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes}:${seconds < 10 ? '0' : ''}${seconds} min/${DIST_UNIT}`;
+          };"""
+          new = """const formatPace = (speed: number): string => {
+            if (!Number.isFinite(speed) || speed <= 0) return `0.0 ${DIST_UNIT}/h`;
+            return `${speed.toFixed(1)} ${DIST_UNIT}/h`;
+          };"""
+          if old in text:
+            text = text.replace(old, new)
+          if 'min/${DIST_UNIT}' in text:
+            raise SystemExit('ActivityList still contains min/${DIST_UNIT} after cycling speed patch')
+          path.write_text(text)
+          PY
 
       - name: Build
         env:
