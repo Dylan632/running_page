@@ -38,6 +38,10 @@ env:
   OVER_GRID_DISTANCE: 20
   TITLE_GRID: Over 20km Rides
   CYCLING_MIN_DISTANCE_METERS: 10000
+  TAIHU_DUPLICATE_RUN_IDS: >-
+    9223370286779077807
+    9223370286722195807
+    9223370286688820807
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -112,7 +116,7 @@ jobs:
           fi
           if compgen -G "manual_gpx/*.gpx" > /dev/null || [ -f "manual_gpx/taihu_route.polyline.b64" ]; then
             python run_page/gpx_sync.py
-            python run_page/filter_activity_data.py --types Ride VirtualRide cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS"
+            python run_page/filter_activity_data.py --types Ride VirtualRide cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS" --exclude-run-ids $TAIHU_DUPLICATE_RUN_IDS
           else
             echo "No manual GPX cycling data found."
           fi
@@ -140,7 +144,7 @@ jobs:
         run: |
           rm -rf activities GPX_OUT TCX_OUT FIT_OUT
           mkdir -p activities GPX_OUT TCX_OUT FIT_OUT
-          touch activities/.gitkeep GPX_OUT/.gitkeep TCX_OUT/.gitkeep FIT_OUT/.gitkeep
+          touch activities/.gitkeep GPX_OUT/.gitkeep FIT_OUT/.gitkeep TCX_OUT/.gitkeep
 
       - name: Setup Node.js environment
         uses: actions/setup-node@v4
