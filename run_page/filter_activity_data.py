@@ -30,10 +30,19 @@ def parse_args():
         default=0,
         help="Keep activities with distance strictly greater than this many meters.",
     )
+    parser.add_argument(
+        "--exclude-run-ids",
+        nargs="*",
+        default=[],
+        help="Activity run_id values to remove after normal filtering.",
+    )
     return parser.parse_args()
 
 
-def should_keep(activity, allowed_types, min_distance):
+def should_keep(activity, allowed_types, min_distance, exclude_run_ids):
+    if str(activity.get("run_id")) in exclude_run_ids:
+        return False
+
     try:
         distance = float(activity.get("distance") or 0)
     except (TypeError, ValueError):
@@ -42,19 +51,19 @@ def should_keep(activity, allowed_types, min_distance):
     return activity.get("type") in allowed_types and distance > min_distance
 
 
-def filter_json(json_file, allowed_types, min_distance):
+def filter_json(json_file, allowed_types, min_distance, exclude_run_ids):
     path = Path(json_file)
     activities = json.loads(path.read_text())
     filtered = [
         activity
         for activity in activities
-        if should_keep(activity, allowed_types, min_distance)
+        if should_keep(activity, allowed_types, min_distance, exclude_run_ids)
     ]
     path.write_text(json.dumps(filtered), encoding="utf-8")
     return len(activities), len(filtered)
 
 
-def filter_db(db_file, allowed_types, min_distance):
+def filter_db(db_file, allowed_types, min_distance, exclude_run_ids):
     path = Path(db_file)
     if not path.exists():
         return 0, 0
@@ -64,13 +73,19 @@ def filter_db(db_file, allowed_types, min_distance):
         cursor = connection.cursor()
         before = cursor.execute("SELECT COUNT(*) FROM activities").fetchone()[0]
         placeholders = ",".join("?" for _ in allowed_types)
+        exclude_ids = [int(run_id) for run_id in exclude_run_ids]
+        exclude_clause = ""
+        if exclude_ids:
+            exclude_placeholders = ",".join("?" for _ in exclude_ids)
+            exclude_clause = f" OR run_id IN ({exclude_placeholders})"
         cursor.execute(
             f"""
             DELETE FROM activities
             WHERE type NOT IN ({placeholders})
               OR COALESCE(distance, 0) <= ?
+              {exclude_clause}
             """,
-            [*allowed_types, min_distance],
+            [*allowed_types, min_distance, *exclude_ids],
         )
         connection.commit()
         after = cursor.execute("SELECT COUNT(*) FROM activities").fetchone()[0]
@@ -82,16 +97,20 @@ def filter_db(db_file, allowed_types, min_distance):
 def main():
     args = parse_args()
     allowed_types = set(args.types)
+    exclude_run_ids = set(args.exclude_run_ids)
     json_before, json_after = filter_json(
-        args.json_file, allowed_types, args.min_distance
+        args.json_file, allowed_types, args.min_distance, exclude_run_ids
     )
-    db_before, db_after = filter_db(args.db_file, allowed_types, args.min_distance)
+    db_before, db_after = filter_db(
+        args.db_file, allowed_types, args.min_distance, exclude_run_ids
+    )
     print(
         "Filtered activities: "
         f"json {json_before}->{json_after}, "
         f"db {db_before}->{db_after}, "
         f"types={sorted(allowed_types)}, "
-        f"min_distance>{args.min_distance}m"
+        f"min_distance>{args.min_distance}m, "
+        f"excluded={sorted(exclude_run_ids)}"
     )
 
 
