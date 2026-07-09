@@ -38,6 +38,7 @@ import { useTheme, useThemeChangeCounter } from '@/hooks/useTheme';
 import { selectedActivityCopy } from '@/utils/activityMode';
 
 const HASH_RUN_CHANGE_EVENT = 'running-page-hash-run-change';
+const SVG_STAT_TARGET_SELECTOR = 'path, polyline, rect';
 
 const getRunIdFromHash = () => {
   if (typeof window === 'undefined') return null;
@@ -77,6 +78,15 @@ const setRunHash = (runId: number) => {
     window.history.pushState(null, '', newHash);
     notifyRunHashChange();
   }
+};
+
+const getSvgStatTarget = (
+  eventTarget: EventTarget | null,
+  root: Element
+): Element | null => {
+  if (!(eventTarget instanceof Element)) return null;
+  const target = eventTarget.closest(SVG_STAT_TARGET_SELECTOR);
+  return target && root.contains(target) ? target : null;
 };
 
 const useRunHashId = () =>
@@ -356,45 +366,44 @@ const Index = () => {
     }
 
     const handleClick = (e: Event) => {
-      const target = e.target as HTMLElement;
-      if (target.tagName.toLowerCase() === 'path') {
-        // Use querySelector to get the <desc> element and the <title> element.
-        const descEl = target.querySelector('desc');
-        if (descEl) {
-          // If the runId exists in the <desc> element, it means that a running route has been clicked.
-          const runId = Number(descEl.innerHTML);
-          if (!runId) {
-            return;
-          }
-          if (selectedRunIdRef.current === runId) {
-            selectedRunIdRef.current = null;
-            locateActivity(runs.map((r) => r.run_id));
-          } else {
-            selectedRunIdRef.current = runId;
-            locateActivity([runId]);
-          }
+      const target = getSvgStatTarget(e.target, svgStat);
+      if (!target) return;
+
+      const descEl = target.querySelector('desc');
+      if (descEl) {
+        // Grid routes store run_id in <desc>; calendar cells only have <title>.
+        const runId = Number(descEl.textContent);
+        if (!runId) {
           return;
         }
+        if (selectedRunIdRef.current === runId) {
+          selectedRunIdRef.current = null;
+          locateActivity(runs.map((r) => r.run_id));
+        } else {
+          selectedRunIdRef.current = runId;
+          locateActivity([runId]);
+        }
+        return;
+      }
 
-        const titleEl = target.querySelector('title');
-        if (titleEl) {
-          // If the runDate exists in the <title> element, it means that a date square has been clicked.
-          const [runDate] = titleEl.innerHTML.match(
-            /\d{4}-\d{1,2}-\d{1,2}/
-          ) || [`${+thisYear + 1}`];
-          const runIDsOnDate = runs
-            .filter((r) => r.start_date_local.slice(0, 10) === runDate)
-            .map((r) => r.run_id);
-          if (!runIDsOnDate.length) {
-            return;
-          }
-          if (selectedRunDateRef.current === runDate) {
-            selectedRunDateRef.current = null;
-            locateActivity(runs.map((r) => r.run_id));
-          } else {
-            selectedRunDateRef.current = runDate;
-            locateActivity(runIDsOnDate);
-          }
+      const titleEl = target.querySelector('title');
+      if (titleEl) {
+        // If the runDate exists in the <title> element, it means that a date square has been clicked.
+        const [runDate] = titleEl.textContent?.match(
+          /\d{4}-\d{1,2}-\d{1,2}/
+        ) || [`${+thisYear + 1}`];
+        const runIDsOnDate = runs
+          .filter((r) => r.start_date_local.slice(0, 10) === runDate)
+          .map((r) => r.run_id);
+        if (!runIDsOnDate.length) {
+          return;
+        }
+        if (selectedRunDateRef.current === runDate) {
+          selectedRunDateRef.current = null;
+          locateActivity(runs.map((r) => r.run_id));
+        } else {
+          selectedRunDateRef.current = runDate;
+          locateActivity(runIDsOnDate);
         }
       }
     };
