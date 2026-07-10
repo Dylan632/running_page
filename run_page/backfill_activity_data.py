@@ -4,7 +4,6 @@ import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 
-
 ACTIVITY_COLUMNS = [
     "run_id",
     "name",
@@ -73,7 +72,9 @@ def merge_json(json_file, backfill):
     activities = json.loads(path.read_text()) if path.exists() else []
     known_ids = {str(activity.get("run_id")) for activity in activities}
     additions = [
-        activity for activity in backfill if str(activity.get("run_id")) not in known_ids
+        activity
+        for activity in backfill
+        if str(activity.get("run_id")) not in known_ids
     ]
     if additions:
         activities.extend(additions)
