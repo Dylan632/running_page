@@ -316,6 +316,11 @@ hr {
   stroke: var(--svg-special-color2);
 }
 
+.grid-svg path {
+  cursor: pointer;
+  pointer-events: bounding-box;
+}
+
 .mapboxgl-ctrl-group {
   border: 1px solid var(--kami-border) !important;
   border-radius: 0.75rem !important;

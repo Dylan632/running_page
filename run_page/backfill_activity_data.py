@@ -88,6 +88,14 @@ def db_values(activity):
     elapsed_time = duration_to_sqlite(
         activity.get("elapsed_time") or activity.get("moving_time")
     )
+    summary_polyline = activity.get("summary_polyline") or ""
+    if summary_polyline:
+        try:
+            import polyline
+
+            polyline.decode(summary_polyline)
+        except Exception:
+            summary_polyline = ""
     return {
         "run_id": int(activity["run_id"]),
         "name": activity.get("name"),
@@ -99,7 +107,7 @@ def db_values(activity):
         "start_date": activity.get("start_date"),
         "start_date_local": activity.get("start_date_local"),
         "location_country": activity.get("location_country"),
-        "summary_polyline": activity.get("summary_polyline") or "",
+        "summary_polyline": summary_polyline,
         "average_heartrate": activity.get("average_heartrate"),
         "average_speed": activity.get("average_speed"),
         "elevation_gain": activity.get("elevation_gain"),
