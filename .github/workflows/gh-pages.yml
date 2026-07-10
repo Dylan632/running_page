@@ -42,6 +42,9 @@ env:
     9223370286779077807
     9223370286722195807
     9223370286688820807
+  CYCLING_NO_TRACK_RUN_IDS: >-
+    9223370309063493807
+    9223370308463553807
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -107,7 +110,7 @@ jobs:
       - name: Sync Keep cycling data over 10km
         run: |
           python run_page/keep_sync.py ${{ secrets.KEEP_MOBILE }} ${{ secrets.KEEP_PASSWORD }} --sync-types cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS"
-          python run_page/filter_activity_data.py --types Ride VirtualRide cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS"
+          python run_page/filter_activity_data.py --types Ride VirtualRide cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS" --exclude-run-ids $CYCLING_NO_TRACK_RUN_IDS
 
       - name: Sync manual GPX cycling data
         run: |
@@ -116,7 +119,7 @@ jobs:
           fi
           if compgen -G "manual_gpx/*.gpx" > /dev/null || [ -f "manual_gpx/taihu_route.polyline.b64" ]; then
             python run_page/gpx_sync.py
-            python run_page/filter_activity_data.py --types Ride VirtualRide cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS" --exclude-run-ids $TAIHU_DUPLICATE_RUN_IDS
+            python run_page/filter_activity_data.py --types Ride VirtualRide cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS" --exclude-run-ids $TAIHU_DUPLICATE_RUN_IDS $CYCLING_NO_TRACK_RUN_IDS
           else
             echo "No manual GPX cycling data found."
           fi
@@ -125,7 +128,7 @@ jobs:
         run: |
           if compgen -G "manual_backfill/*.json" > /dev/null; then
             python run_page/backfill_activity_data.py manual_backfill/*.json
-            python run_page/filter_activity_data.py --types Ride VirtualRide cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS" --exclude-run-ids $TAIHU_DUPLICATE_RUN_IDS
+            python run_page/filter_activity_data.py --types Ride VirtualRide cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS" --exclude-run-ids $TAIHU_DUPLICATE_RUN_IDS $CYCLING_NO_TRACK_RUN_IDS
           else
             echo "No manual backfill cycling data found."
           fi
