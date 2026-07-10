@@ -121,6 +121,15 @@ jobs:
             echo "No manual GPX cycling data found."
           fi
 
+      - name: Backfill missing historical cycling tracks
+        run: |
+          if compgen -G "manual_backfill/*.json" > /dev/null; then
+            python run_page/backfill_activity_data.py manual_backfill/*.json
+            python run_page/filter_activity_data.py --types Ride VirtualRide cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS" --exclude-run-ids $TAIHU_DUPLICATE_RUN_IDS
+          else
+            echo "No manual backfill cycling data found."
+          fi
+
       - name: Make cycling SVGs
         env:
           TITLE: ${{ env.TITLE }}
@@ -144,7 +153,7 @@ jobs:
         run: |
           rm -rf activities GPX_OUT TCX_OUT FIT_OUT
           mkdir -p activities GPX_OUT TCX_OUT FIT_OUT
-          touch activities/.gitkeep GPX_OUT/.gitkeep FIT_OUT/.gitkeep TCX_OUT/.gitkeep
+          touch activities/.gitkeep GPX_OUT/.gitkeep TCX_OUT/.gitkeep FIT_OUT/.gitkeep
 
       - name: Setup Node.js environment
         uses: actions/setup-node@v4
