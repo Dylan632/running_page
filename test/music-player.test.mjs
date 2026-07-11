@@ -104,18 +104,13 @@ test('renders the collapsed Spotify cycling playlist player contract', async () 
 });
 
 test('places the music control after About and before the theme toggle', async () => {
-  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
-    url: 'http://localhost/',
-  });
-  const restoreGlobals = installDomGlobals(dom.window);
+  const { default: Header } = await vite.ssrLoadModule(
+    '/src/components/Header/index.tsx'
+  );
+  const html = renderToStaticMarkup(React.createElement(Header));
+  const dom = new JSDOM(html);
 
   try {
-    const { default: Header } = await vite.ssrLoadModule(
-      '/src/components/Header/index.tsx'
-    );
-    const html = renderToStaticMarkup(React.createElement(Header));
-    dom.window.document.body.innerHTML = html;
-
     const header = dom.window.document.querySelector('.running-header');
     const aboutLink = [...(header?.querySelectorAll('a') ?? [])].find(
       (link) => link.textContent?.trim() === 'About'
@@ -126,21 +121,20 @@ test('places the music control after About and before the theme toggle', async (
     const themeToggle = [...(header?.querySelectorAll('button') ?? [])].find(
       (button) => /^Switch to (light|dark) theme$/.test(button.title)
     );
+    const musicRoot = musicToggle?.parentElement;
+    const themeWrapper = themeToggle?.parentElement;
 
     assert.ok(header);
     assert.ok(aboutLink);
     assert.ok(musicToggle);
     assert.ok(themeToggle);
-    assert.ok(
-      aboutLink.compareDocumentPosition(musicToggle) &
-        dom.window.Node.DOCUMENT_POSITION_FOLLOWING
-    );
-    assert.ok(
-      musicToggle.compareDocumentPosition(themeToggle) &
-        dom.window.Node.DOCUMENT_POSITION_FOLLOWING
-    );
+    assert.ok(musicRoot);
+    assert.ok(themeWrapper);
+    assert.equal(musicRoot.parentElement, aboutLink.parentElement);
+    assert.equal(themeWrapper.parentElement, aboutLink.parentElement);
+    assert.equal(aboutLink.nextElementSibling, musicRoot);
+    assert.equal(musicRoot.nextElementSibling, themeWrapper);
   } finally {
-    restoreGlobals();
     dom.window.close();
   }
 });
