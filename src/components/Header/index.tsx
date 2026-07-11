@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import MusicPlayer from '@/components/MusicPlayer';
 import getSiteMetadata from '@/hooks/useSiteMetadata';
 import { useTheme, Theme } from '@/hooks/useTheme';
 import styles from './style.module.css';
@@ -78,6 +79,7 @@ const Header = () => {
               {n.name}
             </a>
           ))}
+          <MusicPlayer />
           <div className="ml-1 flex items-center space-x-2">
             <button
               type="button"

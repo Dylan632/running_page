@@ -103,6 +103,48 @@ test('renders the collapsed Spotify cycling playlist player contract', async () 
   assert.match(html, /referrerpolicy="strict-origin-when-cross-origin"/i);
 });
 
+test('places the music control after About and before the theme toggle', async () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/',
+  });
+  const restoreGlobals = installDomGlobals(dom.window);
+
+  try {
+    const { default: Header } = await vite.ssrLoadModule(
+      '/src/components/Header/index.tsx'
+    );
+    const html = renderToStaticMarkup(React.createElement(Header));
+    dom.window.document.body.innerHTML = html;
+
+    const header = dom.window.document.querySelector('.running-header');
+    const aboutLink = [...(header?.querySelectorAll('a') ?? [])].find(
+      (link) => link.textContent?.trim() === 'About'
+    );
+    const musicToggle = header?.querySelector(
+      'button[aria-controls="spotify-player-panel"]'
+    );
+    const themeToggle = [...(header?.querySelectorAll('button') ?? [])].find(
+      (button) => /^Switch to (light|dark) theme$/.test(button.title)
+    );
+
+    assert.ok(header);
+    assert.ok(aboutLink);
+    assert.ok(musicToggle);
+    assert.ok(themeToggle);
+    assert.ok(
+      aboutLink.compareDocumentPosition(musicToggle) &
+        dom.window.Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    assert.ok(
+      musicToggle.compareDocumentPosition(themeToggle) &
+        dom.window.Node.DOCUMENT_POSITION_FOLLOWING
+    );
+  } finally {
+    restoreGlobals();
+    dom.window.close();
+  }
+});
+
 test('keeps the player mounted and manages close focus across interactions', async () => {
   const dom = new JSDOM(
     '<!doctype html><html><body><main id="root"></main><button id="outside-target" type="button">Outside</button></body></html>',
