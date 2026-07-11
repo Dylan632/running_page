@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './style.module.css';
 
 export const SPOTIFY_PLAYLIST_ID = '1r8NqobH79G9YEA3Iobx4a';
@@ -10,12 +10,18 @@ const PANEL_ID = 'spotify-player-panel';
 const MusicPlayer = () => {
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+
+  const closeAndRestoreFocus = useCallback(() => {
+    setIsOpen(false);
+    toggleRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
 
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsOpen(false);
+      if (event.key === 'Escape') closeAndRestoreFocus();
     };
 
     const closeOnOutsidePress = (event: PointerEvent) => {
@@ -29,13 +35,14 @@ const MusicPlayer = () => {
       document.removeEventListener('keydown', closeOnEscape);
       document.removeEventListener('pointerdown', closeOnOutsidePress);
     };
-  }, [isOpen]);
+  }, [closeAndRestoreFocus, isOpen]);
 
   const toggleLabel = isOpen ? 'Close cycling music' : 'Open cycling music';
 
   return (
     <div ref={rootRef} className={styles.root}>
       <button
+        ref={toggleRef}
         type="button"
         className={`${styles.toggle} ${isOpen ? styles.toggleOpen : ''}`}
         onClick={() => setIsOpen((open) => !open)}
@@ -87,7 +94,7 @@ const MusicPlayer = () => {
           <button
             type="button"
             className={styles.closeButton}
-            onClick={() => setIsOpen(false)}
+            onClick={closeAndRestoreFocus}
             aria-label="Close cycling music"
             title="Close cycling music"
           >
@@ -116,6 +123,7 @@ const MusicPlayer = () => {
           width="100%"
           height={152}
           loading="lazy"
+          referrerPolicy="strict-origin-when-cross-origin"
           allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
           allowFullScreen
         />
