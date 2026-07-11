@@ -273,4 +273,3 @@ Open `https://dylan632.github.io/cycling_page/` after the Pages workflow complet
 **Step 3: Record the final evidence**
 
 Capture the pushed commit SHA, successful local commands, workflow/deployment status, and live-page DOM or screenshot evidence before marking the task complete.
-
