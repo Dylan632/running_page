@@ -66,6 +66,7 @@ jobs:
 
       - name: Run check and build
         run: |
+          pnpm test
           pnpm run check
           pnpm run lint
           pnpm run build

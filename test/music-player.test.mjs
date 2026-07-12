@@ -82,25 +82,65 @@ const trackDocumentListeners = (document) => {
   };
 };
 
+const trackWindowTimeouts = (window) => {
+  const activeTimeouts = new Set();
+  const originalSetTimeout = window.setTimeout;
+  const originalClearTimeout = window.clearTimeout;
+
+  window.setTimeout = function (handler, timeout, ...args) {
+    let timeoutId;
+    timeoutId = originalSetTimeout.call(
+      this,
+      (...handlerArgs) => {
+        activeTimeouts.delete(timeoutId);
+        if (typeof handler === 'function') handler(...handlerArgs);
+      },
+      timeout,
+      ...args
+    );
+    activeTimeouts.add(timeoutId);
+    return timeoutId;
+  };
+  window.clearTimeout = function (timeoutId) {
+    activeTimeouts.delete(timeoutId);
+    return originalClearTimeout.call(this, timeoutId);
+  };
+
+  return {
+    count: () => activeTimeouts.size,
+    restore: () => {
+      window.setTimeout = originalSetTimeout;
+      window.clearTimeout = originalClearTimeout;
+    },
+  };
+};
+
 test('renders the collapsed Spotify cycling playlist player contract', async () => {
   const { default: MusicPlayer } = await vite.ssrLoadModule(
     '/src/components/MusicPlayer/index.tsx'
   );
   const html = renderToStaticMarkup(React.createElement(MusicPlayer));
+  const dom = new JSDOM(html);
 
-  assert.ok(html.includes('aria-label="Open cycling music"'));
-  assert.ok(html.includes('aria-expanded="false"'));
-  assert.ok(html.includes('aria-controls="spotify-player-panel"'));
-  assert.ok(
-    html.includes(
-      'https://open.spotify.com/embed/playlist/1r8NqobH79G9YEA3Iobx4a'
-    )
-  );
-  assert.ok(
-    html.includes('https://open.spotify.com/playlist/1r8NqobH79G9YEA3Iobx4a')
-  );
-  assert.ok(html.includes('title="Cycling &amp; Spinning Music 2026"'));
-  assert.match(html, /referrerpolicy="strict-origin-when-cross-origin"/i);
+  try {
+    const iframe = dom.window.document.querySelector('iframe');
+    assert.ok(iframe);
+    assert.equal(
+      iframe.getAttribute('src'),
+      'https://open.spotify.com/embed/playlist/1r8NqobH79G9YEA3Iobx4a',
+      'the embed URL must remain exact and must not add an autoplay query'
+    );
+    assert.ok(html.includes('aria-label="Open cycling music"'));
+    assert.ok(html.includes('aria-expanded="false"'));
+    assert.ok(html.includes('aria-controls="spotify-player-panel"'));
+    assert.ok(
+      html.includes('https://open.spotify.com/playlist/1r8NqobH79G9YEA3Iobx4a')
+    );
+    assert.ok(html.includes('title="Cycling &amp; Spinning Music 2026"'));
+    assert.match(html, /referrerpolicy="strict-origin-when-cross-origin"/i);
+  } finally {
+    dom.window.close();
+  }
 });
 
 test('places the music control after About and before the theme toggle', async () => {
@@ -141,19 +181,22 @@ test('places the music control after About and before the theme toggle', async (
 
 test('keeps the player mounted and manages close focus across interactions', async () => {
   const dom = new JSDOM(
-    '<!doctype html><html><body><main id="root"></main><button id="outside-target" type="button">Outside</button></body></html>',
+    '<!doctype html><html><body><main id="root"></main><button id="outside-target" type="button">Outside</button><span id="outside-static">Outside text</span></body></html>',
     { pretendToBeVisual: true, url: 'http://localhost/' }
   );
   const restoreGlobals = installDomGlobals(dom.window);
   const listenerTracker = trackDocumentListeners(dom.window.document);
+  const timeoutTracker = trackWindowTimeouts(dom.window);
   const { createRoot } = await import('react-dom/client');
   const { default: MusicPlayer } = await vite.ssrLoadModule(
     '/src/components/MusicPlayer/index.tsx'
   );
   const container = dom.window.document.querySelector('#root');
   const outsideTarget = dom.window.document.querySelector('#outside-target');
+  const outsideStatic = dom.window.document.querySelector('#outside-static');
   assert.ok(container);
   assert.ok(outsideTarget);
+  assert.ok(outsideStatic);
 
   const root = createRoot(container);
   let isMounted = true;
@@ -229,7 +272,7 @@ test('keeps the player mounted and manages close focus across interactions', asy
     assert.equal(panel.contains(dom.window.document.activeElement), false);
 
     await dispatchClick(toggle);
-    outsideTarget.focus();
+    closeButton.focus();
     await act(async () => {
       outsideTarget.dispatchEvent(
         new dom.window.Event('pointerdown', {
@@ -237,6 +280,10 @@ test('keeps the player mounted and manages close focus across interactions', asy
           cancelable: true,
         })
       );
+      outsideTarget.focus();
+    });
+    await act(async () => {
+      await new Promise((resolve) => dom.window.setTimeout(resolve, 0));
     });
     assert.equal(toggle.getAttribute('aria-expanded'), 'false');
     assert.equal(panel.getAttribute('aria-hidden'), 'true');
@@ -247,14 +294,81 @@ test('keeps the player mounted and manages close focus across interactions', asy
     );
 
     await dispatchClick(toggle);
+    closeButton.focus();
+    assert.equal(dom.window.document.activeElement === closeButton, true);
+    await act(async () => {
+      outsideStatic.dispatchEvent(
+        new dom.window.Event('pointerdown', {
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+    });
+    await act(async () => {
+      await new Promise((resolve) => dom.window.setTimeout(resolve, 0));
+    });
+    assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+    assert.equal(panel.getAttribute('aria-hidden'), 'true');
+    assert.equal(
+      panel.contains(dom.window.document.activeElement),
+      false,
+      'outside close on static content must not leave focus in the hidden panel'
+    );
+    assert.equal(
+      dom.window.document.activeElement === toggle,
+      true,
+      'outside close should recover focus when static content cannot receive it'
+    );
+
+    await dispatchClick(toggle);
+    closeButton.focus();
+    await act(async () => {
+      outsideStatic.dispatchEvent(
+        new dom.window.Event('pointerdown', {
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+      toggle.dispatchEvent(
+        new dom.window.MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+    });
+    await act(async () => {
+      await new Promise((resolve) => dom.window.setTimeout(resolve, 0));
+    });
+    assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+    assert.equal(panel.getAttribute('aria-hidden'), 'false');
+    assert.equal(
+      dom.window.document.activeElement === closeButton,
+      true,
+      'a stale outside-close task must not steal focus after the player reopens'
+    );
+    await dispatchClick(closeButton);
+
+    await dispatchClick(toggle);
     assert.equal(listenerTracker.count('keydown'), 1);
     assert.equal(listenerTracker.count('pointerdown'), 1);
     await act(async () => {
+      closeButton.focus();
+      outsideStatic.dispatchEvent(
+        new dom.window.Event('pointerdown', {
+          bubbles: true,
+          cancelable: true,
+        })
+      );
       root.unmount();
     });
     isMounted = false;
     assert.equal(listenerTracker.count('keydown'), 0);
     assert.equal(listenerTracker.count('pointerdown'), 0);
+    assert.equal(
+      timeoutTracker.count(),
+      0,
+      'unmount should cancel a pending outside-close focus task'
+    );
     assert.doesNotThrow(() => {
       dom.window.document.dispatchEvent(
         new dom.window.KeyboardEvent('keydown', { key: 'Escape' })
@@ -270,6 +384,7 @@ test('keeps the player mounted and manages close focus across interactions', asy
       });
     }
     listenerTracker.restore();
+    timeoutTracker.restore();
     restoreGlobals();
     dom.window.close();
   }

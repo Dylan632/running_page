@@ -11,11 +11,50 @@ const MusicPlayer = () => {
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const outsideFocusTaskRef = useRef<number | null>(null);
+  const outsideFocusTaskVersionRef = useRef(0);
+
+  const cancelOutsideFocusTask = useCallback(() => {
+    outsideFocusTaskVersionRef.current += 1;
+
+    if (outsideFocusTaskRef.current !== null) {
+      window.clearTimeout(outsideFocusTaskRef.current);
+      outsideFocusTaskRef.current = null;
+    }
+  }, []);
+
+  const scheduleOutsideFocusRecovery = useCallback(() => {
+    cancelOutsideFocusTask();
+    const taskVersion = outsideFocusTaskVersionRef.current;
+
+    outsideFocusTaskRef.current = window.setTimeout(() => {
+      if (taskVersion !== outsideFocusTaskVersionRef.current) return;
+
+      outsideFocusTaskRef.current = null;
+      const panel = panelRef.current;
+
+      if (
+        panel?.getAttribute('aria-hidden') === 'true' &&
+        panel.contains(document.activeElement)
+      ) {
+        toggleRef.current?.focus();
+      }
+    }, 0);
+  }, [cancelOutsideFocusTask]);
 
   const closeAndRestoreFocus = useCallback(() => {
+    cancelOutsideFocusTask();
     setIsOpen(false);
     toggleRef.current?.focus();
-  }, []);
+  }, [cancelOutsideFocusTask]);
+
+  const togglePlayer = useCallback(() => {
+    cancelOutsideFocusTask();
+    setIsOpen((open) => !open);
+  }, [cancelOutsideFocusTask]);
+
+  useEffect(() => cancelOutsideFocusTask, [cancelOutsideFocusTask]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -25,7 +64,10 @@ const MusicPlayer = () => {
     };
 
     const closeOnOutsidePress = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setIsOpen(false);
+      if (rootRef.current?.contains(event.target as Node)) return;
+
+      setIsOpen(false);
+      scheduleOutsideFocusRecovery();
     };
 
     document.addEventListener('keydown', closeOnEscape);
@@ -35,7 +77,7 @@ const MusicPlayer = () => {
       document.removeEventListener('keydown', closeOnEscape);
       document.removeEventListener('pointerdown', closeOnOutsidePress);
     };
-  }, [closeAndRestoreFocus, isOpen]);
+  }, [closeAndRestoreFocus, isOpen, scheduleOutsideFocusRecovery]);
 
   const toggleLabel = isOpen ? 'Close cycling music' : 'Open cycling music';
 
@@ -45,7 +87,7 @@ const MusicPlayer = () => {
         ref={toggleRef}
         type="button"
         className={`${styles.toggle} ${isOpen ? styles.toggleOpen : ''}`}
-        onClick={() => setIsOpen((open) => !open)}
+        onClick={togglePlayer}
         aria-label={toggleLabel}
         aria-expanded={isOpen}
         aria-controls={PANEL_ID}
@@ -84,6 +126,7 @@ const MusicPlayer = () => {
       </button>
 
       <section
+        ref={panelRef}
         id={PANEL_ID}
         className={`${styles.panel} ${isOpen ? styles.panelOpen : ''}`}
         aria-label="Ride Beats Spotify player"
