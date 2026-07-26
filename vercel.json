@@ -1,5 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "npx --yes pnpm@8.9.0 install --frozen-lockfile",
+  "buildCommand": "npx --yes pnpm@8.9.0 run build",
+  "outputDirectory": "dist",
   "git": {
     "deploymentEnabled": {
       "master": false,
@@ -10,14 +14,12 @@
     {
       "source": "/",
       "destination": "/running",
-      "permanent": false,
-      "preserveQueryParams": true
+      "permanent": false
     },
     {
       "source": "/summary",
       "destination": "/running/summary",
-      "permanent": false,
-      "preserveQueryParams": true
+      "permanent": false
     }
   ],
   "headers": [

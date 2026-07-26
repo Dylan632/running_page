@@ -31,6 +31,13 @@ const runNode = (args, options = {}) =>
 test('Vercel serves both SPA activity paths with freshness-aware data caching', async () => {
   const config = await readJson('vercel.json');
 
+  assert.equal(config.framework, 'vite');
+  assert.equal(
+    config.installCommand,
+    'npx --yes pnpm@8.9.0 install --frozen-lockfile'
+  );
+  assert.equal(config.buildCommand, 'npx --yes pnpm@8.9.0 run build');
+  assert.equal(config.outputDirectory, 'dist');
   assert.equal(config.git.deploymentEnabled.master, false);
   assert.equal(config.git.deploymentEnabled['gh-pages'], false);
   assert.deepEqual(config.redirects.slice(0, 2), [
@@ -38,13 +45,11 @@ test('Vercel serves both SPA activity paths with freshness-aware data caching', 
       source: '/',
       destination: '/running',
       permanent: false,
-      preserveQueryParams: true,
     },
     {
       source: '/summary',
       destination: '/running/summary',
       permanent: false,
-      preserveQueryParams: true,
     },
   ]);
   assert.deepEqual(config.rewrites.at(-1), {
