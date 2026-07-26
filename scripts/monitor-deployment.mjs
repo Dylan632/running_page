@@ -44,13 +44,45 @@ const normalizeOrigin = (value) => {
   return url.origin;
 };
 
-const fetchChecked = async (url, expectedContentType) => {
+const redactSecret = (value, secret) => {
+  const message = value instanceof Error ? value.message : String(value);
+  return secret ? message.split(secret).join('[redacted]') : message;
+};
+
+const fetchChecked = async (
+  url,
+  expectedContentType,
+  { protectionBypass } = {}
+) => {
   const expectedUrl = new URL(url);
   const response = await fetch(url, {
-    headers: { 'user-agent': 'cycling-page-deployment-monitor/1' },
-    redirect: 'follow',
+    headers: {
+      'user-agent': 'cycling-page-deployment-monitor/1',
+      ...(protectionBypass
+        ? { 'x-vercel-protection-bypass': protectionBypass }
+        : {}),
+    },
+    redirect: 'manual',
     signal: AbortSignal.timeout(20_000),
   });
+  if (response.status >= 300 && response.status < 400) {
+    const location = response.headers.get('location');
+    if (!location) {
+      throw new Error(
+        `${url} returned HTTP ${response.status} without Location`
+      );
+    }
+    const redirectUrl = new URL(location, expectedUrl);
+    if (redirectUrl.origin !== expectedUrl.origin) {
+      throw new Error(
+        `${url} redirected to a different origin: ${redirectUrl.href}`
+      );
+    }
+    if (redirectUrl.pathname !== expectedUrl.pathname) {
+      throw new Error(`${url} redirected to ${redirectUrl.pathname}`);
+    }
+    throw new Error(`${url} returned an unexpected redirect`);
+  }
   if (!response.ok) {
     throw new Error(`${url} returned HTTP ${response.status}`);
   }
@@ -106,10 +138,12 @@ const inspectActivityData = async ({
   mode,
   maxDataAgeHours,
   requireCache,
+  protectionBypass,
 }) => {
   const manifestResponse = await fetchChecked(
     `${origin}/data/${mode}/manifest.json`,
-    'application/json'
+    'application/json',
+    { protectionBypass }
   );
   if (requireCache) assertClientCachePolicy(manifestResponse);
   const manifest = await manifestResponse.json();
@@ -152,7 +186,8 @@ const inspectActivityData = async ({
 
   const routeResponse = await fetchChecked(
     `${origin}/data/${mode}/routes/${manifest.latestYear}.json`,
-    'application/json'
+    'application/json',
+    { protectionBypass }
   );
   if (requireCache) assertClientCachePolicy(routeResponse);
   const routes = await routeResponse.json();
@@ -331,13 +366,42 @@ const browserStateExpression = (mode) => `(() => {
   };
 })()`;
 
-const runBrowserProbe = async ({ browserBin, origin, mode }) => {
+export const buildSameOriginBypassHeaders = ({
+  requestUrl,
+  origin,
+  requestHeaders = {},
+  protectionBypass,
+}) => {
+  if (
+    !protectionBypass ||
+    new URL(requestUrl).origin !== new URL(origin).origin
+  ) {
+    return undefined;
+  }
+  return [
+    ...Object.entries(requestHeaders)
+      .filter(([name]) => name.toLowerCase() !== 'x-vercel-protection-bypass')
+      .map(([name, value]) => ({ name, value: String(value) })),
+    {
+      name: 'x-vercel-protection-bypass',
+      value: protectionBypass,
+    },
+  ];
+};
+
+const runBrowserProbe = async ({
+  browserBin,
+  origin,
+  mode,
+  protectionBypass,
+}) => {
   const profileDirectory = await mkdtemp(
     join(tmpdir(), 'cycling-page-chrome-')
   );
   const childEnvironment = { ...process.env };
   for (const secretName of [
     'VERCEL_TOKEN',
+    'VERCEL_AUTOMATION_BYPASS_SECRET',
     'GITHUB_TOKEN',
     'GH_TOKEN',
     'ACTIONS_ID_TOKEN_REQUEST_TOKEN',
@@ -406,6 +470,30 @@ const runBrowserProbe = async ({ browserBin, origin, mode }) => {
             errorText: event.params.errorText,
           });
         }
+      } else if (event.method === 'Fetch.requestPaused') {
+        const headers = buildSameOriginBypassHeaders({
+          requestUrl: event.params.request.url,
+          origin,
+          requestHeaders: event.params.request.headers,
+          protectionBypass,
+        });
+        void cdp
+          .send(
+            'Fetch.continueRequest',
+            {
+              requestId: event.params.requestId,
+              ...(headers ? { headers } : {}),
+            },
+            sessionId
+          )
+          .catch((error) => {
+            pageErrors.push(
+              `Protection bypass request interception failed: ${redactSecret(
+                error,
+                protectionBypass
+              )}`
+            );
+          });
       }
     });
 
@@ -414,6 +502,20 @@ const runBrowserProbe = async ({ browserBin, origin, mode }) => {
         (method) => cdp.send(method, {}, sessionId)
       )
     );
+    if (protectionBypass) {
+      await cdp.send(
+        'Fetch.enable',
+        {
+          patterns: [
+            {
+              urlPattern: `${origin}/*`,
+              requestStage: 'Request',
+            },
+          ],
+        },
+        sessionId
+      );
+    }
     await cdp.send('Page.navigate', { url: `${origin}/${mode}` }, sessionId);
 
     const deadline = Date.now() + 15_000;
@@ -473,6 +575,7 @@ export const monitorDeployment = async ({
   requireCache = false,
   requireBrowser = false,
   browserBin = process.env.BROWSER_BIN,
+  protectionBypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
 }) => {
   const normalizedOrigin = normalizeOrigin(origin);
   if (
@@ -486,7 +589,8 @@ export const monitorDeployment = async ({
   for (const mode of MODES) {
     const response = await fetchChecked(
       `${normalizedOrigin}/${mode}`,
-      'text/html'
+      'text/html',
+      { protectionBypass }
     );
     const html = await response.text();
     if (!html.includes('id="root"') && !html.includes("id='root'")) {
@@ -497,6 +601,7 @@ export const monitorDeployment = async ({
       mode,
       maxDataAgeHours,
       requireCache,
+      protectionBypass,
     });
     if (requireBrowser) {
       if (!browserBin) {
@@ -508,6 +613,7 @@ export const monitorDeployment = async ({
         browserBin,
         origin: normalizedOrigin,
         mode,
+        protectionBypass,
       });
     }
   }
@@ -526,6 +632,7 @@ const main = async () => {
     requireCache: Boolean(args['require-cache']),
     requireBrowser: Boolean(args['require-browser']),
     browserBin: args['browser-bin'] ?? process.env.BROWSER_BIN,
+    protectionBypass: process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
   };
 
   if (!Number.isInteger(attempts) || attempts < 1 || attempts > 12) {
@@ -548,9 +655,10 @@ const main = async () => {
     } catch (error) {
       lastError = error;
       process.stderr.write(
-        `deployment monitor attempt ${attempt}/${attempts} failed: ${
-          error instanceof Error ? error.message : String(error)
-        }\n`
+        `deployment monitor attempt ${attempt}/${attempts} failed: ${redactSecret(
+          error,
+          options.protectionBypass
+        )}\n`
       );
       if (attempt < attempts) await wait(retryDelayMs);
     }
@@ -564,9 +672,10 @@ if (
 ) {
   main().catch((error) => {
     process.stderr.write(
-      `deployment monitor failed: ${
-        error instanceof Error ? error.message : String(error)
-      }\n`
+      `deployment monitor failed: ${redactSecret(
+        error,
+        process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      )}\n`
     );
     process.exitCode = 1;
   });

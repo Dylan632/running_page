@@ -5,7 +5,10 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { validateBrowserProbe } from '../scripts/monitor-deployment.mjs';
+import {
+  buildSameOriginBypassHeaders,
+  validateBrowserProbe,
+} from '../scripts/monitor-deployment.mjs';
 
 const readJson = async (path) => JSON.parse(await readFile(path, 'utf8'));
 
@@ -167,7 +170,12 @@ test('production workflow deploys only the current exact SHA after successful CI
     /env -u VERCEL_TOKEN node scripts\/monitor-deployment/
   );
 
-  for (const secret of ['VERCEL_TOKEN', 'VERCEL_ORG_ID', 'VERCEL_PROJECT_ID']) {
+  for (const secret of [
+    'VERCEL_TOKEN',
+    'VERCEL_ORG_ID',
+    'VERCEL_PROJECT_ID',
+    'VERCEL_AUTOMATION_BYPASS_SECRET',
+  ]) {
     assert.match(workflow, new RegExp(`secrets\\.${secret}`));
   }
   const jobEnvironments = [
@@ -176,6 +184,7 @@ test('production workflow deploys only the current exact SHA after successful CI
   assert.equal(jobEnvironments.length, 2);
   for (const environment of jobEnvironments) {
     assert.doesNotMatch(environment[0], /VERCEL_TOKEN/);
+    assert.doesNotMatch(environment[0], /VERCEL_AUTOMATION_BYPASS_SECRET/);
   }
   for (const monitorStep of [
     'Monitor the staged production artifact',
@@ -187,6 +196,37 @@ test('production workflow deploys only the current exact SHA after successful CI
     const block = workflow.slice(start, end === -1 ? undefined : end);
     assert.doesNotMatch(block, /VERCEL_TOKEN:\s*\$\{\{/);
   }
+  const stagedMonitorStart = workflow.indexOf(
+    '- name: Monitor the staged production artifact'
+  );
+  const stagedMonitorEnd = workflow.indexOf(
+    '\n      - name:',
+    stagedMonitorStart + 1
+  );
+  const stagedMonitorBlock = workflow.slice(
+    stagedMonitorStart,
+    stagedMonitorEnd
+  );
+  assert.match(
+    stagedMonitorBlock,
+    /VERCEL_AUTOMATION_BYPASS_SECRET:\s*\$\{\{\s*secrets\.VERCEL_AUTOMATION_BYPASS_SECRET\s*\}\}/
+  );
+  const scheduledMonitorStart = workflow.indexOf(
+    '- name: Monitor routes, data freshness, cache, and frontend errors'
+  );
+  const scheduledMonitorEnd = workflow.indexOf(
+    '\n      - name:',
+    scheduledMonitorStart + 1
+  );
+  assert.doesNotMatch(
+    workflow.slice(scheduledMonitorStart, scheduledMonitorEnd),
+    /VERCEL_AUTOMATION_BYPASS_SECRET/
+  );
+  assert.equal(
+    (workflow.match(/secrets\.VERCEL_AUTOMATION_BYPASS_SECRET/g) ?? []).length,
+    2,
+    'the bypass secret must be scoped only to validation and the staged monitor'
+  );
   assert.doesNotMatch(
     await readFile('scripts/monitor-deployment.mjs', 'utf8'),
     /--no-sandbox/
@@ -296,6 +336,42 @@ test('browser diagnostics require the final mode marker and surface application 
   );
 });
 
+test('browser protection bypass headers are limited to the deployment origin', () => {
+  const protectionBypass = 'A'.repeat(32);
+  const headers = buildSameOriginBypassHeaders({
+    requestUrl: 'https://records.example/data/running/manifest.json',
+    origin: 'https://records.example',
+    requestHeaders: {
+      Accept: 'application/json',
+      'X-Vercel-Protection-Bypass': 'stale-value',
+    },
+    protectionBypass,
+  });
+
+  assert.deepEqual(headers, [
+    { name: 'Accept', value: 'application/json' },
+    {
+      name: 'x-vercel-protection-bypass',
+      value: protectionBypass,
+    },
+  ]);
+  assert.equal(
+    buildSameOriginBypassHeaders({
+      requestUrl: 'https://api.mapbox.com/styles/v1/example',
+      origin: 'https://records.example',
+      protectionBypass,
+    }),
+    undefined
+  );
+  assert.equal(
+    buildSameOriginBypassHeaders({
+      requestUrl: 'https://records.example/running',
+      origin: 'https://records.example',
+    }),
+    undefined
+  );
+});
+
 test('legacy Pages redirect artifact preserves query/hash and maps old paths', async () => {
   const output = await mkdtemp(join(tmpdir(), 'legacy-pages-'));
   try {
@@ -399,6 +475,139 @@ test('deployment monitor checks SPA routes, cache policy, and publication freshn
     assert.match(result.stdout, /running.*fresh/);
     assert.match(result.stdout, /cycling.*fresh/);
     assert.match(result.stdout, /deployment monitor passed/);
+  } finally {
+    await new Promise((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve()))
+    );
+  }
+});
+
+test('deployment monitor authenticates protected HTTP checks without leaking its bypass secret', async () => {
+  const workingSecret = 'B'.repeat(32);
+  const redactionSecret = 'C'.repeat(32);
+  const seenRequests = [];
+  const publishedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const server = createServer((request, response) => {
+    const path = new URL(request.url, 'http://localhost').pathname;
+    const suppliedSecret = request.headers['x-vercel-protection-bypass'];
+    seenRequests.push({ path, suppliedSecret });
+
+    if (path === '/running' && suppliedSecret === redactionSecret) {
+      response.statusCode = 302;
+      response.setHeader('location', `/leaked-${redactionSecret}`);
+      response.end();
+      return;
+    }
+    if (path === `/leaked-${redactionSecret}`) {
+      response.setHeader('content-type', 'text/html');
+      response.end('<div id="root">unexpected redirect</div>');
+      return;
+    }
+    if (suppliedSecret !== workingSecret) {
+      response.statusCode = 401;
+      response.end('protected');
+      return;
+    }
+    if (path === '/running' || path === '/cycling') {
+      response.setHeader('content-type', 'text/html; charset=utf-8');
+      response.end('<div id="root">activity</div>');
+      return;
+    }
+    const manifestMatch = path.match(
+      /^\/data\/(running|cycling)\/manifest\.json$/
+    );
+    if (manifestMatch) {
+      response.setHeader('content-type', 'application/json');
+      response.end(
+        JSON.stringify({
+          schemaVersion: 1,
+          mode: manifestMatch[1],
+          activityCount: 1,
+          publishedAt,
+          latestActivityDate: publishedAt,
+          latestYear: '2026',
+          years: ['2026'],
+          checksum: 'a'.repeat(64),
+        })
+      );
+      return;
+    }
+    const routeMatch = path.match(
+      /^\/data\/(running|cycling)\/routes\/2026\.json$/
+    );
+    if (routeMatch) {
+      response.setHeader('content-type', 'application/json');
+      response.end(
+        JSON.stringify([
+          {
+            run_id: routeMatch[1],
+            summary_polyline: 'encoded-polyline',
+          },
+        ])
+      );
+      return;
+    }
+    response.statusCode = 404;
+    response.end('not found');
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  const origin = `http://127.0.0.1:${address.port}`;
+
+  try {
+    const passed = await runNode(
+      [
+        'scripts/monitor-deployment.mjs',
+        '--origin',
+        origin,
+        '--max-data-age-hours',
+        '24',
+      ],
+      {
+        env: {
+          VERCEL_AUTOMATION_BYPASS_SECRET: workingSecret,
+        },
+      }
+    );
+    assert.equal(passed.code, 0, passed.stderr);
+    assert.deepEqual(
+      seenRequests.map(({ path }) => path),
+      [
+        '/running',
+        '/data/running/manifest.json',
+        '/data/running/routes/2026.json',
+        '/cycling',
+        '/data/cycling/manifest.json',
+        '/data/cycling/routes/2026.json',
+      ]
+    );
+    assert.ok(
+      seenRequests.every(
+        ({ suppliedSecret }) => suppliedSecret === workingSecret
+      )
+    );
+
+    seenRequests.length = 0;
+    const failed = await runNode(
+      [
+        'scripts/monitor-deployment.mjs',
+        '--origin',
+        origin,
+        '--max-data-age-hours',
+        '24',
+      ],
+      {
+        env: {
+          VERCEL_AUTOMATION_BYPASS_SECRET: redactionSecret,
+        },
+      }
+    );
+    assert.notEqual(failed.code, 0);
+    assert.doesNotMatch(
+      failed.stdout + failed.stderr,
+      new RegExp(redactionSecret)
+    );
+    assert.match(failed.stderr, /\[redacted\]/);
   } finally {
     await new Promise((resolve, reject) =>
       server.close((error) => (error ? reject(error) : resolve()))
