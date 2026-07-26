@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import MusicPlayer from '@/components/MusicPlayer';
 import useSiteMetadata from '@/hooks/useSiteMetadata';
 import { useTheme, Theme } from '@/hooks/useTheme';
@@ -73,19 +73,20 @@ const Header = () => {
           </a>
           <nav className={styles.activitySwitch} aria-label="运动类型">
             {activityLinks.map((activity) => {
-              const isActive = activity.mode === mode;
+              const destination = hrefForMode(activity.mode);
 
               return (
-                <Link
+                <NavLink
                   key={activity.mode}
-                  className={`${styles.activityLink} ${
-                    isActive ? styles.activityLinkActive : ''
-                  }`}
-                  to={hrefForMode(activity.mode)}
-                  aria-current={isActive ? 'page' : undefined}
+                  className={({ isActive, isPending }) =>
+                    `${styles.activityLink} ${
+                      isActive || isPending ? styles.activityLinkActive : ''
+                    }`
+                  }
+                  to={destination}
                 >
                   {activity.name}
-                </Link>
+                </NavLink>
               );
             })}
           </nav>

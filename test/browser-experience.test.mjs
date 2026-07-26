@@ -495,6 +495,45 @@ test(
         'Second browser back navigation replaced the current document'
       );
 
+      await session.page.evaluate(
+        () =>
+          new Promise((resolve) => {
+            const cycling = [...document.querySelectorAll('a')].find(
+              (link) =>
+                link.closest('nav[aria-label="运动类型"]') &&
+                link.textContent?.includes('骑行')
+            );
+            const summary = [...document.querySelectorAll('a')].find(
+              (link) => link.textContent?.trim() === '趋势'
+            );
+            if (!(cycling instanceof HTMLAnchorElement) || !summary) {
+              throw new Error('Mode switch or summary link is missing');
+            }
+
+            cycling.click();
+            window.setTimeout(() => {
+              summary.click();
+              resolve();
+            }, 0);
+          })
+      );
+      await session.page.waitForURL(
+        (url) => url.pathname === '/running/summary'
+      );
+      await session.page.waitForTimeout(100);
+      assert.equal(
+        new URL(session.page.url()).pathname,
+        '/running/summary',
+        'A stale mode-switch frame overwrote a newer navigation'
+      );
+      await session.page.goBack();
+      await assertRouteState('cycling');
+      await session.page.goBack();
+      await assertRouteState('running');
+      await assertSameDocument(
+        'Rapid native navigations replaced the current document'
+      );
+
       const sortButton = session.page
         .locator('thead button[aria-label^="按 "]')
         .first();
@@ -509,11 +548,13 @@ test(
       await cyclingLink.focus();
       await cyclingLink.evaluate((link) => {
         window.__cachedModeSwitchDuration = new Promise((resolve) => {
+          const initialClassName = link.className;
           let startedAt;
           const observer = new MutationObserver(() => {
             if (
               startedAt !== undefined &&
-              link.getAttribute('aria-current') === 'page'
+              (link.className !== initialClassName ||
+                link.getAttribute('aria-current') === 'page')
             ) {
               observer.disconnect();
               resolve(performance.now() - startedAt);
@@ -523,7 +564,7 @@ test(
             attributes: true,
             attributeFilter: ['aria-current', 'class'],
           });
-          // Measure browser event-to-paintable state, excluding automation
+          // Measure browser event-to-router feedback, excluding automation
           // scheduling before the key event reaches the document.
           link.addEventListener(
             'click',
