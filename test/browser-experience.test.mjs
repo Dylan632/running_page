@@ -507,19 +507,31 @@ test(
       });
 
       await cyclingLink.focus();
-      await session.page.evaluate(() => {
-        const startedAt = performance.now();
+      await cyclingLink.evaluate((link) => {
         window.__cachedModeSwitchDuration = new Promise((resolve) => {
+          let startedAt;
           const observer = new MutationObserver(() => {
-            if (document.documentElement.dataset.activityMode === 'cycling') {
+            if (
+              startedAt !== undefined &&
+              link.getAttribute('aria-current') === 'page'
+            ) {
               observer.disconnect();
               resolve(performance.now() - startedAt);
             }
           });
-          observer.observe(document.documentElement, {
+          observer.observe(link, {
             attributes: true,
-            attributeFilter: ['data-activity-mode'],
+            attributeFilter: ['aria-current', 'class'],
           });
+          // Measure browser event-to-paintable state, excluding automation
+          // scheduling before the key event reaches the document.
+          link.addEventListener(
+            'click',
+            () => {
+              startedAt = performance.now();
+            },
+            { capture: true, once: true }
+          );
         });
       });
       await session.page.keyboard.press('Enter');
