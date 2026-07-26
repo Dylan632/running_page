@@ -151,6 +151,11 @@ test('production workflow deploys only the current exact SHA after successful CI
   assert.match(workflow, /capture-vercel-production\.mjs/);
   assert.match(workflow, /monitor-deployment\.mjs/);
   assert.match(workflow, /vercel promote/);
+  assert.equal(
+    (workflow.match(/--scope="\$VERCEL_ORG_ID"/g) ?? []).length,
+    2,
+    'production promotion and rollback must use the deployment team scope'
+  );
   assert.match(workflow, /--expected-deployment-url/);
   assert.match(workflow, /--expected-source-sha/);
   assert.match(workflow, /actions\/upload-artifact@v4/);

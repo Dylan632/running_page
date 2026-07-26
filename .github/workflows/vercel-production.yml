@@ -235,7 +235,10 @@ jobs:
 
             echo "::error::Production cutover failed; restoring alias to $previous_url."
             set +e
-            vercel promote "$previous_url" --yes --token="$rollback_token"
+            vercel promote "$previous_url" \
+              --yes \
+              --scope="$VERCEL_ORG_ID" \
+              --token="$rollback_token"
             rollback_status=$?
             rollback_args=(
               --origin "$CANONICAL_ORIGIN"
@@ -268,6 +271,7 @@ jobs:
 
           vercel promote "$DEPLOYMENT_URL" \
             --yes \
+            --scope="$VERCEL_ORG_ID" \
             --token="$rollback_token"
           VERCEL_TOKEN="$rollback_token" \
             node scripts/capture-vercel-production.mjs \
