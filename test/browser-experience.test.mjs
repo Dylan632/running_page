@@ -470,6 +470,24 @@ test(
         .locator('nav[aria-label="运动类型"] a')
         .filter({ hasText: '骑行' });
 
+      const runningUrlBeforeModifiedClick = session.page.url();
+      const modifiedClickMarkedPending = await cyclingLink.evaluate((link) => {
+        window.addEventListener('click', (event) => event.preventDefault(), {
+          once: true,
+        });
+        link.dispatchEvent(
+          new MouseEvent('click', {
+            bubbles: true,
+            button: 0,
+            cancelable: true,
+            ctrlKey: true,
+          })
+        );
+        return link.hasAttribute('data-mode-pending');
+      });
+      assert.equal(modifiedClickMarkedPending, false);
+      assert.equal(session.page.url(), runningUrlBeforeModifiedClick);
+
       await cyclingLink.focus();
       await session.page.keyboard.press('Enter');
       await assertRouteState('cycling');
@@ -547,22 +565,40 @@ test(
 
       await cyclingLink.focus();
       await cyclingLink.evaluate((link) => {
-        window.__cachedModeSwitchDuration = new Promise((resolve) => {
+        window.__cachedModeSwitchFeedback = new Promise((resolve) => {
           const initialClassName = link.className;
+          const initialBackground = getComputedStyle(link).backgroundColor;
+          const styleProbe = document.createElement('span');
+          styleProbe.style.backgroundColor = 'var(--color-primary)';
+          styleProbe.style.color = 'var(--color-background)';
+          document.body.append(styleProbe);
+          const probeStyle = getComputedStyle(styleProbe);
+          const expectedBackground = probeStyle.backgroundColor;
+          const expectedColor = probeStyle.color;
+          styleProbe.remove();
           let startedAt;
           const observer = new MutationObserver(() => {
             if (
               startedAt !== undefined &&
               (link.className !== initialClassName ||
-                link.getAttribute('aria-current') === 'page')
+                link.getAttribute('aria-current') === 'page' ||
+                link.getAttribute('data-mode-pending') === 'true')
             ) {
               observer.disconnect();
-              resolve(performance.now() - startedAt);
+              const pendingStyle = getComputedStyle(link);
+              resolve({
+                duration: performance.now() - startedAt,
+                background: pendingStyle.backgroundColor,
+                color: pendingStyle.color,
+                initialBackground,
+                expectedBackground,
+                expectedColor,
+              });
             }
           });
           observer.observe(link, {
             attributes: true,
-            attributeFilter: ['aria-current', 'class'],
+            attributeFilter: ['aria-current', 'class', 'data-mode-pending'],
           });
           // Measure browser event-to-router feedback, excluding automation
           // scheduling before the key event reaches the document.
@@ -576,16 +612,36 @@ test(
         });
       });
       await session.page.keyboard.press('Enter');
-      const cachedSwitchDuration = await session.page.evaluate(
-        () => window.__cachedModeSwitchDuration
+      const cachedSwitchFeedback = await session.page.evaluate(
+        () => window.__cachedModeSwitchFeedback
       );
       assert.ok(
-        cachedSwitchDuration < 200,
-        `Cached mode feedback took ${cachedSwitchDuration.toFixed(1)}ms`
+        cachedSwitchFeedback.duration < 200,
+        `Cached mode feedback took ${cachedSwitchFeedback.duration.toFixed(1)}ms`
+      );
+      assert.equal(
+        cachedSwitchFeedback.background,
+        cachedSwitchFeedback.expectedBackground,
+        'Pending mode feedback did not paint the active background'
+      );
+      assert.notEqual(
+        cachedSwitchFeedback.background,
+        cachedSwitchFeedback.initialBackground,
+        'Pending mode feedback remained visually unchanged'
+      );
+      assert.equal(
+        cachedSwitchFeedback.color,
+        cachedSwitchFeedback.expectedColor,
+        'Pending mode feedback did not paint the active text color'
       );
       await session.page
         .locator('[data-app-ready="cycling"]')
         .waitFor({ state: 'visible' });
+      assert.equal(
+        await cyclingLink.getAttribute('data-mode-pending'),
+        null,
+        'Mode feedback remained pending after the route committed'
+      );
 
       await session.page.reload({ waitUntil: 'domcontentloaded' });
       await assertRouteState('cycling');

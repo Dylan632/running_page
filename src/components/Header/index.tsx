@@ -1,15 +1,60 @@
-import type { ReactElement } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import {
+  useLayoutEffect,
+  useRef,
+  type MouseEvent,
+  type ReactElement,
+} from 'react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import MusicPlayer from '@/components/MusicPlayer';
 import useSiteMetadata from '@/hooks/useSiteMetadata';
 import { useTheme, Theme } from '@/hooks/useTheme';
 import { useActivityMode } from '@/modules/activity/ActivityModeProvider';
+import type { ActivityMode } from '@/modules/activity/profiles';
 import styles from './style.module.css';
+
+const MODE_PENDING_ATTRIBUTE = 'data-mode-pending';
+
+const clearModeFeedback = (container: HTMLElement | null) => {
+  container
+    ?.querySelectorAll<HTMLElement>(`[${MODE_PENDING_ATTRIBUTE}]`)
+    .forEach((link) => link.removeAttribute(MODE_PENDING_ATTRIBUTE));
+};
 
 const Header = () => {
   const { logo, activityLinks, profileUrl, navLinks } = useSiteMetadata();
   const { hrefForMode, mode } = useActivityMode();
   const { theme, setTheme } = useTheme();
+  const location = useLocation();
+  const activitySwitchRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    clearModeFeedback(activitySwitchRef.current);
+  }, [location.key]);
+
+  const handleActivityClick = (
+    event: MouseEvent<HTMLAnchorElement>,
+    targetMode: ActivityMode
+  ) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey ||
+      (event.currentTarget.target !== '' &&
+        event.currentTarget.target !== '_self')
+    ) {
+      return;
+    }
+
+    clearModeFeedback(activitySwitchRef.current);
+    if (targetMode !== mode) {
+      // React Router deliberately schedules route work as a transition. Mark
+      // the target synchronously so a busy render cannot delay user feedback.
+      event.currentTarget.setAttribute(MODE_PENDING_ATTRIBUTE, 'true');
+    }
+  };
 
   const icons: Record<Theme, ReactElement> = {
     dark: (
@@ -71,7 +116,11 @@ const Header = () => {
             </picture>
             <span className="running-brand-name">Dylan</span>
           </a>
-          <nav className={styles.activitySwitch} aria-label="运动类型">
+          <nav
+            ref={activitySwitchRef}
+            className={styles.activitySwitch}
+            aria-label="运动类型"
+          >
             {activityLinks.map((activity) => {
               const destination = hrefForMode(activity.mode);
 
@@ -83,6 +132,7 @@ const Header = () => {
                       isActive || isPending ? styles.activityLinkActive : ''
                     }`
                   }
+                  onClick={(event) => handleActivityClick(event, activity.mode)}
                   to={destination}
                 >
                   {activity.name}

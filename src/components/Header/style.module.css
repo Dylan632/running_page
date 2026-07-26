@@ -72,7 +72,14 @@
 }
 
 .activityLinkActive,
-.activityLinkActive:hover {
+.activityLinkActive:hover,
+.activityLink[data-mode-pending='true'],
+.activityLink[data-mode-pending='true']:hover {
   background: var(--color-primary);
   color: var(--color-background);
+}
+
+.activityLink[data-mode-pending='true'],
+.activityLink[data-mode-pending='true']:hover {
+  transition: none;
 }
