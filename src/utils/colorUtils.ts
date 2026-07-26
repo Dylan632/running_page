@@ -126,6 +126,35 @@ export const getCurrentTheme = (): 'light' | 'dark' => {
   return getEffectiveTheme();
 };
 
+const PRIMARY_SPECIAL_COLORS = new Set(['#ffff00', '#ffa400', 'yellow']);
+const SECONDARY_SPECIAL_COLORS = new Set(['#ff0000', 'red']);
+
+const addSpecialColorClasses = (
+  elements: Element[],
+  colorClass: 'svg-special-color' | 'svg-special-color2',
+  colorValues: ReadonlySet<string>
+): void => {
+  elements.forEach((element) => {
+    const fill = element.getAttribute('fill')?.toLowerCase();
+    const stroke = element.getAttribute('stroke')?.toLowerCase();
+    let matchesSpecialColor = false;
+
+    if (fill && colorValues.has(fill)) {
+      element.removeAttribute('fill');
+      element.classList.add('svg-special-fill');
+      matchesSpecialColor = true;
+    }
+    if (stroke && colorValues.has(stroke)) {
+      element.removeAttribute('stroke');
+      element.classList.add('svg-special-stroke');
+      matchesSpecialColor = true;
+    }
+    if (matchesSpecialColor) {
+      element.classList.add(colorClass);
+    }
+  });
+};
+
 /**
  * Updates SVG special colors dynamically based on current theme
  * This function modifies the SVG elements directly to use theme-appropriate colors
@@ -145,38 +174,19 @@ export const updateSvgSpecialColors = (): void => {
   ];
 
   allSvgs.forEach((svg) => {
-    // Find elements with special colors (typically fill="#FFFF00" or fill="#FF0000")
-    // Also check for stroke attributes in case of grid SVG
-    const yellowElements = svg.querySelectorAll(
-      [
-        '[fill="#FFFF00"]',
-        '[fill="#ffff00"]',
-        '[fill="#ffa400"]',
-        '[fill="#FFA400"]',
-        '[fill="yellow"]',
-        '[stroke="#FFFF00"]',
-        '[stroke="#ffff00"]',
-        '[stroke="#ffa400"]',
-        '[stroke="#FFA400"]',
-        '[stroke="yellow"]',
-      ].join(', ')
-    );
-    const redElements = svg.querySelectorAll(
-      '[fill="#FF0000"], [fill="#ff0000"], [fill="red"], [stroke="#FF0000"], [stroke="#ff0000"], [stroke="red"]'
-    );
+    const colorElements = Array.from(svg.querySelectorAll('[fill], [stroke]'));
 
     // Apply CSS classes for theme-aware coloring
-    yellowElements.forEach((element) => {
-      element.removeAttribute('fill');
-      element.removeAttribute('stroke');
-      element.classList.add('svg-special-color');
-    });
-
-    redElements.forEach((element) => {
-      element.removeAttribute('fill');
-      element.removeAttribute('stroke');
-      element.classList.add('svg-special-color2');
-    });
+    addSpecialColorClasses(
+      colorElements,
+      'svg-special-color',
+      PRIMARY_SPECIAL_COLORS
+    );
+    addSpecialColorClasses(
+      colorElements,
+      'svg-special-color2',
+      SECONDARY_SPECIAL_COLORS
+    );
   });
 };
 

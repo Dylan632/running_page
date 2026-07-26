@@ -293,27 +293,29 @@ hr {
   fill: var(--svg-color-active-cell);
 }
 
-.svg-special-color {
+.svg-special-color.svg-special-fill {
   fill: var(--svg-special-color);
+  stroke: none;
 }
 
-.svg-special-color2 {
+.svg-special-color2.svg-special-fill {
   fill: var(--svg-special-color2);
+  stroke: none;
+}
+
+.svg-special-color.svg-special-stroke {
+  fill: none;
+  stroke: var(--svg-special-color);
+}
+
+.svg-special-color2.svg-special-stroke {
+  fill: none;
+  stroke: var(--svg-special-color2);
 }
 
 .grid-svg .svg-color-active-cell {
   fill: none;
   stroke: var(--svg-color-active-cell);
-}
-
-.grid-svg .svg-special-color {
-  fill: none;
-  stroke: var(--svg-special-color);
-}
-
-.grid-svg .svg-special-color2 {
-  fill: none;
-  stroke: var(--svg-special-color2);
 }
 
 .grid-svg path {
