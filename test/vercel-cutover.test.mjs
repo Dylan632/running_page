@@ -544,7 +544,20 @@ test('CI verification and rollback capture resolve the canonical alias exactly',
         JSON.stringify({
           alias: 'records.example',
           projectId: 'prj_test',
-          target: 'production',
+          deployment: {
+            id: 'dpl_previous',
+            url: 'previous.example.vercel.app',
+          },
+        })
+      );
+      return;
+    }
+    if (url.pathname === '/v4/aliases/preview.records.example') {
+      response.end(
+        JSON.stringify({
+          alias: 'preview.records.example',
+          projectId: 'prj_test',
+          target: 'preview',
           deployment: {
             id: 'dpl_previous',
             url: 'previous.example.vercel.app',
@@ -640,6 +653,26 @@ test('CI verification and rollback capture resolve the canonical alias exactly',
     assert.equal(snapshot.sourceSha, 'b'.repeat(40));
     assert.equal(snapshot.canonicalOrigin, 'https://records.example');
     assert.equal(snapshot.alias, 'records.example');
+
+    const wrongAliasTarget = await runNode(
+      [
+        'scripts/capture-vercel-production.mjs',
+        '--origin',
+        'https://preview.records.example',
+        '--output',
+        join(output, 'preview-target.json'),
+      ],
+      {
+        env: {
+          VERCEL_TOKEN: 'test-token',
+          VERCEL_PROJECT_ID: 'prj_test',
+          VERCEL_ORG_ID: 'team_test',
+          VERCEL_API_URL: apiOrigin,
+        },
+      }
+    );
+    assert.notEqual(wrongAliasTarget.code, 0);
+    assert.match(wrongAliasTarget.stderr, /target is preview/);
   } finally {
     await new Promise((resolve, reject) =>
       server.close((error) => (error ? reject(error) : resolve()))

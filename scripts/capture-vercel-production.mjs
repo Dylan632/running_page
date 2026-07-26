@@ -96,7 +96,10 @@ export const captureVercelProduction = async ({
       `Canonical alias belongs to project ${alias.projectId ?? 'unknown'}, expected ${projectId}`
     );
   }
-  if (alias.target !== 'production') {
+  // Vercel's v4 alias response omits `target` for some managed aliases.
+  // When present it must agree; the bound deployment target is verified below
+  // and remains the authoritative production invariant.
+  if (alias.target != null && alias.target !== 'production') {
     throw new Error(
       `Canonical alias target is ${alias.target ?? 'unknown'}, expected production`
     );
