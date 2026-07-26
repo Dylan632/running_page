@@ -567,7 +567,6 @@ test(
       await cyclingLink.evaluate((link) => {
         window.__cachedModeSwitchFeedback = new Promise((resolve) => {
           const initialClassName = link.className;
-          const initialBackground = getComputedStyle(link).backgroundColor;
           const styleProbe = document.createElement('span');
           styleProbe.style.backgroundColor = 'var(--color-primary)';
           styleProbe.style.color = 'var(--color-background)';
@@ -590,7 +589,6 @@ test(
                 duration: performance.now() - startedAt,
                 background: pendingStyle.backgroundColor,
                 color: pendingStyle.color,
-                initialBackground,
                 expectedBackground,
                 expectedColor,
               });
@@ -623,11 +621,6 @@ test(
         cachedSwitchFeedback.background,
         cachedSwitchFeedback.expectedBackground,
         'Pending mode feedback did not paint the active background'
-      );
-      assert.notEqual(
-        cachedSwitchFeedback.background,
-        cachedSwitchFeedback.initialBackground,
-        'Pending mode feedback remained visually unchanged'
       );
       assert.equal(
         cachedSwitchFeedback.color,

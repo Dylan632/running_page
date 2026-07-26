@@ -52,10 +52,7 @@
   text-align: center;
   text-decoration: none;
   white-space: nowrap;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease;
+  transition: transform 0.2s ease;
 }
 
 .activityLink:hover {
