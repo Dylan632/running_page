@@ -1,6 +1,9 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   python_lint_and_test:
@@ -32,6 +35,9 @@ jobs:
           # make sure the gpx_sync.py script is executable
           python run_page/gpx_sync.py
 
+      - name: Run Python unit tests
+        run: python -m unittest discover -s . -p 'test_*.py'
+
       - name: Check formatting (black)
         run: black . --diff --color && black . --check
 
@@ -42,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [20, 22, 24]
+        node: [22, 24, 26]
     steps:
       - uses: actions/checkout@v4
         with:

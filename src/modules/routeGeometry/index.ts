@@ -2,13 +2,13 @@ import mapboxPolyline from '@mapbox/polyline';
 import { WebMercatorViewport } from '@math.gl/web-mercator';
 import gcoord from 'gcoord';
 import { NEED_FIX_MAP } from '@/utils/const';
-import type { Activity } from '@/utils/utils';
+import type { Activity, ActivityId } from '@/utils/utils';
 import { locationForRun } from '@/utils/utils';
 
 export type Coordinate = [number, number];
 
 export interface NormalizedRouteGeometry {
-  runId: number;
+  runId: ActivityId;
   coordinates: Coordinate[];
 }
 

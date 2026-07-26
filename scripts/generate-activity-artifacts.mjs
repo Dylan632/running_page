@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
   access,
   appendFile,
@@ -10,6 +11,7 @@ import {
   rm,
 } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
+import { readActivityJson } from './lib/activity-json.mjs';
 
 const DEFAULT_PROFILE_PATH = 'src/modules/activity/activity-profiles.json';
 const KNOWN_COMMANDS = new Set([
@@ -123,7 +125,7 @@ const requireProfile = (profiles, mode) => {
 };
 
 const getYears = async (inputPath, profile) => {
-  const activities = JSON.parse(await readFile(inputPath, 'utf8'));
+  const activities = await readActivityJson(inputPath);
   if (!Array.isArray(activities)) {
     throw new Error('Activity input must be a JSON array');
   }
@@ -325,6 +327,9 @@ const pathExists = async (path) => {
   }
 };
 
+const checksum = (content) =>
+  createHash('sha256').update(content).digest('hex');
+
 const verifyMode = async (profile, dataOutput, assetsOutput) => {
   const namespace = profile.poster.outputNamespace;
   const modeData = join(dataOutput, profile.mode);
@@ -345,9 +350,60 @@ const verifyMode = async (profile, dataOutput, assetsOutput) => {
     throw new Error(`Invalid ${profile.mode} publication manifest`);
   }
 
-  await access(join(modeData, 'metadata.json'));
+  const metadataText = await readFile(join(modeData, 'metadata.json'), 'utf8');
+  const metadata = JSON.parse(metadataText);
+  if (
+    metadata.length !== manifest.activityCount ||
+    checksum(metadataText) !== manifest.metadataChecksum ||
+    metadata.some(
+      ({ run_id: runId }) => typeof runId !== 'string' || runId.length === 0
+    )
+  ) {
+    throw new Error(`Invalid ${profile.mode} publication metadata`);
+  }
+
+  const metadataIds = new Set(metadata.map(({ run_id: runId }) => runId));
+  const routeIds = new Set();
+  let routeCount = 0;
   for (const year of manifest.years) {
-    await access(join(modeData, 'routes', `${year}.json`));
+    const routeText = await readFile(
+      join(modeData, 'routes', `${year}.json`),
+      'utf8'
+    );
+    if (checksum(routeText) !== manifest.routeChecksums?.[year]) {
+      throw new Error(`Invalid ${profile.mode} ${year} route checksum`);
+    }
+    for (const route of JSON.parse(routeText)) {
+      const runId = route.run_id;
+      if (
+        typeof runId !== 'string' ||
+        runId.length === 0 ||
+        routeIds.has(runId) ||
+        !metadataIds.has(runId)
+      ) {
+        throw new Error(`Invalid ${profile.mode} ${year} route activity ID`);
+      }
+      routeIds.add(runId);
+      if (route.summary_polyline) routeCount += 1;
+    }
+  }
+  if (
+    metadataIds.size !== metadata.length ||
+    routeIds.size !== metadata.length ||
+    routeCount !== manifest.routeCount ||
+    routeCount / metadata.length !== manifest.routeRatio
+  ) {
+    throw new Error(`Invalid ${profile.mode} publication route coverage`);
+  }
+
+  const artifactChecksum = checksum(
+    `${JSON.stringify({
+      metadataChecksum: manifest.metadataChecksum,
+      routeChecksums: manifest.routeChecksums,
+    })}\n`
+  );
+  if (artifactChecksum !== manifest.artifactChecksum) {
+    throw new Error(`Invalid ${profile.mode} artifact checksum`);
   }
 
   const assetNames = await readdir(modeAssets);

@@ -91,6 +91,14 @@ def validate_no_regression(candidate: Snapshot, previous: Snapshot) -> None:
         raise SnapshotValidationError(
             f"activity count regressed from {previous.count} to {candidate.count}"
         )
+    missing_run_ids = sorted(previous.run_ids - candidate.run_ids)
+    if missing_run_ids:
+        preview = ", ".join(missing_run_ids[:20])
+        remainder = len(missing_run_ids) - 20
+        suffix = f" (and {remainder} more)" if remainder > 0 else ""
+        raise SnapshotValidationError(
+            f"candidate dropped previous run_ids: {preview}{suffix}"
+        )
     if candidate.latest_date < previous.latest_date:
         raise SnapshotValidationError(
             "latest activity date regressed from "

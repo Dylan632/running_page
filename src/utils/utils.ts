@@ -9,7 +9,8 @@ import { isCyclingActivity, type ActivityMode } from './activityMode';
 
 export type Coordinate = [number, number];
 
-export type RunIds = Array<number> | [];
+export type ActivityId = string;
+export type RunIds = ActivityId[];
 
 // Check for units environment variable
 const IS_IMPERIAL = import.meta.env.VITE_USE_IMPERIAL === 'true';
@@ -19,7 +20,7 @@ export const DIST_UNIT = IS_IMPERIAL ? 'mi' : 'km'; // Label
 export const ELEV_UNIT = IS_IMPERIAL ? 'ft' : 'm'; // Label
 
 export interface Activity {
-  run_id: number;
+  run_id: ActivityId;
   name: string;
   distance: number;
   moving_time: string;
@@ -131,7 +132,7 @@ const extractCoordinate = (str: string): [number, number] | null => {
 };
 
 const cities = chinaCities.map((c) => c.name);
-const locationCache = new Map<number, ReturnType<typeof locationForRun>>();
+const locationCache = new Map<ActivityId, ReturnType<typeof locationForRun>>();
 // what about oversea?
 const locationForRun = (
   run: Activity

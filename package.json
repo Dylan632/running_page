@@ -43,15 +43,15 @@
     "lint:check": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "check": "pnpm format:check",
-    "format:check": "prettier --check \"src/main.tsx\" \"src/**/*.{css,module.css,json,ts,tsx}\" \"*.{yaml,json,ts}\" \".github/workflows/*.{yml,yaml}\" \"assets/index.tsx\" \"scripts/generate-activity-artifacts.mjs\" \"eslint.config.mjs\"",
-    "format": "prettier --write \"src/main.tsx\" \"src/**/*.{css,module.css,json,ts,tsx}\" \"*.{yaml,json,ts}\" \".github/workflows/*.{yml,yaml}\" \"assets/index.tsx\" \"scripts/generate-activity-artifacts.mjs\" \"eslint.config.mjs\"",
+    "format:check": "prettier --check \"src/main.tsx\" \"src/**/*.{css,module.css,json,ts,tsx}\" \"*.{yaml,json,ts}\" \".github/workflows/*.{yml,yaml}\" \"assets/index.tsx\" \"scripts/**/*.mjs\" \"test/**/*.mjs\" \"eslint.config.mjs\"",
+    "format": "prettier --write \"src/main.tsx\" \"src/**/*.{css,module.css,json,ts,tsx}\" \"*.{yaml,json,ts}\" \".github/workflows/*.{yml,yaml}\" \"assets/index.tsx\" \"scripts/**/*.mjs\" \"test/**/*.mjs\" \"eslint.config.mjs\"",
     "resource:check": "node scripts/check-resource-budgets.mjs",
     "ci": "pnpm test && pnpm typecheck && pnpm lint:check && pnpm format:check && pnpm build && pnpm resource:check"
   },
   "engineStrict": true,
   "browserslist": "defaults, not ie 11",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.12.0"
   },
   "repository": {
     "type": "git",
@@ -68,10 +68,12 @@
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.59.1",
     "@typescript-eslint/parser": "^8.59.1",
+    "axe-core": "^4.10.3",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.6.0",
     "jsdom": "^29.1.1",
+    "playwright-core": "^1.55.0",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "tailwindcss": "^4.2.4",

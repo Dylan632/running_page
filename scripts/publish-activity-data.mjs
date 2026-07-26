@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
+import { normalizeActivityId, readActivityJson } from './lib/activity-json.mjs';
 
 const DEFAULT_PROFILE_PATH = new URL(
   '../src/modules/activity/activity-profiles.json',
@@ -175,20 +176,14 @@ const validateAndNormalize = (raw, args, profile) => {
     if (!activity || typeof activity !== 'object') {
       throw new Error('Every activity must be an object');
     }
-    const runId = activity.run_id;
-    if (
-      (typeof runId !== 'number' && typeof runId !== 'string') ||
-      String(runId).length === 0
-    ) {
-      throw new Error('Every activity must have a run_id');
-    }
-    if (seenIds.has(String(runId))) {
+    const runId = normalizeActivityId(activity.run_id);
+    if (seenIds.has(runId)) {
       throw new Error(`Duplicate run_id: ${runId}`);
     }
-    seenIds.add(String(runId));
+    seenIds.add(runId);
 
     if (!profile.activityTypes.has(activity.type)) continue;
-    if (profile.excludeRunIds.has(String(runId))) continue;
+    if (profile.excludeRunIds.has(runId)) continue;
 
     const distance = Number(activity.distance ?? 0);
     if (!Number.isFinite(distance) || distance <= profile.minDistance) continue;
@@ -198,7 +193,7 @@ const validateAndNormalize = (raw, args, profile) => {
       throw new Error(`Activity ${runId} has an invalid start_date_local`);
     }
 
-    filtered.push({ ...activity, distance });
+    filtered.push({ ...activity, run_id: runId, distance });
   }
 
   if (filtered.length === 0) {
@@ -209,9 +204,7 @@ const validateAndNormalize = (raw, args, profile) => {
     const dateCompare = String(left.start_date_local).localeCompare(
       String(right.start_date_local)
     );
-    return (
-      dateCompare || String(left.run_id).localeCompare(String(right.run_id))
-    );
+    return dateCompare || left.run_id.localeCompare(right.run_id);
   });
 };
 
@@ -320,9 +313,14 @@ const validateCandidate = async (directory, artifact, profile) => {
   );
   const metadataText = await readFile(join(directory, 'metadata.json'), 'utf8');
   const metadata = JSON.parse(metadataText);
-  const metadataIds = new Set(
-    metadata.map(({ run_id: runId }) => String(runId))
-  );
+  if (
+    metadata.some(
+      ({ run_id: runId }) => typeof runId !== 'string' || runId.length === 0
+    )
+  ) {
+    throw new Error('Candidate metadata IDs must be lossless strings');
+  }
+  const metadataIds = new Set(metadata.map(({ run_id: runId }) => runId));
   if (
     metadata.length !== artifact.metadata.length ||
     metadataIds.size !== metadata.length
@@ -344,7 +342,10 @@ const validateCandidate = async (directory, artifact, profile) => {
       throw new Error(`Candidate ${year} route checksum validation failed`);
     }
     for (const route of JSON.parse(routeText)) {
-      const runId = String(route.run_id);
+      const runId = route.run_id;
+      if (typeof runId !== 'string' || runId.length === 0) {
+        throw new Error('Candidate route IDs must be lossless strings');
+      }
       if (routeIds.has(runId) || !metadataIds.has(runId)) {
         throw new Error('Candidate route ID validation failed');
       }
@@ -400,7 +401,7 @@ const replaceDirectory = async (candidateDirectory, modeDirectory) => {
 
 const publish = async (args) => {
   const profile = await loadProfile(args);
-  const raw = JSON.parse(await readFile(args.input, 'utf8'));
+  const raw = await readActivityJson(args.input);
   const activities = validateAndNormalize(raw, args, profile);
   const artifact = createArtifact(activities, args, profile);
   const suffix = `${process.pid}-${randomBytes(4).toString('hex')}`;

@@ -2,6 +2,8 @@
 
 import process from 'node:process';
 
+const ALLOWED_CI_EVENTS = new Set(['push', 'workflow_dispatch']);
+
 const parseArgs = (argv) => {
   const args = {};
   for (let index = 0; index < argv.length; index += 1) {
@@ -39,7 +41,9 @@ const validateRun = ({ run, repository, sha, branch }) => {
   if (run?.head_sha !== sha) errors.push('workflow SHA does not match');
   if (run?.head_branch !== branch)
     errors.push('workflow branch does not match');
-  if (run?.event !== 'push') errors.push('workflow was not triggered by push');
+  if (!ALLOWED_CI_EVENTS.has(run?.event)) {
+    errors.push('workflow event is not an approved source trigger');
+  }
   if (run?.status !== 'completed') errors.push('workflow is not completed');
   if (run?.conclusion !== 'success') errors.push('workflow did not succeed');
   if (run?.repository?.full_name !== repository) {
@@ -89,12 +93,14 @@ export const verifyGithubCi = async ({
       apiBase
     );
     url.searchParams.set('branch', branch);
-    url.searchParams.set('event', 'push');
     url.searchParams.set('status', 'success');
     url.searchParams.set('head_sha', sha);
     url.searchParams.set('per_page', '20');
     const result = await fetchJson(url, token);
-    run = result.workflow_runs?.find((candidate) => candidate.head_sha === sha);
+    run = result.workflow_runs?.find(
+      (candidate) =>
+        candidate.head_sha === sha && ALLOWED_CI_EVENTS.has(candidate.event)
+    );
     if (!run) {
       throw new Error(
         `No successful CI workflow was found for exact SHA ${sha}`

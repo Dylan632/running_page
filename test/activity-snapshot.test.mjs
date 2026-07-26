@@ -100,6 +100,50 @@ test('an incomplete candidate cannot replace the last-known-good snapshot', () =
   assert.deepEqual(JSON.parse(readFileSync(liveJson, 'utf8')), knownGood);
 });
 
+test('an equal-sized candidate cannot replace existing activity ids', () => {
+  const directory = createTemporaryDirectory();
+  const liveJson = join(directory, 'activities.json');
+  const candidateJson = join(directory, 'candidate.json');
+  const metadata = join(directory, 'metadata.json');
+  const knownGood = [
+    {
+      run_id: 101,
+      type: 'Ride',
+      distance: 21000,
+      start_date: '2026-07-20 08:00:00',
+    },
+    {
+      run_id: 102,
+      type: 'Ride',
+      distance: 25000,
+      start_date: '2026-07-21 08:00:00',
+    },
+  ];
+  writeActivities(liveJson, knownGood);
+  writeActivities(candidateJson, [
+    { ...knownGood[0], run_id: 201 },
+    {
+      ...knownGood[1],
+      run_id: 202,
+      start_date: '2026-07-22 08:00:00',
+    },
+  ]);
+
+  const result = runSnapshot(
+    'publish',
+    '--candidate-json',
+    candidateJson,
+    '--target-json',
+    liveJson,
+    '--metadata',
+    metadata
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /dropped previous run_ids.*101.*102/i);
+  assert.deepEqual(JSON.parse(readFileSync(liveJson, 'utf8')), knownGood);
+});
+
 test('a candidate whose latest activity moved backwards is rejected', () => {
   const directory = createTemporaryDirectory();
   const liveJson = join(directory, 'activities.json');

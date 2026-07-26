@@ -48,6 +48,7 @@ jobs:
     if: inputs.deployment_mode == 'redirect'
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
     steps:
       - name: Check out the exact source
@@ -68,7 +69,17 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '24'
+
+      - name: Verify successful CI belongs to the exact SHA
+        env:
+          EXPECTED_SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/verify-github-ci.mjs \
+            --repository "$GITHUB_REPOSITORY" \
+            --sha "$EXPECTED_SOURCE_SHA" \
+            --branch master
 
       - name: Build the canonical redirect
         run: |
@@ -87,6 +98,7 @@ jobs:
     if: inputs.deployment_mode == 'full'
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
     steps:
       - name: Check out the exact source
@@ -110,12 +122,22 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '24'
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Verify successful CI belongs to the exact SHA
+        env:
+          EXPECTED_SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/verify-github-ci.mjs \
+            --repository "$GITHUB_REPOSITORY" \
+            --sha "$EXPECTED_SOURCE_SHA" \
+            --branch master
 
       - name: Verify committed dual-mode artifacts
         run: |

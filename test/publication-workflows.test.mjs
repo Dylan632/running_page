@@ -212,7 +212,7 @@ await writeFile(target, '<svg data-poster-role="poster"></svg>\\n');
     const manifest = JSON.parse(
       await readFile(join(dataOutput, 'cycling', 'manifest.json'), 'utf8')
     );
-    assert.equal(JSON.parse(beforeMetadata)[0].run_id, 11);
+    assert.equal(JSON.parse(beforeMetadata)[0].run_id, '11');
     assert.equal(manifest.publishedAt, '2026-07-26T10:30:00.000Z');
     assert.match(beforePoster, /data-poster-role="poster"/);
 
@@ -270,14 +270,14 @@ test('Pages is manual and defaults to a canonical redirect while full publicatio
   }
 });
 
-test('running sync keeps ingestion useful without automatically overwriting the Pages redirect', async () => {
+test('running sync dispatches exact-SHA CI without owning Pages publication', async () => {
   const [workflow, config] = await Promise.all([
     readFile('.github/workflows/run_data_sync.yml', 'utf8'),
     readFile('run_page/config.py', 'utf8'),
   ]);
 
-  assert.match(workflow, /pages_mode:/);
-  assert.match(workflow, /default: none/);
+  assert.doesNotMatch(workflow, /pages_mode:/);
+  assert.doesNotMatch(workflow, /^\s{2}publish_pages:\s*$/m);
   assert.match(workflow, /KEEP_MOBILE/);
   assert.match(workflow, /KEEP_PASSWORD/);
   assert.match(workflow, /activity_snapshot\.py validate/);
@@ -299,10 +299,8 @@ test('running sync keeps ingestion useful without automatically overwriting the 
   assert.match(workflow, /\.activity-last-known-good\/running/);
   assert.match(workflow, /\.activity-last-known-good\/cycling/);
   assert.match(workflow, /source_sha=\$\(git rev-parse HEAD\)/);
-  assert.match(
-    workflow,
-    /github\.event_name == 'workflow_dispatch'.*inputs\.pages_mode != 'none'/
-  );
+  assert.match(workflow, /actions\/workflows\/ci\.yml\/dispatches/);
+  assert.match(workflow, /steps\.push\.outputs\.changed == 'true'/);
   assert.doesNotMatch(workflow, /#ffa400/i);
   assert.doesNotMatch(workflow, /#ff0000/i);
   assert.doesNotMatch(workflow, /Dylan's Running Records/);

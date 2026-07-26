@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -233,10 +233,10 @@ test('publication CLI creates deterministic namespaced metadata and yearly route
       true
     );
     assert.deepEqual(route2025, [
-      { run_id: 1, summary_polyline: 'encoded-2025' },
+      { run_id: '1', summary_polyline: 'encoded-2025' },
     ]);
     assert.deepEqual(route2026, [
-      { run_id: 2, summary_polyline: 'encoded-2026' },
+      { run_id: '2', summary_polyline: 'encoded-2026' },
     ]);
     assert.deepEqual(manifest.years, ['2026', '2025']);
     assert.equal(manifest.latestYear, '2026');
@@ -262,43 +262,75 @@ test('activity repository fetches only the selected mode and caches yearly route
   const { createActivityDataRepository } = await vite.ssrLoadModule(
     '/src/modules/activity/activityData.ts'
   );
+  const stableJson = (value) => `${JSON.stringify(value)}\n`;
+  const checksum = (text) => createHash('sha256').update(text).digest('hex');
   const calls = [];
-  const responses = new Map([
+  const responses = new Map();
+  const addModeResponses = (mode, metadata, routes) => {
+    const metadataText = stableJson(metadata);
+    const routeText = stableJson(routes);
+    const metadataChecksum = checksum(metadataText);
+    const routeChecksum = checksum(routeText);
+    const manifest = {
+      schemaVersion: 1,
+      mode,
+      activityCount: metadata.length,
+      publishedAt: '2026-07-26T12:30:00.000Z',
+      latestActivityDate: metadata[0].start_date_local,
+      latestYear: '2026',
+      years: ['2026'],
+      routeCount: routes.filter((route) => route.summary_polyline).length,
+      routeRatio:
+        routes.filter((route) => route.summary_polyline).length /
+        metadata.length,
+      checksum: '1'.repeat(64),
+      artifactChecksum: '2'.repeat(64),
+      metadataChecksum,
+      routeChecksums: { 2026: routeChecksum },
+      source: `${mode}.json`,
+    };
+    const manifestPath = `/data/${mode}/manifest.json`;
+    const metadataPath = `/data/${mode}/metadata.json?v=${metadataChecksum}`;
+    const routePath = `/data/${mode}/routes/2026.json?v=${routeChecksum}`;
+    responses.set(manifestPath, stableJson(manifest));
+    responses.set(metadataPath, metadataText);
+    responses.set(routePath, routeText);
+    return { manifestPath, metadataPath, routePath };
+  };
+
+  const cyclingPaths = addModeResponses(
+    'cycling',
     [
-      '/data/cycling/metadata.json',
-      [
-        {
-          run_id: 7,
-          type: 'Ride',
-          start_date_local: '2026-07-25 08:00:00',
-          distance: 24000,
-        },
-      ],
+      {
+        run_id: '9223370455437879701',
+        type: 'Ride',
+        start_date_local: '2026-07-25 08:00:00',
+        distance: 24000,
+      },
     ],
     [
-      '/data/cycling/routes/2026.json',
-      [{ run_id: 7, summary_polyline: 'cycling-route' }],
-    ],
+      {
+        run_id: '9223370455437879701',
+        summary_polyline: 'cycling-route',
+      },
+    ]
+  );
+  const runningPaths = addModeResponses(
+    'running',
     [
-      '/data/running/metadata.json',
-      [
-        {
-          run_id: 8,
-          type: 'Run',
-          start_date_local: '2026-07-25 09:00:00',
-          distance: 5000,
-        },
-      ],
+      {
+        run_id: '8',
+        type: 'Run',
+        start_date_local: '2026-07-25 09:00:00',
+        distance: 5000,
+      },
     ],
-    [
-      '/data/running/routes/2026.json',
-      [{ run_id: 8, summary_polyline: 'running-route' }],
-    ],
-  ]);
+    [{ run_id: '8', summary_polyline: 'running-route' }]
+  );
   const fetcher = async (url) => {
     calls.push(url);
     if (!responses.has(url)) return new Response('', { status: 404 });
-    return new Response(JSON.stringify(responses.get(url)), {
+    return new Response(responses.get(url), {
       headers: { 'content-type': 'application/json' },
     });
   };
@@ -311,11 +343,9 @@ test('activity repository fetches only the selected mode and caches yearly route
   const second = await repository.loadActivities('cycling', ['2026']);
 
   assert.equal(first[0].summary_polyline, 'cycling-route');
+  assert.equal(first[0].run_id, '9223370455437879701');
   assert.deepEqual(second, first);
-  assert.deepEqual(calls, [
-    '/data/cycling/metadata.json',
-    '/data/cycling/routes/2026.json',
-  ]);
+  assert.deepEqual(calls, Object.values(cyclingPaths));
   assert.equal(
     calls.some((url) => url.includes('/running/')),
     false
@@ -323,10 +353,45 @@ test('activity repository fetches only the selected mode and caches yearly route
 
   const running = await repository.loadActivities('running', ['2026']);
   assert.equal(running[0].summary_polyline, 'running-route');
-  assert.deepEqual(calls.slice(2), [
-    '/data/running/metadata.json',
-    '/data/running/routes/2026.json',
-  ]);
+  assert.equal(running[0].run_id, '8');
+  assert.deepEqual(calls.slice(3), Object.values(runningPaths));
+});
+
+test('activity repository rejects a payload that does not match its manifest checksum', async () => {
+  const { createActivityDataRepository } = await vite.ssrLoadModule(
+    '/src/modules/activity/activityData.ts'
+  );
+  const metadataChecksum = 'a'.repeat(64);
+  const manifest = {
+    schemaVersion: 1,
+    mode: 'running',
+    activityCount: 1,
+    publishedAt: '2026-07-26T12:30:00.000Z',
+    latestActivityDate: '2026-07-25 09:00:00',
+    latestYear: '2026',
+    years: ['2026'],
+    routeCount: 1,
+    routeRatio: 1,
+    checksum: '1'.repeat(64),
+    artifactChecksum: '2'.repeat(64),
+    metadataChecksum,
+    routeChecksums: { 2026: '3'.repeat(64) },
+    source: 'running.json',
+  };
+  const fetcher = async (url) =>
+    new Response(
+      url.endsWith('/manifest.json') ? `${JSON.stringify(manifest)}\n` : '[]\n',
+      { headers: { 'content-type': 'application/json' } }
+    );
+  const repository = createActivityDataRepository({
+    baseUrl: '/data',
+    fetcher,
+  });
+
+  await assert.rejects(
+    repository.loadMetadata('running'),
+    /metadata\.json checksum does not match its manifest/
+  );
 });
 
 test('activity repository aborts a stalled request within its recovery budget', async () => {

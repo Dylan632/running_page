@@ -94,6 +94,9 @@ devDependencies:
   '@typescript-eslint/parser':
     specifier: ^8.59.1
     version: 8.59.1(eslint@10.3.0)(typescript@6.0.3)
+  axe-core:
+    specifier: ^4.10.3
+    version: 4.12.1
   eslint:
     specifier: ^10.3.0
     version: 10.3.0
@@ -106,6 +109,9 @@ devDependencies:
   jsdom:
     specifier: ^29.1.1
     version: 29.1.1
+  playwright-core:
+    specifier: ^1.55.0
+    version: 1.62.0
   prettier:
     specifier: ^3.8.3
     version: 3.8.3
@@ -1595,6 +1601,11 @@ packages:
     engines: {node: '>=0.10.0'}
     dev: false
 
+  /axe-core@4.12.1:
+    resolution: {integrity: sha512-s7iGf5GaVMxEG0ENN9x+xTr7GFZCb1ZP/1uATUpCEK2X78nDB3RwbtFCo9pGAf9ru+VwoQ464DkaLEeRM08wJA==}
+    engines: {node: '>=4'}
+    dev: true
+
   /balanced-match@4.0.4:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
     engines: {node: 18 || 20 || >=22}
@@ -3033,6 +3044,12 @@ packages:
   /picomatch@4.0.4:
     resolution: {integrity: sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A==}
     engines: {node: '>=12'}
+
+  /playwright-core@1.62.0:
+    resolution: {integrity: sha512-nsNRyq0r2zsG8AcRHWknc9QRA5XCueC7gWMrs+Gx2tlZn9hcl8zudfh00lhJPY1DE7NmZ6bDsT9g2yey8mXljA==}
+    engines: {node: '>=20'}
+    hasBin: true
+    dev: true
 
   /postcss@8.5.13:
     resolution: {integrity: sha512-qif0+jGGZoLWdHey3UFHHWP0H7Gbmsk8T5VEqyYFbWqPr1XqvLGBbk/sl8V5exGmcYJklJOhOQq1pV9IcsiFag==}

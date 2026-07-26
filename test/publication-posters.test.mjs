@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -155,6 +155,54 @@ test('publication rejects missing, invalid, or non-UTC publication timestamps', 
   }
 });
 
+test('publication preserves activity ids beyond the JavaScript safe integer range', async () => {
+  const fixtureDir = await mkdtemp(join(tmpdir(), 'publication-large-id-'));
+  const inputPath = join(fixtureDir, 'activities.json');
+  const outputPath = join(fixtureDir, 'data');
+  const exactRunId = '9223370455437879701';
+  const serializedActivity = JSON.stringify(
+    activity({
+      run_id: '__EXACT_RUN_ID__',
+      name: 'Literal "run_id":123, marker',
+    })
+  ).replace('"__EXACT_RUN_ID__"', exactRunId);
+
+  try {
+    await writeFile(inputPath, `[${serializedActivity}]`);
+    const result = spawnSync(
+      process.execPath,
+      [
+        'scripts/publish-activity-data.mjs',
+        '--mode',
+        'cycling',
+        '--input',
+        inputPath,
+        '--output',
+        outputPath,
+        '--published-at',
+        '2026-07-26T12:30:00.000Z',
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+      }
+    );
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+
+    const metadata = JSON.parse(
+      await readFile(join(outputPath, 'cycling', 'metadata.json'), 'utf8')
+    );
+    const routes = JSON.parse(
+      await readFile(join(outputPath, 'cycling', 'routes', '2026.json'), 'utf8')
+    );
+    assert.equal(metadata[0].run_id, exactRunId);
+    assert.equal(metadata[0].name, 'Literal "run_id":123, marker');
+    assert.equal(routes[0].run_id, exactRunId);
+  } finally {
+    await rm(fixtureDir, { recursive: true, force: true });
+  }
+});
+
 test('poster assets are selected by mode and remain lazy', async () => {
   const { getPosterAssets } = await vite.ssrLoadModule('/assets/index.tsx');
   const svgStatSource = await readFile(
@@ -205,4 +253,48 @@ test('poster generators emit stable semantic roles and solid legend squares', as
   assert.match(github, /svg-color-inactive-cell/);
   assert.match(github, /svg-color-active-cell/);
   assert.match(github, /svg-special-fill/);
+});
+
+test('artifact verification rejects a tampered committed data snapshot', async () => {
+  const fixtureDir = await mkdtemp(join(tmpdir(), 'artifact-verify-'));
+  const dataOutput = join(fixtureDir, 'data');
+  const assetsOutput = join(fixtureDir, 'assets');
+
+  try {
+    await Promise.all([
+      mkdir(dataOutput, { recursive: true }),
+      mkdir(assetsOutput, { recursive: true }),
+    ]);
+    await Promise.all([
+      cp('public/data/cycling', join(dataOutput, 'cycling'), {
+        recursive: true,
+      }),
+      cp('assets/cycling', join(assetsOutput, 'cycling'), { recursive: true }),
+    ]);
+
+    const metadataPath = join(dataOutput, 'cycling', 'metadata.json');
+    const metadata = JSON.parse(await readFile(metadataPath, 'utf8'));
+    metadata[0].name = 'tampered';
+    await writeFile(metadataPath, `${JSON.stringify(metadata)}\n`);
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        'scripts/generate-activity-artifacts.mjs',
+        'verify',
+        '--mode',
+        'cycling',
+        '--data-output',
+        dataOutput,
+        '--assets-output',
+        assetsOutput,
+      ],
+      { cwd: process.cwd(), encoding: 'utf8' }
+    );
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /invalid cycling publication metadata/i);
+  } finally {
+    await rm(fixtureDir, { recursive: true, force: true });
+  }
 });

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { after, before, test } from 'node:test';
 import React, { act, Suspense } from 'react';
@@ -53,32 +54,89 @@ const installDomGlobals = (window) => {
   };
 };
 
+const renderWhenReady = async (render, isReady) => {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const html = render();
+    if (isReady(html)) return html;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error('Suspense fixture did not become ready within 1 second');
+};
+
 before(async () => {
   previousFetch = globalThis.fetch;
-  globalThis.fetch = async (url) =>
-    new Response(
-      JSON.stringify(
-        String(url).includes('/running/')
-          ? []
-          : [
-              {
-                run_id: 7,
-                name: 'Morning ride',
-                distance: 25_000,
-                moving_time: '01:00:00',
-                type: 'Ride',
-                subtype: 'cycling',
-                start_date_local: '2026-07-25 08:00:00',
-                location_country: 'China',
-                average_heartrate: 130,
-                elevation_gain: 120,
-                average_speed: 6.94,
-                streak: 1,
-              },
-            ]
-      ),
-      { headers: { 'content-type': 'application/json' } }
+  const stableJson = (value) => `${JSON.stringify(value)}\n`;
+  const checksum = (text) => createHash('sha256').update(text).digest('hex');
+  const activities = {
+    cycling: [
+      {
+        run_id: '7',
+        name: 'Morning ride',
+        distance: 25_000,
+        moving_time: '01:00:00',
+        type: 'Ride',
+        subtype: 'cycling',
+        start_date_local: '2026-07-25 08:00:00',
+        location_country: 'China',
+        average_heartrate: 130,
+        elevation_gain: 120,
+        average_speed: 6.94,
+        streak: 1,
+      },
+    ],
+    running: [
+      {
+        run_id: '8',
+        name: 'Morning run',
+        distance: 5_000,
+        moving_time: '00:25:00',
+        type: 'Run',
+        subtype: 'running',
+        start_date_local: '2026-07-25 09:00:00',
+        location_country: 'China',
+        average_heartrate: 140,
+        elevation_gain: 30,
+        average_speed: 3.33,
+        streak: 1,
+      },
+    ],
+  };
+  const responses = new Map();
+  for (const [mode, metadata] of Object.entries(activities)) {
+    const metadataText = stableJson(metadata);
+    const emptyRoutesText = stableJson([]);
+    const metadataChecksum = checksum(metadataText);
+    responses.set(
+      `/data/${mode}/metadata.json?v=${metadataChecksum}`,
+      metadataText
     );
+    responses.set(
+      `/data/${mode}/manifest.json`,
+      stableJson({
+        schemaVersion: 1,
+        mode,
+        activityCount: metadata.length,
+        publishedAt: '2026-07-26T12:30:00.000Z',
+        latestActivityDate: metadata[0].start_date_local,
+        latestYear: '2026',
+        years: ['2026'],
+        routeCount: 0,
+        routeRatio: 0,
+        checksum: '1'.repeat(64),
+        artifactChecksum: '2'.repeat(64),
+        metadataChecksum,
+        routeChecksums: { 2026: checksum(emptyRoutesText) },
+        source: `${mode}.json`,
+      })
+    );
+  }
+  globalThis.fetch = async (url) => {
+    const path = String(url);
+    return new Response(responses.get(path) ?? '', {
+      status: responses.has(path) ? 200 : 404,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
   vite = await createServer({
     appType: 'custom',
     optimizeDeps: { noDiscovery: true },
@@ -138,9 +196,10 @@ test('summary home control returns to the active activity route', async () => {
       )
     );
 
-  renderSummary();
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  const dom = new JSDOM(renderSummary());
+  const html = await renderWhenReady(renderSummary, (markup) =>
+    markup.includes('首页')
+  );
+  const dom = new JSDOM(html);
 
   try {
     const homeControl = [...dom.window.document.querySelectorAll('a')].find(
@@ -244,9 +303,9 @@ test('summary page uses the shared layout and active profile metadata', async ()
       )
     );
 
-  renderSummaryPage();
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  const html = renderSummaryPage();
+  const html = await renderWhenReady(renderSummaryPage, (markup) =>
+    markup.includes('running-header')
+  );
   const dom = new JSDOM(html);
 
   try {

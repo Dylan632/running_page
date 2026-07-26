@@ -13,12 +13,16 @@ test('grid route paths use their full bounds as click targets', async () => {
 });
 
 test('grid special-track legends stay filled while routes stay stroked', async () => {
-  const [css, svg, viteConfig] = await Promise.all([
+  const [css, svg, viteConfig, metadataText] = await Promise.all([
     readFile('src/styles/index.css', 'utf8'),
     readFile('assets/cycling/grid.svg', 'utf8'),
     readFile('vite.config.ts', 'utf8'),
+    readFile('public/data/cycling/metadata.json', 'utf8'),
   ]);
   const dom = new JSDOM(svg, { contentType: 'image/svg+xml' });
+  const metadataIds = new Set(
+    JSON.parse(metadataText).map((activity) => activity.run_id)
+  );
   const legends = [
     ...dom.window.document.querySelectorAll(
       '[data-poster-role="legend-swatch"]'
@@ -39,9 +43,16 @@ test('grid special-track legends stay filled while routes stay stroked', async (
   ];
   assert.ok(routes.length > 0);
   for (const route of routes) {
+    const descId = route.querySelector('desc')?.textContent;
     assert.equal(route.getAttribute('fill'), 'none');
     assert.equal(route.classList.contains('svg-special-fill'), false);
     assert.equal(route.classList.contains('svg-special-stroke'), true);
+    assert.equal(route.getAttribute('data-run-id'), descId);
+    assert.equal(
+      metadataIds.has(descId),
+      true,
+      `poster activity ${descId} must exist losslessly in public metadata`
+    );
   }
 
   assert.match(

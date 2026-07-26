@@ -116,9 +116,25 @@ test('production workflow deploys only the current exact SHA after successful CI
     workflow,
     /github\.event\.workflow_run\.conclusion == 'success'/
   );
+  assert.match(
+    workflow,
+    /github\.event\.workflow_run\.event == 'workflow_dispatch'/
+  );
+  assert.match(
+    workflow,
+    /github\.event_name == 'workflow_dispatch'[\s\S]*?github\.ref == 'refs\/heads\/master'/
+  );
   assert.match(workflow, /ref: \$\{\{ env\.SOURCE_SHA \}\}/);
   assert.match(workflow, /verify-github-ci\.mjs/);
-  assert.match(workflow, /git ls-remote origin refs\/heads\/master/);
+  assert.equal(
+    (workflow.match(/git ls-remote origin refs\/heads\/master/g) ?? []).length,
+    2,
+    'master must be checked both before the build and immediately before promotion'
+  );
+  assert.match(
+    workflow,
+    /Promote, verify canonical identity, or roll back[\s\S]*?pre_promotion_master_sha[\s\S]*?refusing stale SHA/
+  );
   assert.match(workflow, /vercel@50\.28\.0/);
   assert.match(workflow, /vercel build --prod/);
   assert.match(workflow, /vercel deploy --prebuilt --prod/);
@@ -172,6 +188,14 @@ test('production workflow deploys only the current exact SHA after successful CI
   );
   assert.match(workflow, /vars\.VERCEL_CANONICAL_ORIGIN/);
   assert.match(workflow, /git status --porcelain --untracked-files=all/);
+  assert.match(
+    workflow,
+    /publish-legacy-redirect:[\s\S]*?needs: deploy[\s\S]*?uses: \.\/\.github\/workflows\/gh-pages\.yml/
+  );
+  assert.match(
+    workflow,
+    /deployment_mode: redirect[\s\S]*?source_sha:.*workflow_run\.head_sha/
+  );
 });
 
 test('the same workflow runs a scheduled production health monitor', async () => {
@@ -501,7 +525,7 @@ test('CI verification and rollback capture resolve the canonical alias exactly',
           name: 'CI',
           head_sha: sha,
           head_branch: 'master',
-          event: 'push',
+          event: 'workflow_dispatch',
           status: 'completed',
           conclusion: 'success',
           repository: { full_name: 'Dylan632/cycling_page' },

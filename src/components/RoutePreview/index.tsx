@@ -3,7 +3,7 @@ import {
   getRouteBounds,
   normalizeRouteGeometries,
 } from '@/modules/routeGeometry';
-import type { Activity } from '@/utils/utils';
+import type { Activity, ActivityId } from '@/utils/utils';
 import { NO_ROUTE_DATA, INVALID_ROUTE_DATA, INDOOR_COLOR } from '@/utils/const';
 import styles from './style.module.css';
 
@@ -44,7 +44,7 @@ const RoutePreview: React.FC<RoutePreviewProps> = ({
 
   // Get all route coordinates
   const previewRoutes: Array<{
-    runId: number;
+    runId: ActivityId;
     coordinates: [number, number][];
     color: string;
     indoor: boolean;

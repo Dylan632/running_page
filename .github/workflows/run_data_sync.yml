@@ -2,16 +2,6 @@ name: Publish Activity Data
 
 on:
   workflow_dispatch:
-    inputs:
-      pages_mode:
-        description: Keep Pages unchanged, publish its canonical redirect, or rebuild it fully
-        required: true
-        type: choice
-        options:
-          - none
-          - redirect
-          - full
-        default: none
   schedule:
     - cron: '0 0 * * *'
   push:
@@ -31,6 +21,7 @@ on:
       - requirements.txt
 
 permissions:
+  actions: write
   contents: write
 
 concurrency:
@@ -52,6 +43,7 @@ jobs:
     name: Validate and publish both activity modes
     runs-on: ubuntu-latest
     outputs:
+      changed: ${{ steps.push.outputs.changed }}
       source_sha: ${{ steps.push.outputs.source_sha }}
     steps:
       - name: Check out the writable master branch
@@ -73,7 +65,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Capture one publication timestamp and both last-known-good snapshots
         shell: bash
@@ -217,11 +209,28 @@ jobs:
           git add public/data assets/running assets/cycling
           if git diff --cached --quiet; then
             echo 'Nothing to commit'
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m 'publish validated running and cycling artifacts'
             git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
           echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch CI for the published SHA
+        if: steps.push.outputs.changed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --retry 3 \
+            --request POST \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" \
+            --data '{"ref": "master"}'
 
       - name: Upload validation evidence
         uses: actions/upload-artifact@v4
@@ -231,16 +240,3 @@ jobs:
             ${{ runner.temp }}/running-activity-snapshot.json
             ${{ runner.temp }}/cycling-activity-snapshot.json
           retention-days: 30
-
-  publish_pages:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.pages_mode != 'none' }}
-    name: Publish explicitly requested GitHub Pages mode
-    needs: sync
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    uses: ./.github/workflows/gh-pages.yml
-    with:
-      deployment_mode: ${{ inputs.pages_mode }}
-      source_sha: ${{ needs.sync.outputs.source_sha }}

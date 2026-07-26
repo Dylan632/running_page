@@ -25,6 +25,7 @@ import { useInterval } from '@/hooks/useInterval';
 import { IS_CHINESE } from '@/utils/const';
 import {
   Activity,
+  ActivityId,
   filterAndSortRuns,
   filterCityRuns,
   filterTitleRuns,
@@ -51,8 +52,8 @@ const getRunIdFromHash = () => {
   if (typeof window === 'undefined') return null;
   const hash = window.location.hash.replace('#', '');
   if (!hash.startsWith('run_')) return null;
-  const runId = parseInt(hash.replace('run_', ''), 10);
-  return Number.isNaN(runId) ? null : runId;
+  const runId = hash.slice('run_'.length);
+  return runId.length > 0 ? runId : null;
 };
 
 const subscribeToRunHash = (onStoreChange: () => void) => {
@@ -79,7 +80,7 @@ const clearRunHash = () => {
   }
 };
 
-const setRunHash = (runId: number) => {
+const setRunHash = (runId: ActivityId) => {
   const newHash = `#run_${runId}`;
   if (window.location.hash !== newHash) {
     window.history.pushState(null, '', newHash);
@@ -169,10 +170,20 @@ const Index = () => {
   // Animation trigger for single runs - increment this to force animation replay
   const [animationTrigger, setAnimationTrigger] = useState(0);
 
-  const selectedRunIdRef = useRef<number | null>(null);
+  const selectedRunIdRef = useRef<ActivityId | null>(null);
   const selectedRunDateRef = useRef<string | null>(null);
   const activeFilterItem =
     currentFilter.func === filterYearRuns ? year : currentFilter.item;
+
+  useEffect(() => {
+    const frameId = requestAnimationFrame(() => {
+      setRunIndex(-1);
+      setTitle('');
+      selectedRunIdRef.current = null;
+      selectedRunDateRef.current = null;
+    });
+    return () => cancelAnimationFrame(frameId);
+  }, [mode]);
 
   // Memoize expensive calculations
   const runs = useMemo(() => {
@@ -368,6 +379,10 @@ const Index = () => {
         } else {
           // Activity ids are mode-specific. Keep year/view state but clear an
           // incompatible selection when switching modes.
+          setRunIndex(-1);
+          setTitle('');
+          selectedRunIdRef.current = null;
+          selectedRunDateRef.current = null;
           window.history.replaceState(
             null,
             '',
@@ -432,7 +447,7 @@ const Index = () => {
       const descEl = target.querySelector('desc');
       if (descEl) {
         // Grid routes store run_id in <desc>; calendar cells only have <title>.
-        const runId = Number(descEl.textContent);
+        const runId = descEl.textContent?.trim() ?? '';
         if (!runId) {
           return;
         }
