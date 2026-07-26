@@ -152,6 +152,21 @@
   textarea {
     font-family: var(--font-sans);
   }
+
+  .kami-stat-actionable {
+    min-height: 44px;
+    border: 0;
+    background: transparent;
+    padding-inline: 0;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .kami-stat-actionable:focus-visible {
+    border-radius: 0.35rem;
+    outline: 3px solid var(--color-primary);
+    outline-offset: 3px;
+  }
 }
 
 img::selection {
@@ -270,17 +285,17 @@ hr {
   padding: 1rem;
 }
 
-.github-svg text,
-.grid-svg text,
-.year-svg text {
+[data-poster-role='poster'] text {
   fill: var(--color-run-date);
   font-family: var(--font-mono);
 }
 
+[data-poster-role='background'],
 .svg-color-bg {
   fill: var(--kami-ivory);
 }
 
+[data-theme='dark'] [data-poster-role='background'],
 [data-theme='dark'] .svg-color-bg {
   fill: rgba(12, 20, 35, 0.88);
 }

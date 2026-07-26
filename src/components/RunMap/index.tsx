@@ -12,8 +12,8 @@ import Map, {
   FullscreenControl,
   NavigationControl,
   MapRef,
-  MapInstance,
 } from 'react-map-gl/mapbox';
+import type { MapStyleDataEvent } from 'react-map-gl/mapbox';
 import useActivities from '@/hooks/useActivities';
 import {
   IS_CHINESE,
@@ -46,8 +46,10 @@ import type { RPGeometry } from '@/static/run_countries';
 import './mapbox.css';
 import LightsControl from '@/components/RunMap/LightsControl';
 import { useMapTheme, useThemeChangeCounter } from '@/hooks/useTheme';
-
-const KEEP_WHEN_LIGHTS_OFF = ['runs2', 'runs2-indoor', 'animated-run'];
+import {
+  setMapLightVisibility,
+  shouldInstallMapboxLanguage,
+} from './mapLights';
 
 interface IRunMapProps {
   title: string;
@@ -77,6 +79,7 @@ const RunMap = ({
   const { countries, provinces } = useActivities();
   const mapRef = useRef<MapRef>(null);
   const [lights, setLights] = useState(PRIVACY_MODE ? false : LIGHTS_ON);
+  const lightsRef = useRef(lights);
   const [mapGeoData, setMapGeoData] =
     useState<FeatureCollection<RPGeometry> | null>(null);
   const isLoadingMapDataRef = useRef(false);
@@ -99,69 +102,6 @@ const RunMap = ({
   // Mapbox GL JS requires a token even when using other vendors
   // Always use the MAPBOX_TOKEN from const.ts (user may have set their own token)
   const mapboxAccessToken = MAPBOX_TOKEN;
-
-  /**
-   * Toggle visibility of map layers based on lights setting
-   * @param map - The Mapbox map instance
-   * @param nextLights - Whether lights are on or off
-   */
-  const switchLayerVisibility = useCallback(
-    (map: MapInstance, nextLights: boolean) => {
-      const styleJson = map.getStyle();
-      styleJson.layers.forEach((it: { id: string }) => {
-        if (!KEEP_WHEN_LIGHTS_OFF.includes(it.id)) {
-          if (nextLights) map.setLayoutProperty(it.id, 'visibility', 'visible');
-          else map.setLayoutProperty(it.id, 'visibility', 'none');
-        }
-      });
-    },
-    []
-  );
-
-  // Update map when theme changes
-  useEffect(() => {
-    if (mapRef.current) {
-      const map = mapRef.current.getMap();
-      let restoreStyleTimer: ReturnType<typeof setTimeout> | undefined;
-
-      // Save current map state before changing style
-      const currentCenter = map.getCenter();
-      const currentZoom = map.getZoom();
-      const currentBearing = map.getBearing();
-      const currentPitch = map.getPitch();
-
-      // Apply new style
-      map.setStyle(mapStyle);
-
-      // Create a stable handler for style.load to ensure proper cleanup
-      const handleStyleLoad = () => {
-        // Add a small delay to ensure style is fully loaded
-        restoreStyleTimer = setTimeout(() => {
-          try {
-            // Restore map view state
-            map.setCenter(currentCenter);
-            map.setZoom(currentZoom);
-            map.setBearing(currentBearing);
-            map.setPitch(currentPitch);
-
-            // Reapply layer visibility settings with current lights state
-            switchLayerVisibility(map, lights);
-          } catch (error) {
-            console.warn('Error applying map style changes:', error);
-          }
-        }, 100);
-      };
-
-      // Use once to automatically remove the listener after it fires
-      map.once('style.load', handleStyleLoad);
-      return () => {
-        map.off('style.load', handleStyleLoad);
-        if (restoreStyleTimer) {
-          clearTimeout(restoreStyleTimer);
-        }
-      };
-    }
-  }, [mapStyle, lights, switchLayerVisibility]); // Include lights to ensure layer visibility updates correctly when theme changes
 
   useEffect(() => {
     if (mapRef.current) {
@@ -234,60 +174,64 @@ const RunMap = ({
 
   // Apply layer visibility when lights setting changes
   useEffect(() => {
+    lightsRef.current = lights;
     if (mapRef.current) {
       const map = mapRef.current.getMap();
-      // Add a small delay to ensure map is ready
-      const visibilityTimer = setTimeout(() => {
-        try {
-          switchLayerVisibility(map, lights);
-        } catch (error) {
-          console.warn('Error switching layer visibility:', error);
-        }
-      }, 50);
-      return () => clearTimeout(visibilityTimer);
+      try {
+        setMapLightVisibility(map, lights);
+      } catch (error) {
+        console.warn('Error switching layer visibility:', error);
+      }
     }
-  }, [lights, switchLayerVisibility]);
+  }, [lights]);
 
-  const mapRefCallback = useCallback(
-    (ref: MapRef) => {
-      if (ref !== null) {
-        const map = ref.getMap();
-        if (map && IS_CHINESE) {
-          map.addControl(new MapboxLanguage({ defaultLanguage: 'zh-Hans' }));
+  const handleStyleData = useCallback((_event: MapStyleDataEvent) => {
+    if (mapRef.current) {
+      try {
+        setMapLightVisibility(mapRef.current.getMap(), lightsRef.current);
+      } catch (error) {
+        console.warn('Error restoring map light visibility:', error);
+      }
+    }
+  }, []);
+
+  const mapRefCallback = useCallback((ref: MapRef | null) => {
+    if (ref !== null) {
+      const map = ref.getMap();
+      if (map && shouldInstallMapboxLanguage(MAP_TILE_VENDOR, IS_CHINESE)) {
+        map.addControl(new MapboxLanguage({ defaultLanguage: 'zh-Hans' }));
+      }
+      // all style resources have been downloaded
+      // and the first visually complete rendering of the base style has occurred.
+      // it's odd. when use style other than mapbox, the style.load event is not triggered.Add commentMore actions
+      // so I use data event instead of style.load event and make sure we handle it only once.
+      map.on('data', (event) => {
+        if (event.dataType !== 'style' || mapRef.current) {
+          return;
         }
-        // all style resources have been downloaded
-        // and the first visually complete rendering of the base style has occurred.
-        // it's odd. when use style other than mapbox, the style.load event is not triggered.Add commentMore actions
-        // so I use data event instead of style.load event and make sure we handle it only once.
-        map.on('data', (event) => {
-          if (event.dataType !== 'style' || mapRef.current) {
-            return;
-          }
-          if (!ROAD_LABEL_DISPLAY) {
-            const layers = (map.getStyle().layers ?? []) as MapStyleLayer[];
-            const labelLayerNames = layers
-              .filter(
-                (layer) =>
-                  (layer.type === 'symbol' || layer.type === 'composite') &&
-                  (layer.layout?.['text-field'] !== undefined ||
-                    layer.layout?.text_field !== undefined)
-              )
-              .map((layer) => layer.id);
-            labelLayerNames.forEach((layerId) => {
-              map.removeLayer(layerId);
-            });
-          }
-          mapRef.current = ref;
-          switchLayerVisibility(map, lights);
-        });
-      }
-      if (mapRef.current) {
-        const map = mapRef.current.getMap();
-        switchLayerVisibility(map, lights);
-      }
-    },
-    [lights, switchLayerVisibility]
-  );
+        if (!ROAD_LABEL_DISPLAY) {
+          const layers = (map.getStyle().layers ?? []) as MapStyleLayer[];
+          const labelLayerNames = layers
+            .filter(
+              (layer) =>
+                (layer.type === 'symbol' || layer.type === 'composite') &&
+                (layer.layout?.['text-field'] !== undefined ||
+                  layer.layout?.text_field !== undefined)
+            )
+            .map((layer) => layer.id);
+          labelLayerNames.forEach((layerId) => {
+            map.removeLayer(layerId);
+          });
+        }
+        mapRef.current = ref;
+        setMapLightVisibility(map, lightsRef.current);
+      });
+    }
+    if (mapRef.current) {
+      const map = mapRef.current.getMap();
+      setMapLightVisibility(map, lightsRef.current);
+    }
+  }, []);
 
   const initGeoDataLength = geoData.features.length;
   const isBigMap = (viewState.zoom ?? 0) <= 3;
@@ -451,6 +395,7 @@ const RunMap = ({
       onClick={handleMapClick}
       style={style}
       mapStyle={mapStyle}
+      onStyleData={handleStyleData}
       ref={mapRefCallback}
       cooperativeGestures={isTouchDevice()}
       mapboxAccessToken={mapboxAccessToken}

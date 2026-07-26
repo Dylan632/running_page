@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "profiles": {
+    "running": {
+      "mode": "running",
+      "route": "/running",
+      "label": "跑步",
+      "siteTitle": "Dylan 的跑步记录",
+      "description": "Dylan 的个人跑步记录、路线和趋势",
+      "copy": {
+        "chineseVerb": "跑步",
+        "countDescription": " Runs",
+        "heatmapTitle": "Running Heatmap",
+        "journeyTitle": "Running Journey",
+        "name": "Run"
+      },
+      "activityTypes": ["Run", "VirtualRun", "running"],
+      "publication": {
+        "minDistanceMeters": 0,
+        "excludeRunIds": [],
+        "minimumRouteRatio": 0.5
+      },
+      "poster": {
+        "title": "Dylan's Running Records",
+        "gridTitle": "Over 10km Runs",
+        "activityLabel": "Runner",
+        "sportType": "running",
+        "minimumDistanceKm": 0.5,
+        "gridMinimumDistanceKm": 10,
+        "specialDistancesKm": [10, 21.0975],
+        "colors": {
+          "background": "#222222",
+          "track": "#4DD2FF",
+          "text": "#FFFFFF",
+          "special": "#ffa400",
+          "special2": "#ff0000"
+        },
+        "outputNamespace": "running"
+      }
+    },
+    "cycling": {
+      "mode": "cycling",
+      "route": "/cycling",
+      "label": "骑行",
+      "siteTitle": "Dylan 的骑行记录",
+      "description": "Dylan 的个人骑行记录、路线和趋势",
+      "copy": {
+        "chineseVerb": "骑行",
+        "countDescription": " Rides",
+        "heatmapTitle": "Cycling Heatmap",
+        "journeyTitle": "Cycling Journey",
+        "name": "Ride"
+      },
+      "activityTypes": ["Ride", "VirtualRide", "cycling", "Biking"],
+      "publication": {
+        "minDistanceMeters": 10000,
+        "excludeRunIds": [
+          "9223370286779077807",
+          "9223370286722195807",
+          "9223370286688820807",
+          "9223370309063493807",
+          "9223370308463553807"
+        ],
+        "minimumRouteRatio": 0.5
+      },
+      "poster": {
+        "title": "Dylan's Cycling Records",
+        "gridTitle": "Over 20km Rides",
+        "activityLabel": "Cyclist",
+        "sportType": "cycling",
+        "minimumDistanceKm": 10,
+        "gridMinimumDistanceKm": 20,
+        "specialDistancesKm": [20, 50],
+        "colors": {
+          "background": "#222222",
+          "track": "#4DD2FF",
+          "text": "#FFFFFF",
+          "special": "#ffa400",
+          "special2": "#ff0000"
+        },
+        "outputNamespace": "cycling"
+      }
+    }
+  }
+}

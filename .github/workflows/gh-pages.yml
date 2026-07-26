@@ -1,199 +1,159 @@
 name: Publish GitHub Pages
 
-# Controls when the action will run.
 on:
-  push:
-    branches:
-      - master
   workflow_dispatch:
     inputs:
-      save_data_in_github_cache:
+      deployment_mode:
+        description: Publish only the canonical redirect, or rebuild the legacy full site
         required: true
-        type: boolean
-        default: false
-      data_cache_prefix:
-        required: true
+        type: choice
+        options:
+          - redirect
+          - full
+        default: redirect
+      source_sha:
+        description: Exact source SHA (defaults to the workflow SHA)
+        required: false
         type: string
-        default: track_data
+        default: ''
+      canonical_origin:
+        description: Canonical Vercel origin (defaults to VERCEL_CANONICAL_ORIGIN)
+        required: false
+        type: string
+        default: ''
   workflow_call:
     inputs:
-      save_data_in_github_cache:
-        required: true
-        type: boolean
-        default: false
-      data_cache_prefix:
-        required: true
+      deployment_mode:
+        required: false
         type: string
-        default: track_data
+        default: redirect
+      source_sha:
+        required: false
+        type: string
+        default: ''
+      canonical_origin:
+        required: false
+        type: string
+        default: ''
 
-# Allow one concurrent deployment
 concurrency:
-  group: 'pages'
-  cancel-in-progress: true
+  group: pages
+  cancel-in-progress: false
 
 env:
-  ATHLETE: Dylan
-  TITLE: Dylan's Cycling Records
-  MIN_GRID_DISTANCE: 10
-  OVER_GRID_DISTANCE: 20
-  TITLE_GRID: Over 20km Rides
-  CYCLING_MIN_DISTANCE_METERS: 10000
-  TAIHU_DUPLICATE_RUN_IDS: >-
-    9223370286779077807
-    9223370286722195807
-    9223370286688820807
-  CYCLING_NO_TRACK_RUN_IDS: >-
-    9223370309063493807
-    9223370308463553807
+  CANONICAL_ORIGIN: ${{ inputs.canonical_origin || vars.VERCEL_CANONICAL_ORIGIN }}
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build_and_deploy:
+  prepare_redirect:
+    if: inputs.deployment_mode == 'redirect'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify the exact source SHA
+        env:
+          EXPECTED_SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Build the canonical redirect
+        run: |
+          node scripts/build-legacy-redirect.mjs \
+            --origin "$CANONICAL_ORIGIN" \
+            --base-path "/${{ github.event.repository.name }}" \
+            --output "$RUNNER_TEMP/pages-redirect"
+
+      - name: Upload redirect Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          name: pages-artifact
+          path: ${{ runner.temp }}/pages-redirect
+
+  build_full:
+    if: inputs.deployment_mode == 'full'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify the exact source SHA
+        env:
+          EXPECTED_SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify committed dual-mode artifacts
+        run: |
+          node scripts/generate-activity-artifacts.mjs verify \
+            --data-output public/data \
+            --assets-output assets
+
+      - name: Run non-mutating checks and build the exact SHA
+        env:
+          PATH_PREFIX: /${{ github.event.repository.name }}/
+        shell: bash
+        run: |
+          set -euo pipefail
+          git status --porcelain --untracked-files=all > "$RUNNER_TEMP/before-delivery-status"
+          pnpm run ci
+          git status --porcelain --untracked-files=all > "$RUNNER_TEMP/after-delivery-status"
+          cmp "$RUNNER_TEMP/before-delivery-status" "$RUNNER_TEMP/after-delivery-status"
+
+      - name: Upload verified full Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          name: pages-artifact
+          path: ./dist
+
+  deploy:
+    needs:
+      - prepare_redirect
+      - build_full
+    if: ${{ !cancelled() && (needs.prepare_redirect.result == 'success' || needs.build_full.result == 'success') }}
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
     permissions:
       contents: read
       pages: write
       id-token: write
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
-        with:
-          # if your default branches is not master, please change it here
-          ref: master
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Cache Data Files
-        if: inputs.save_data_in_github_cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            activities
-            assets
-            GPX_OUT
-            TCX_OUT
-            FIT_OUT
-            Workouts
-            run_page/data.db
-            src/static/activities.json
-            imported.json
-          key: ${{ inputs.data_cache_prefix }}-${{ github.sha }}-${{ github.run_id }}
-          restore-keys: |
-            ${{ inputs.data_cache_prefix }}-${{ github.sha }}-
-            ${{ inputs.data_cache_prefix }}-
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: pip
-          cache-dependency-path: 'requirements.txt'
-
-      - name: Install Python dependencies
-        run: |
-          pip install -r requirements.txt
-
-      - name: Clean old generated activity data
-        run: |
-          rm -f run_page/data.db src/static/activities.json imported.json
-          rm -rf activities GPX_OUT TCX_OUT FIT_OUT
-          mkdir -p activities GPX_OUT TCX_OUT FIT_OUT assets src/static
-          find assets -maxdepth 1 -name '*.svg' ! -name 'start.svg' ! -name 'end.svg' -delete
-
-      - name: Sync Keep cycling data over 10km
-        run: |
-          python run_page/keep_sync.py ${{ secrets.KEEP_MOBILE }} ${{ secrets.KEEP_PASSWORD }} --sync-types cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS"
-          python run_page/filter_activity_data.py --types Ride VirtualRide cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS" --exclude-run-ids $CYCLING_NO_TRACK_RUN_IDS
-
-      - name: Sync manual GPX cycling data
-        run: |
-          if compgen -G "manual_gpx/*.gpx" > /dev/null; then
-            cp manual_gpx/*.gpx GPX_OUT/
-          fi
-          if compgen -G "manual_gpx/*.gpx" > /dev/null || [ -f "manual_gpx/taihu_route.polyline.b64" ]; then
-            python run_page/gpx_sync.py
-            python run_page/filter_activity_data.py --types Ride VirtualRide cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS" --exclude-run-ids $TAIHU_DUPLICATE_RUN_IDS $CYCLING_NO_TRACK_RUN_IDS
-          else
-            echo "No manual GPX cycling data found."
-          fi
-
-      - name: Backfill missing historical cycling tracks
-        run: |
-          if compgen -G "manual_backfill/*.json" > /dev/null; then
-            python run_page/backfill_activity_data.py manual_backfill/*.json
-            python run_page/filter_activity_data.py --types Ride VirtualRide cycling --min-distance "$CYCLING_MIN_DISTANCE_METERS" --exclude-run-ids $TAIHU_DUPLICATE_RUN_IDS $CYCLING_NO_TRACK_RUN_IDS
-          else
-            echo "No manual backfill cycling data found."
-          fi
-
-      - name: Make cycling SVGs
-        env:
-          TITLE: ${{ env.TITLE }}
-          TITLE_GRID: ${{ env.TITLE_GRID }}
-          ATHLETE: ${{ env.ATHLETE }}
-          MIN_GRID_DISTANCE: ${{ env.MIN_GRID_DISTANCE }}
-          OVER_GRID_DISTANCE: ${{ env.OVER_GRID_DISTANCE }}
-        run: |
-          python run_page/gen_svg.py --from-db --title "$TITLE" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 20 --special-distance2 50 --special-color "#ffa400" --special-color2 "#ff0000" --output assets/github.svg --use-localtime --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
-          python run_page/gen_svg.py --from-db --title "$TITLE_GRID" --type grid --athlete "$ATHLETE" --output assets/grid.svg --special-color "#ffa400" --special-color2 "#ff0000" --special-distance 20 --special-distance2 50 --use-localtime --min-distance "$OVER_GRID_DISTANCE" --sport-type cycling
-          python run_page/gen_svg.py --from-db --type circular --use-localtime --min-distance "$MIN_GRID_DISTANCE" --special-distance 20 --special-distance2 50 --sport-type cycling
-          for year in $(seq 2015 $(date +"%Y")); do
-            python run_page/gen_svg.py --from-db --year "$year" --language zh_CN --title "${year} Cycling" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 20 --special-distance2 50 --special-color "#ffa400" --special-color2 "#ff0000" --output "assets/github_${year}.svg" --use-localtime --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
-          done
-          python run_page/gen_svg.py --from-db --type monthoflife --birth "1989-03" --special-color "#f9d367" --special-color2 "#f0a1a8" --special-distance 20 --special-distance2 50 --output assets/mol_cycling.svg --use-localtime --athlete "$ATHLETE" --title "Cycling Month of Life" --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
-          python run_page/gen_svg.py --from-db --type monthoflife --birth "1989-03" --special-color "#f9d367" --special-color2 "#f0a1a8" --special-distance 20 --special-distance2 50 --output assets/mol.svg --use-localtime --athlete "$ATHLETE" --title "Month of Life" --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
-          python run_page/gen_svg.py --from-db --type year_summary --output assets/year_summary.svg --athlete "$ATHLETE" --special-distance 20 --special-distance2 50 --special-color "#ffa400" --special-color2 "#ff0000" --min-distance "$MIN_GRID_DISTANCE" --sport-type cycling
-          python run_page/patch_year_summary_svg.py
-
-      - name: Drop raw cycling files before build
-        run: |
-          rm -rf activities GPX_OUT TCX_OUT FIT_OUT
-          mkdir -p activities GPX_OUT TCX_OUT FIT_OUT
-          touch activities/.gitkeep GPX_OUT/.gitkeep TCX_OUT/.gitkeep FIT_OUT/.gitkeep
-
-      - name: Setup Node.js environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Enable corepack
-        run: npm install -g corepack@latest && corepack enable pnpm
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - uses: actions/cache@v4
-        name: Setup pnpm cache
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Build
-        env:
-          REPO_NAME: ${{ github.event.repository.name }}
-          VITE_ACTIVITY_MODE: cycling
-          VITE_ACTIVITY_MIN_DISTANCE_METERS: ${{ env.CYCLING_MIN_DISTANCE_METERS }}
-        run: PATH_PREFIX=/$REPO_NAME/ pnpm build
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          # Upload dist repository
-          name: pages-artifact
-          path: './dist'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

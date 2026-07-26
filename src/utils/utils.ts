@@ -5,7 +5,7 @@ import {
   ACTIVITY_TYPES,
   RICH_TITLE,
 } from './const';
-import { ACTIVITY_MODE, isCyclingActivity } from './activityMode';
+import { isCyclingActivity, type ActivityMode } from './activityMode';
 
 export type Coordinate = [number, number];
 
@@ -25,7 +25,7 @@ export interface Activity {
   moving_time: string;
   type: string;
   subtype: string;
-  start_date: string;
+  start_date?: string;
   start_date_local: string;
   location_country?: string | null;
   summary_polyline?: string | null;
@@ -50,11 +50,11 @@ const titleForShow = (run: Activity): string => {
   }`;
 };
 
-const formatPace = (d: number): string => {
+const formatPace = (d: number, mode: ActivityMode = 'running'): string => {
   if (Number.isNaN(d) || d <= 0) {
-    return ACTIVITY_MODE === 'cycling' ? `0.0 ${DIST_UNIT}/h` : '0';
+    return mode === 'cycling' ? `0.0 ${DIST_UNIT}/h` : '0';
   }
-  if (ACTIVITY_MODE === 'cycling') {
+  if (mode === 'cycling') {
     const speed = (d * 3.6 * 1000) / M_TO_DIST;
     return `${speed.toFixed(1)} ${DIST_UNIT}/h`;
   }
@@ -242,7 +242,7 @@ const titleForRun = (run: Activity): string => {
       return `${city} ${activity_sport}`;
     }
   }
-  if (ACTIVITY_MODE === 'cycling' || isCyclingActivity(run)) {
+  if (isCyclingActivity(run)) {
     return ACTIVITY_TYPES.CYCLING_TITLE;
   }
   // 3. use time+length if location or type is not available

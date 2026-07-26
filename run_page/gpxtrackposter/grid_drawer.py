@@ -64,10 +64,13 @@ class GridDrawer(TracksDrawer):
                 color = self.poster.colors.get("special2") or self.poster.colors.get(
                     "special"
                 )
+                special_tier = 2
             elif distance >= distance1:
                 color = self.poster.colors.get("special")
+                special_tier = 1
             else:
                 color = self.color(self.poster.length_range_by_date, tr.length)
+                special_tier = 0
             is_indoor = getattr(tr, "subtype", None) == "indoor"
             polyline = dr.polyline(
                 points=line,
@@ -78,6 +81,20 @@ class GridDrawer(TracksDrawer):
                 stroke_linecap="round",
                 stroke_dasharray="1,0.5" if is_indoor else "none",
                 opacity=0.5 if is_indoor else 1,
+            )
+            semantic_classes = ["poster-route"]
+            if special_tier == 1:
+                semantic_classes.extend(["svg-special-color", "svg-special-stroke"])
+            elif special_tier == 2:
+                semantic_classes.extend(["svg-special-color2", "svg-special-stroke"])
+            self.poster.semantic(
+                polyline,
+                "route",
+                *semantic_classes,
+                run_id=tr.run_id,
+                distance_km=str_length,
+                special_tier=special_tier,
+                indoor=str(is_indoor).lower(),
             )
             polyline.set_desc(title=date_title, desc=tr.run_id)
             dr.add(polyline)

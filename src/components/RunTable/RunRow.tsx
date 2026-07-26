@@ -7,6 +7,7 @@ import {
 } from '@/utils/utils';
 import { SHOW_ELEVATION_GAIN } from '@/utils/const';
 import { M_TO_DIST, M_TO_ELEV } from '@/utils/utils';
+import { useActivityMode } from '@/modules/activity/ActivityModeProvider';
 import styles from './style.module.css';
 
 interface IRunRowProperties {
@@ -24,12 +25,17 @@ const RunRow = ({
   runIndex,
   setRunIndex,
 }: IRunRowProperties) => {
+  const { mode } = useActivityMode();
   const distance = (run.distance / M_TO_DIST).toFixed(2);
-  const paceParts = run.average_speed ? formatPace(run.average_speed) : null;
+  const paceParts = run.average_speed
+    ? formatPace(run.average_speed, mode)
+    : null;
   const heartRate = run.average_heartrate;
   const runTime = formatRunTime(run.moving_time);
+  const runTitle = titleForRun(run);
+  const isSelected = runIndex === elementIndex;
   const handleClick = () => {
-    if (runIndex === elementIndex) {
+    if (isSelected) {
       setRunIndex(-1);
       locateActivity([]);
       return;
@@ -40,11 +46,20 @@ const RunRow = ({
 
   return (
     <tr
-      className={`${styles.runRow} ${runIndex === elementIndex ? styles.selected : ''}`}
+      className={`${styles.runRow} ${isSelected ? styles.selected : ''}`}
       key={run.start_date_local}
-      onClick={handleClick}
     >
-      <td>{titleForRun(run)}</td>
+      <td>
+        <button
+          type="button"
+          className={styles.rowAction}
+          aria-label={`在地图上${isSelected ? '取消定位' : '定位'} ${runTitle}，${run.start_date_local}`}
+          aria-pressed={isSelected}
+          onClick={handleClick}
+        >
+          {runTitle}
+        </button>
+      </td>
       <td>{distance}</td>
       {SHOW_ELEVATION_GAIN && (
         <td>{((run.elevation_gain ?? 0) * M_TO_ELEV).toFixed(1)}</td>

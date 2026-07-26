@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import type { Activity } from '@/utils/utils';
 import { locationForRun, titleForRun } from '@/utils/utils';
-import activitiesUrl from '@/static/activities.json?url';
 import { COUNTRY_STANDARDIZATION } from '@/static/city';
-import { isSelectedActivity } from '@/utils/activityMode';
+import { useActivityMode } from '@/modules/activity/ActivityModeProvider';
+import { activityDataRepository } from '@/modules/activity/activityData';
+import type { ActivityMode } from '@/modules/activity/profiles';
 
 interface ProcessedActivities {
   activities: Activity[];
@@ -24,34 +25,55 @@ const standardizeCountryName = (country: string): string => {
   return country;
 };
 
-let activityDataCache: Activity[] | null = null;
-let activityDataError: unknown = null;
-let activityDataPromise: Promise<Activity[]> | null = null;
+interface SuspenseResource<Result> {
+  preload: () => Promise<void>;
+  read: () => Result;
+}
 
-const loadActivityData = () => {
-  activityDataPromise ??= fetch(activitiesUrl)
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`Failed to load activities: ${response.status}`);
-      }
-      return response.json() as Promise<Activity[]>;
-    })
-    .then((activityData) => {
-      activityDataCache = activityData.filter(isSelectedActivity);
-      return activityDataCache;
-    })
-    .catch((error: unknown) => {
-      activityDataError = error;
-      throw error;
-    });
+const activityResources = new Map<string, SuspenseResource<Activity[]>>();
 
-  return activityDataPromise;
+const createResource = <Result>(
+  loader: () => Promise<Result>
+): SuspenseResource<Result> => {
+  let status: 'pending' | 'resolved' | 'rejected' = 'pending';
+  let result: Result;
+  let failure: unknown;
+  const promise = loader().then(
+    (value) => {
+      status = 'resolved';
+      result = value;
+    },
+    (error: unknown) => {
+      status = 'rejected';
+      failure = error;
+    }
+  );
+
+  return {
+    preload: () => promise,
+    read: () => {
+      if (status === 'pending') throw promise;
+      if (status === 'rejected') throw failure;
+      return result;
+    },
+  };
 };
 
-const getActivityData = () => {
-  if (activityDataError) throw activityDataError;
-  if (activityDataCache) return activityDataCache;
-  throw loadActivityData();
+const getActivityResource = (
+  mode: ActivityMode,
+  years: string[] | null
+): SuspenseResource<Activity[]> => {
+  const key = years ? `${mode}:${years.join(',')}` : `${mode}:metadata`;
+  let resource = activityResources.get(key);
+  if (!resource) {
+    resource = createResource(() =>
+      years
+        ? activityDataRepository.loadActivities(mode, years)
+        : activityDataRepository.loadMetadata(mode)
+    );
+    activityResources.set(key, resource);
+  }
+  return resource;
 };
 
 const processActivities = (activityData: Activity[]): ProcessedActivities => {
@@ -112,8 +134,34 @@ const getProcessedActivities = (activityData: Activity[]) => {
 };
 
 const useActivities = () => {
-  const activityData = getActivityData();
+  const { mode } = useActivityMode();
+  const activityData = getActivityResource(mode, null).read();
   return useMemo(() => getProcessedActivities(activityData), [activityData]);
+};
+
+export const useActivitiesWithRoutes = (scope: string) => {
+  const { mode } = useActivityMode();
+  const processed = useActivities();
+  const years =
+    scope === 'Total'
+      ? processed.years
+      : [scope || processed.thisYear].filter(Boolean);
+  const routedActivities = getActivityResource(mode, years).read();
+  return useMemo(
+    () => ({ ...processed, activities: routedActivities }),
+    [processed, routedActivities]
+  );
+};
+
+export const preloadActivitiesWithRoutes = (
+  mode: ActivityMode,
+  years: string[]
+): Promise<void> => getActivityResource(mode, years).preload();
+
+export const resetActivityData = () => {
+  activityResources.clear();
+  processedActivitiesCache = null;
+  activityDataRepository.clear();
 };
 
 export default useActivities;

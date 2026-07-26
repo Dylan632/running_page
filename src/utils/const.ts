@@ -1,5 +1,8 @@
 import { getEffectiveTheme } from './themeUtils';
-import { selectedActivityCopy } from './activityMode';
+import {
+  getActivityProfile,
+  type ActivityMode,
+} from '@/modules/activity/profiles';
 
 // Constants
 export const MAPBOX_TOKEN =
@@ -51,25 +54,42 @@ export const RICH_TITLE = false;
 export const IS_CHINESE = true;
 export const USE_ANIMATION_FOR_GRID = false;
 
-const CHINESE_INFO_MESSAGE = (yearLength: number, year: string): string => {
+const CHINESE_INFO_MESSAGE = (
+  yearLength: number,
+  year: string,
+  mode: ActivityMode
+): string => {
   const yearStr = year === 'Total' ? '所有' : ` ${year} `;
-  return `记录自己${selectedActivityCopy.chineseVerb} ${yearLength} 年了，下面列表展示的是${yearStr}的数据`;
+  return `记录自己${getActivityProfile(mode).copy.chineseVerb} ${yearLength} 年了，下面列表展示的是${yearStr}的数据`;
 };
-const ENGLISH_INFO_MESSAGE = (yearLength: number, year: string): string =>
-  `${selectedActivityCopy.journeyTitle} with ${yearLength} Years, the table shows year ${year} data`;
+const ENGLISH_INFO_MESSAGE = (
+  yearLength: number,
+  year: string,
+  mode: ActivityMode
+): string =>
+  `${getActivityProfile(mode).copy.journeyTitle} with ${yearLength} Years, the table shows year ${year} data`;
 
-const IS_CYCLING_COPY = selectedActivityCopy.name === 'Ride';
+export const getChineseLocationInfoMessages = (
+  mode: ActivityMode
+): readonly [string, string] =>
+  mode === 'cycling'
+    ? [
+        '骑过了一些地方，希望随着时间推移，点亮的地方越来越多',
+        '不要停下来，不要停下继续骑行的车轮',
+      ]
+    : [
+        '跑过了一些地方，希望随着时间推移，点亮的地方越来越多',
+        '不要停下来，不要停下奔跑的脚步',
+      ];
 
-export const CHINESE_LOCATION_INFO_MESSAGE_FIRST = IS_CYCLING_COPY
-  ? '骑过了一些地方，希望随着时间推移，点亮的地方越来越多'
-  : '跑过了一些地方，希望随着时间推移，点亮的地方越来越多';
-export const CHINESE_LOCATION_INFO_MESSAGE_SECOND = IS_CYCLING_COPY
-  ? '不要停下来，不要停下继续骑行的车轮'
-  : '不要停下来，不要停下奔跑的脚步';
-
-export const INFO_MESSAGE = IS_CHINESE
-  ? CHINESE_INFO_MESSAGE
-  : ENGLISH_INFO_MESSAGE;
+export const INFO_MESSAGE = (
+  yearLength: number,
+  year: string,
+  mode: ActivityMode
+): string =>
+  IS_CHINESE
+    ? CHINESE_INFO_MESSAGE(yearLength, year, mode)
+    : ENGLISH_INFO_MESSAGE(yearLength, year, mode);
 
 const FULL_MARATHON_RUN_TITLE = IS_CHINESE ? '全程马拉松' : 'Full Marathon';
 const HALF_MARATHON_RUN_TITLE = IS_CHINESE ? '半程马拉松' : 'Half Marathon';

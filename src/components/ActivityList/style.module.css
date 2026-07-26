@@ -67,6 +67,9 @@
   box-shadow: 0 4px 8px var(--color-run-row-hover-background);
   transition: transform 0.2s;
   position: relative;
+  color: inherit;
+  font: inherit;
+  text-align: left;
 }
 
 .activityCard:hover {
@@ -77,6 +80,7 @@
 .activityCardFlippable {
   perspective: 1000px;
   padding: 0;
+  cursor: pointer;
   /* Remove padding for flippable cards */
 }
 
@@ -202,10 +206,24 @@
   color: var(--color-background);
 }
 
-.yearSummarySvg {
-  max-width: 100%;
-  height: auto;
-  max-height: 80vh;
+.posterButton {
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid var(--color-primary);
+  border-radius: 5px;
+  background-color: var(--color-primary);
+  color: var(--color-background);
+  cursor: pointer;
+  font: inherit;
+}
+
+.posterButton:hover {
+  background-color: var(--color-secondary);
+}
+
+.posterButton:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 3px;
 }
 
 /* Inner wrapper to center the virtual list rows and constrain width */

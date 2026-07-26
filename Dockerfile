@@ -12,7 +12,7 @@ RUN sed -i 's@http://archive.ubuntu.com/ubuntu/@https://mirrors.tuna.tsinghua.ed
   && pip3 config set global.index-url https://mirrors.aliyun.com/pypi/simple/ \
   && pip3 install -r requirements.txt
 
-FROM node:18  AS develop-node
+FROM node:20 AS develop-node
 WORKDIR /root/running_page
 COPY ./package.json /root/running_page/package.json
 COPY ./pnpm-lock.yaml /root/running_page/pnpm-lock.yaml
@@ -21,6 +21,7 @@ RUN npm config set registry https://registry.npmmirror.com \
   && COREPACK_NPM_REGISTRY=https://registry.npmmirror.com pnpm install
 
 FROM develop-py AS data
+COPY --from=develop-node /usr/local/bin/node /usr/local/bin/node
 ARG app
 ARG nike_refresh_token
 ARG secret_string
@@ -51,12 +52,14 @@ RUN DUMMY=${DUMMY}; \
   else \
   echo "Unknown app" ; \
   fi
-RUN python3 run_page/gen_svg.py --from-db --title "my running page" --type grid --athlete "$YOUR_NAME" --output assets/grid.svg --min-distance 10.0 --special-color yellow --special-color2 red --special-distance 20 --special-distance2 40 --use-localtime \
-  && python3 run_page/gen_svg.py --from-db --title "my running page" --type github --athlete "$YOUR_NAME" --special-distance 10 --special-distance2 20 --special-color yellow --special-color2 red --output assets/github.svg --use-localtime --min-distance 0.5 \
-  && python3 run_page/gen_svg.py --from-db --type circular --use-localtime \
-  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-distance 10 --special-distance2 20 --special-color '#f9d367' --special-color2 '#f0a1a8' --output assets/mol.svg --use-localtime --athlete "$YOUR_NAME" --title 'Runner Month of Life' \
-  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color "#f9d367"  --special-color2 "#f0a1a8" --output assets/mol_running.svg --use-localtime --athlete "$YOUR_NAME" --title "Runner Month of Life" --sport-type running  \
-  && python3 run_page/gen_svg.py --from-db --type year_summary --output assets/year_summary.svg --athlete "$YOUR_NAME"
+RUN node scripts/generate-activity-artifacts.mjs generate \
+  --mode running \
+  --input src/static/activities.json \
+  --published-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --data-output public/data \
+  --assets-output assets \
+  --python python3 \
+  --athlete "${YOUR_NAME:-Dylan}"
 
 
 FROM develop-node AS frontend-build

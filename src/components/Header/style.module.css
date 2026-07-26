@@ -1,8 +1,8 @@
 .themeButton {
   border-radius: 50%;
   transition: all 0.2s ease;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -38,7 +38,11 @@
 }
 
 .activityLink {
+  display: inline-flex;
+  min-height: 44px;
   min-width: 3.5rem;
+  align-items: center;
+  justify-content: center;
   padding: 0.4rem 0.75rem;
   border-radius: 999px;
   color: var(--kami-stone);

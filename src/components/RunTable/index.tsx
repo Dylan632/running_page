@@ -8,13 +8,10 @@ import {
 } from '@/utils/utils';
 import { SHOW_ELEVATION_GAIN } from '@/utils/const';
 import { DIST_UNIT } from '@/utils/utils';
-import { ACTIVITY_MODE } from '@/utils/activityMode';
+import { useActivityMode } from '@/modules/activity/ActivityModeProvider';
 
 import RunRow from './RunRow';
 import styles from './style.module.css';
-
-const SPEED_OR_PACE_KEY =
-  ACTIVITY_MODE === 'cycling' ? `Speed(${DIST_UNIT}/h)` : 'Pace';
 
 interface IRunTableProperties {
   runs: Activity[];
@@ -37,12 +34,14 @@ const RunTable = ({
   runIndex,
   setRunIndex,
 }: IRunTableProperties) => {
+  const { mode, profile } = useActivityMode();
+  const speedOrPaceKey = mode === 'cycling' ? `Speed(${DIST_UNIT}/h)` : 'Pace';
   const [sortState, setSortState] = useState<SortState | null>(null);
 
   const sortKeys = useMemo(() => {
-    const keys = [DIST_UNIT, 'Elev', SPEED_OR_PACE_KEY, 'BPM', 'Time', 'Date'];
+    const keys = [DIST_UNIT, 'Elev', speedOrPaceKey, 'BPM', 'Time', 'Date'];
     return SHOW_ELEVATION_GAIN ? keys : keys.filter((key) => key !== 'Elev');
-  }, []);
+  }, [speedOrPaceKey]);
 
   const getSortFunction = useCallback(
     (key: string, direction: SortDirection): SortFunc | undefined => {
@@ -55,7 +54,7 @@ const RunTable = ({
         return (a, b) =>
           ((a.elevation_gain ?? 0) - (b.elevation_gain ?? 0)) * multiplier;
       }
-      if (key === SPEED_OR_PACE_KEY) {
+      if (key === speedOrPaceKey) {
         return (a, b) => (a.average_speed - b.average_speed) * multiplier;
       }
       if (key === 'BPM') {
@@ -75,7 +74,7 @@ const RunTable = ({
 
       return undefined;
     },
-    []
+    [speedOrPaceKey]
   );
 
   const displayedRuns = useMemo(() => {
@@ -108,12 +107,26 @@ const RunTable = ({
     [setRunIndex]
   );
 
+  const selectedRun =
+    runIndex >= 0 && runIndex < runs.length ? runs[runIndex] : null;
+  const statusMessage = [
+    sortState
+      ? `已按 ${sortState.key} ${sortState.direction === 'ascending' ? '升序' : '降序'}排列`
+      : '',
+    selectedRun ? `已在地图上定位 ${selectedRun.start_date_local}` : '',
+  ]
+    .filter(Boolean)
+    .join('；');
+
   return (
     <div className={styles.tableContainer}>
       <table className={styles.runTable} cellSpacing="0" cellPadding="0">
+        <caption className={styles.visuallyHidden}>
+          活动记录，可使用列标题按钮排序，并使用活动名称按钮在地图上定位
+        </caption>
         <thead>
           <tr>
-            <th />
+            <th scope="col">活动</th>
             {sortKeys.map((k) => (
               <th
                 key={k}
@@ -121,29 +134,57 @@ const RunTable = ({
                   sortState?.key === k ? sortState.direction : undefined
                 }
                 className={styles.sortableHeader}
-                onClick={() => handleClick(k)}
+                scope="col"
               >
-                {k}
+                <button
+                  type="button"
+                  className={styles.sortButton}
+                  aria-label={`按 ${k} 排序`}
+                  onClick={() => handleClick(k)}
+                >
+                  <span>{k}</span>
+                  {sortState?.key === k && (
+                    <span aria-hidden="true">
+                      {sortState.direction === 'ascending' ? ' ↑' : ' ↓'}
+                    </span>
+                  )}
+                </button>
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {displayedRuns.map((run) => {
-            const sourceIndex = runIndexById.get(run.run_id) ?? -1;
-            return (
-              <RunRow
-                key={run.run_id}
-                elementIndex={sourceIndex}
-                locateActivity={locateActivity}
-                run={run}
-                runIndex={runIndex}
-                setRunIndex={setRunIndex}
-              />
-            );
-          })}
+          {displayedRuns.length === 0 ? (
+            <tr>
+              <td colSpan={sortKeys.length + 1} data-empty-state role="status">
+                暂无{profile.label}记录
+              </td>
+            </tr>
+          ) : (
+            displayedRuns.map((run) => {
+              const sourceIndex = runIndexById.get(run.run_id) ?? -1;
+              return (
+                <RunRow
+                  key={run.run_id}
+                  elementIndex={sourceIndex}
+                  locateActivity={locateActivity}
+                  run={run}
+                  runIndex={runIndex}
+                  setRunIndex={setRunIndex}
+                />
+              );
+            })
+          )}
         </tbody>
       </table>
+      <p
+        className={styles.visuallyHidden}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {statusMessage}
+      </p>
     </div>
   );
 };

@@ -47,6 +47,9 @@
 }
 
 .kami-sidebar {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   padding-right: 3.5rem;
   color: var(--running-sidebar-ink);
   font-family: var(--running-sidebar-font);
@@ -55,6 +58,7 @@
 
 .kami-sidebar-intro {
   max-width: none;
+  overflow-wrap: anywhere;
   color: var(--running-sidebar-ink);
   font-family: var(--running-sidebar-font);
   font-size: 20px;
@@ -71,7 +75,10 @@
 }
 
 .kami-year-stat {
-  cursor: pointer;
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   margin-bottom: 1.25rem;
   border: 1px solid var(--kami-border);
   border-radius: 1.25rem;
@@ -85,8 +92,29 @@
     transform 0.2s ease;
 }
 
+.kami-year-stat-action {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  width: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.kami-year-stat-action:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: -4px;
+}
+
 .kami-year-stat section {
   display: block;
+  min-width: 0;
 }
 
 .kami-year-stat:hover .kami-stat-value,
@@ -102,6 +130,7 @@
 
 .kami-stat {
   width: 100%;
+  min-width: 0;
   padding-bottom: 8px;
   color: var(--running-sidebar-ink);
   font-family: var(--running-sidebar-font);
@@ -110,7 +139,8 @@
   font-weight: 400;
   letter-spacing: normal;
   line-height: 28px;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .kami-stat-value {
@@ -138,6 +168,7 @@
 
 .kami-year-stat .year-svg,
 .kami-year-stat .github-year-svg {
+  max-width: 100%;
   margin-top: 1.6rem;
 }
 
@@ -222,11 +253,19 @@
   .kami-year-stat section {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 1.5rem;
+    min-width: 0;
+    column-gap: 0.75rem;
     row-gap: 0.75rem;
   }
 
+  .kami-year-stat:not([data-selected='true']) .kami-stat:not(:first-child) {
+    display: none;
+  }
+
   .kami-stat {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
     padding-bottom: 8px;
     font-size: 18px;
     line-height: 26px;
@@ -238,7 +277,53 @@
   }
 
   .kami-stat-desc {
-    font-size: 18px;
+    font-size: 16px;
     line-height: 24px;
+  }
+
+  .kami-year-stat:not([data-selected='true']) {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-block: 0.55rem;
+  }
+
+  .kami-year-stat:not([data-selected='true']) section {
+    width: 100%;
+    display: block;
+  }
+
+  .kami-year-stat:not([data-selected='true']) .kami-stat:first-child {
+    display: flex;
+    align-items: baseline;
+    flex-direction: row;
+    gap: 0.35rem;
+    padding-bottom: 0;
+  }
+
+  .kami-year-stat:not([data-selected='true'])
+    .kami-stat:first-child
+    .kami-stat-value {
+    font-size: 24px;
+    line-height: 28px;
+  }
+
+  .kami-year-stat:not([data-selected='true'])
+    .kami-stat:first-child
+    .kami-stat-desc {
+    font-size: 14px;
+    line-height: 20px;
+  }
+}
+
+@media only screen and (max-width: 420px) {
+  .kami-stat-value {
+    font-size: 32px;
+    line-height: 36px;
+  }
+
+  .kami-stat-desc {
+    font-size: 15px;
+    line-height: 21px;
   }
 }

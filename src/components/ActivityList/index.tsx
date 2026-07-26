@@ -9,7 +9,7 @@ import React, {
   useSyncExternalStore,
 } from 'react';
 import VirtualList from 'rc-virtual-list';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import styles from './style.module.css';
 import {
   ACTIVITY_TOTAL,
@@ -17,12 +17,14 @@ import {
   LOADING_TEXT,
   SHOW_ELEVATION_GAIN,
 } from '@/utils/const';
-import { totalStat, yearSummaryStats } from '@assets/index';
-import { loadSvgComponent } from '@/utils/svgUtils';
-import { ACTIVITY_MODE } from '@/utils/activityMode';
+import { getPosterComponents } from '@assets/index';
 import { DIST_UNIT, M_TO_DIST } from '@/utils/utils';
 import type { Activity } from '@/utils/utils';
-import useActivities from '@/hooks/useActivities';
+import useActivities, { useActivitiesWithRoutes } from '@/hooks/useActivities';
+import { useActivityMode } from '@/modules/activity/ActivityModeProvider';
+import type { ActivityMode } from '@/modules/activity/profiles';
+import { summarizeActivities } from '@/modules/activity/insights';
+import YearPosterLauncher from './YearPosterLauncher';
 // Layout constants (avoid magic numbers)
 const ITEM_WIDTH = 280;
 const ITEM_GAP = 20;
@@ -74,40 +76,47 @@ const RoutePreview = lazy(loadRoutePreview);
 const loadActivityChart = () => import('./ActivityChart');
 const ActivityChart = lazy(loadActivityChart);
 
-void loadActivityChart();
+const MonthOfLifePoster = ({
+  mode,
+  sportType,
+}: {
+  mode: ActivityMode;
+  sportType: string;
+}) => {
+  const posters = getPosterComponents(mode).totalStat;
+  const fileName = sportType === 'all' ? 'mol.svg' : `mol_${sportType}.svg`;
+  const path = `./${mode}/${fileName}`;
+  const Poster = posters[path];
 
-const MonthOfLifeSvg = (sportType: string) => {
-  const path = sportType === 'all' ? './mol.svg' : `./mol_${sportType}.svg`;
-  return lazy(() => loadSvgComponent(totalStat, path));
+  return Poster ? (
+    <Poster />
+  ) : (
+    <p role="status">当前运动没有可用的生命月历海报。</p>
+  );
 };
 
-const RunningSvg = MonthOfLifeSvg('running');
-const WalkingSvg = MonthOfLifeSvg('walking');
-const HikingSvg = MonthOfLifeSvg('hiking');
-const CyclingSvg = MonthOfLifeSvg('cycling');
-const SwimmingSvg = MonthOfLifeSvg('swimming');
-const SkiingSvg = MonthOfLifeSvg('skiing');
-const AllSvg = MonthOfLifeSvg('all');
+const ActivityRoutePreview = ({ activities }: { activities: Activity[] }) => {
+  const year = activities[0]?.start_date_local.slice(0, 4) ?? '';
+  const { activities: activitiesWithRoutes } = useActivitiesWithRoutes(year);
+  const activityIds = useMemo(
+    () => new Set(activities.map((activity) => activity.run_id)),
+    [activities]
+  );
+  const selectedActivities = useMemo(
+    () =>
+      activitiesWithRoutes.filter((activity) =>
+        activityIds.has(activity.run_id)
+      ),
+    [activitiesWithRoutes, activityIds]
+  );
 
-const yearSummarySvgs = Object.fromEntries(
-  Object.keys(yearSummaryStats).map((path) => [
-    path,
-    lazy(() => loadSvgComponent(yearSummaryStats, path)),
-  ])
-);
+  return <RoutePreview activities={selectedActivities} />;
+};
 
 interface ActivitySummary {
-  totalDistance: number;
-  totalTime: number;
-  totalElevationGain: number;
-  count: number;
   dailyDistances: number[];
-  maxDistance: number;
-  maxSpeed: number;
   location: string;
-  totalHeartRate: number; // Add heart rate statistics
-  heartRateCount: number;
-  activities: Activity[]; // Add activities array for day interval
+  activities: Activity[];
 }
 
 interface DisplaySummary {
@@ -200,11 +209,6 @@ const getAvailableActivityYears = (activityData: Activity[]) => {
   return cache.availableYears;
 };
 
-const convertTimeToSeconds = (time: string): number => {
-  const [hours, minutes, seconds] = time.split(':').map(Number);
-  return hours * 3600 + minutes * 60 + seconds;
-};
-
 const formatTime = (seconds: number): string => {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -212,14 +216,12 @@ const formatTime = (seconds: number): string => {
   return `${h}h ${m}m ${s}s`;
 };
 
-const formatSpeedMetric = (speed: number): string => {
+const formatSpeedMetric = (speed: number, mode: ActivityMode): string => {
   if (!Number.isFinite(speed) || speed <= 0) {
-    return ACTIVITY_MODE === 'cycling'
-      ? `0.0 ${DIST_UNIT}/h`
-      : `0:00 min/${DIST_UNIT}`;
+    return mode === 'cycling' ? `0.0 ${DIST_UNIT}/h` : `0:00 min/${DIST_UNIT}`;
   }
 
-  if (ACTIVITY_MODE === 'cycling') return `${speed.toFixed(1)} ${DIST_UNIT}/h`;
+  if (mode === 'cycling') return `${speed.toFixed(1)} ${DIST_UNIT}/h`;
 
   const pace = 60 / speed;
   const totalSeconds = Math.round(pace * 60);
@@ -260,16 +262,8 @@ const matchesSportType = (activity: Activity, sportTypeArg: string) => {
 };
 
 const createEmptyActivitySummary = (): ActivitySummary => ({
-  totalDistance: 0,
-  totalTime: 0,
-  totalElevationGain: 0,
-  count: 0,
   dailyDistances: [],
-  maxDistance: 0,
-  maxSpeed: 0,
   location: '',
-  totalHeartRate: 0,
-  heartRateCount: 0,
   activities: [],
 });
 
@@ -328,27 +322,9 @@ const groupActivitiesByInterval = (
       if (!acc[key]) acc[key] = createEmptyActivitySummary();
 
       const distance = activity.distance / M_TO_DIST;
-      const timeInSeconds = convertTimeToSeconds(activity.moving_time);
-      const speed = timeInSeconds > 0 ? distance / (timeInSeconds / 3600) : 0;
-
-      acc[key].totalDistance += distance;
-      acc[key].totalTime += timeInSeconds;
-
-      if (SHOW_ELEVATION_GAIN && activity.elevation_gain) {
-        acc[key].totalElevationGain += activity.elevation_gain;
-      }
-
-      if (activity.average_heartrate) {
-        acc[key].totalHeartRate += activity.average_heartrate;
-        acc[key].heartRateCount += 1;
-      }
-
-      acc[key].count += 1;
-      if (intervalArg === 'day') acc[key].activities.push(activity);
+      acc[key].activities.push(activity);
       acc[key].dailyDistances[index] =
         (acc[key].dailyDistances[index] || 0) + distance;
-      if (distance > acc[key].maxDistance) acc[key].maxDistance = distance;
-      if (speed > acc[key].maxSpeed) acc[key].maxSpeed = speed;
       if (intervalArg === 'day')
         acc[key].location = activity.location_country || '';
 
@@ -397,24 +373,25 @@ const getPeriodSummaries = (
   return summaries;
 };
 
-const toDisplaySummary = (summary: ActivitySummary): DisplaySummary => ({
-  totalDistance: summary.totalDistance,
-  averageSpeed: summary.totalTime
-    ? summary.totalDistance / (summary.totalTime / 3600)
-    : 0,
-  totalTime: summary.totalTime,
-  count: summary.count,
-  maxDistance: summary.maxDistance,
-  maxSpeed: summary.maxSpeed,
-  location: summary.location,
-  totalElevationGain: SHOW_ELEVATION_GAIN
-    ? summary.totalElevationGain
-    : undefined,
-  averageHeartRate:
-    summary.heartRateCount > 0
-      ? summary.totalHeartRate / summary.heartRateCount
+const toDisplaySummary = (
+  summary: ActivitySummary,
+  mode: ActivityMode
+): DisplaySummary => {
+  const insights = summarizeActivities(summary.activities, mode);
+  return {
+    totalDistance: insights.totalDistanceMeters / M_TO_DIST,
+    averageSpeed: insights.averageMetersPerSecond * (3600 / M_TO_DIST),
+    totalTime: insights.totalMovingSeconds,
+    count: insights.count,
+    maxDistance: insights.maxDistanceMeters / M_TO_DIST,
+    maxSpeed: insights.maxMetersPerSecond * (3600 / M_TO_DIST),
+    location: summary.location,
+    totalElevationGain: SHOW_ELEVATION_GAIN
+      ? insights.totalElevationGainMeters
       : undefined,
-});
+    averageHeartRate: insights.averageHeartRate ?? undefined,
+  };
+};
 
 function useActivityListMeasurements(itemWidth: number, gap: number) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -616,6 +593,7 @@ const ActivityCardInner: React.FC<ActivityCardProps> = ({
   interval,
   activities = [],
 }) => {
+  const { mode } = useActivityMode();
   const [isFlipped, setIsFlipped] = useState(false);
   const showChart = ['month', 'week', 'year'].includes(interval);
   const handleCardClick = useCallback(() => {
@@ -648,93 +626,108 @@ const ActivityCardInner: React.FC<ActivityCardProps> = ({
     };
   }, [data, showChart]);
 
-  return (
-    <div
-      className={`${styles.activityCard} ${interval === 'day' ? styles.activityCardFlippable : ''}`}
-      onClick={handleCardClick}
-      style={{
-        cursor:
-          interval === 'day' && activities.length > 0 ? 'pointer' : 'default',
-      }}
-    >
-      <div className={`${styles.cardInner} ${isFlipped ? styles.flipped : ''}`}>
-        {/* Front side - Activity details */}
-        <div className={styles.cardFront}>
-          <h2 className={styles.activityName}>{period}</h2>
-          <div className={styles.activityDetails}>
+  const isInteractive = interval === 'day' && activities.length > 0;
+  const cardClassName = `${styles.activityCard} ${
+    isInteractive ? styles.activityCardFlippable : ''
+  }`;
+  const cardContent = (
+    <div className={`${styles.cardInner} ${isFlipped ? styles.flipped : ''}`}>
+      {/* Front side - Activity details */}
+      <div className={styles.cardFront}>
+        <h2 className={styles.activityName}>{period}</h2>
+        <div className={styles.activityDetails}>
+          <p>
+            <strong>{ACTIVITY_TOTAL.TOTAL_DISTANCE_TITLE}:</strong>{' '}
+            {summary.totalDistance.toFixed(2)} {DIST_UNIT}
+          </p>
+          {SHOW_ELEVATION_GAIN && summary.totalElevationGain !== undefined && (
             <p>
-              <strong>{ACTIVITY_TOTAL.TOTAL_DISTANCE_TITLE}:</strong>{' '}
-              {summary.totalDistance.toFixed(2)} {DIST_UNIT}
+              <strong>{ACTIVITY_TOTAL.TOTAL_ELEVATION_GAIN_TITLE}:</strong>{' '}
+              {summary.totalElevationGain.toFixed(0)} m
             </p>
-            {SHOW_ELEVATION_GAIN &&
-              summary.totalElevationGain !== undefined && (
-                <p>
-                  <strong>{ACTIVITY_TOTAL.TOTAL_ELEVATION_GAIN_TITLE}:</strong>{' '}
-                  {summary.totalElevationGain.toFixed(0)} m
-                </p>
-              )}
+          )}
+          <p>
+            <strong>{ACTIVITY_TOTAL.AVERAGE_SPEED_TITLE}:</strong>{' '}
+            {formatSpeedMetric(summary.averageSpeed, mode)}
+          </p>
+          <p>
+            <strong>{ACTIVITY_TOTAL.TOTAL_TIME_TITLE}:</strong>{' '}
+            {formatTime(summary.totalTime)}
+          </p>
+          {summary.averageHeartRate !== undefined && (
             <p>
-              <strong>{ACTIVITY_TOTAL.AVERAGE_SPEED_TITLE}:</strong>{' '}
-              {formatSpeedMetric(summary.averageSpeed)}
+              <strong>{ACTIVITY_TOTAL.AVERAGE_HEART_RATE_TITLE}:</strong>{' '}
+              {summary.averageHeartRate.toFixed(0)} bpm
             </p>
-            <p>
-              <strong>{ACTIVITY_TOTAL.TOTAL_TIME_TITLE}:</strong>{' '}
-              {formatTime(summary.totalTime)}
-            </p>
-            {summary.averageHeartRate !== undefined && (
+          )}
+          {interval !== 'day' && (
+            <>
               <p>
-                <strong>{ACTIVITY_TOTAL.AVERAGE_HEART_RATE_TITLE}:</strong>{' '}
-                {summary.averageHeartRate.toFixed(0)} bpm
+                <strong>{ACTIVITY_TOTAL.ACTIVITY_COUNT_TITLE}:</strong>{' '}
+                {summary.count}
               </p>
-            )}
-            {interval !== 'day' && (
-              <>
-                <p>
-                  <strong>{ACTIVITY_TOTAL.ACTIVITY_COUNT_TITLE}:</strong>{' '}
-                  {summary.count}
-                </p>
-                <p>
-                  <strong>{ACTIVITY_TOTAL.MAX_DISTANCE_TITLE}:</strong>{' '}
-                  {summary.maxDistance.toFixed(2)} {DIST_UNIT}
-                </p>
-                <p>
-                  <strong>{ACTIVITY_TOTAL.MAX_SPEED_TITLE}:</strong>{' '}
-                  {formatSpeedMetric(summary.maxSpeed)}
-                </p>
-                <p>
-                  <strong>{ACTIVITY_TOTAL.AVERAGE_DISTANCE_TITLE}:</strong>{' '}
-                  {(summary.totalDistance / summary.count).toFixed(2)}{' '}
-                  {DIST_UNIT}
-                </p>
-              </>
-            )}
-            {showChart && (
-              <div className={styles.chart}>
-                <Suspense fallback={null}>
-                  <ActivityChart
-                    data={data}
-                    yAxisMax={yAxisMax}
-                    yAxisTicks={yAxisTicks}
-                  />
-                </Suspense>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Back side - Route preview */}
-        {interval === 'day' && activities.length > 0 && (
-          <div className={styles.cardBack}>
-            <div className={styles.routeContainer}>
+              <p>
+                <strong>{ACTIVITY_TOTAL.MAX_DISTANCE_TITLE}:</strong>{' '}
+                {summary.maxDistance.toFixed(2)} {DIST_UNIT}
+              </p>
+              <p>
+                <strong>{ACTIVITY_TOTAL.MAX_SPEED_TITLE}:</strong>{' '}
+                {formatSpeedMetric(summary.maxSpeed, mode)}
+              </p>
+              <p>
+                <strong>{ACTIVITY_TOTAL.AVERAGE_DISTANCE_TITLE}:</strong>{' '}
+                {(summary.totalDistance / summary.count).toFixed(2)} {DIST_UNIT}
+              </p>
+            </>
+          )}
+          {showChart && (
+            <div className={styles.chart}>
               <Suspense fallback={null}>
-                <RoutePreview activities={activities} />
+                <ActivityChart
+                  data={data}
+                  yAxisMax={yAxisMax}
+                  yAxisTicks={yAxisTicks}
+                />
               </Suspense>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
+
+      {/* Back side - Route preview */}
+      {interval === 'day' && activities.length > 0 && (
+        <div className={styles.cardBack}>
+          <div className={styles.routeContainer}>
+            <Suspense
+              fallback={
+                <div role="status" aria-live="polite">
+                  正在加载路线…
+                </div>
+              }
+            >
+              <ActivityRoutePreview activities={activities} />
+            </Suspense>
+          </div>
+        </div>
+      )}
     </div>
   );
+
+  if (isInteractive) {
+    return (
+      <button
+        type="button"
+        className={cardClassName}
+        aria-label={`${period} 活动详情，${isFlipped ? '显示统计' : '显示路线'}`}
+        aria-pressed={isFlipped}
+        onClick={handleCardClick}
+      >
+        {cardContent}
+      </button>
+    );
+  }
+
+  return <article className={cardClassName}>{cardContent}</article>;
 };
 
 // custom equality for memo: compare key summary fields, dailyDistances values and activities length
@@ -773,6 +766,7 @@ const activityCardAreEqual = (
 const ActivityCard = React.memo(ActivityCardInner, activityCardAreEqual);
 
 const ActivityList: React.FC = () => {
+  const { mode, profile } = useActivityMode();
   const { activities: activityData } = useActivities();
   const [interval, setInterval] = useState<IntervalType>('month');
   const [sportType, setSportType] = useState<string>('all');
@@ -832,12 +826,6 @@ const ActivityList: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [interval, selectedYear, availableYears]);
-
-  const navigate = useNavigate();
-
-  const handleHomeClick = () => {
-    navigate('/');
-  };
 
   function toggleInterval(newInterval: IntervalType): void {
     if (newInterval === 'life' && sportType !== 'all') {
@@ -911,17 +899,14 @@ const ActivityList: React.FC = () => {
       : `${itemsPerRow * ITEM_WIDTH + Math.max(0, itemsPerRow - 1) * ITEM_GAP}px`;
 
   const loading = itemsPerRow < 1 || !rowHeight;
-  const SelectedYearSvg = selectedYear
-    ? yearSummarySvgs[`./year_summary_${selectedYear}.svg`]
-    : null;
-
   return (
     <div className={styles.activityList}>
       <div className={styles.filterContainer} ref={setFilterContainerRef}>
-        <button className={styles.smallHomeButton} onClick={handleHomeClick}>
+        <Link className={styles.smallHomeButton} to={profile.route}>
           {HOME_PAGE_TITLE}
-        </button>
+        </Link>
         <select
+          aria-label="运动类型筛选"
           onChange={(e) => setSportType(e.target.value)}
           value={sportType}
         >
@@ -936,6 +921,7 @@ const ActivityList: React.FC = () => {
           ))}
         </select>
         <select
+          aria-label="时间范围筛选"
           onChange={(e) => toggleInterval(e.target.value as IntervalType)}
           value={interval}
         >
@@ -954,7 +940,9 @@ const ActivityList: React.FC = () => {
             {availableYears.map((year) => (
               <button
                 key={year}
+                type="button"
                 className={`${styles.yearButton} ${selectedYear === year ? styles.yearButtonActive : ''}`}
+                aria-pressed={selectedYear === year}
                 onClick={() =>
                   setSelectedYear(selectedYear === year ? null : year)
                 }
@@ -964,22 +952,10 @@ const ActivityList: React.FC = () => {
             ))}
           </div>
           <Suspense fallback={<div>Loading SVG...</div>}>
-            {SelectedYearSvg ? (
-              // Show Year Summary SVG when a year is selected
-              <SelectedYearSvg className={styles.yearSummarySvg} />
+            {selectedYear ? (
+              <YearPosterLauncher year={selectedYear} />
             ) : (
-              // Show Life SVG when no year is selected
-              <>
-                {(sportType === 'running' || sportType === 'Run') && (
-                  <RunningSvg />
-                )}
-                {sportType === 'walking' && <WalkingSvg />}
-                {sportType === 'hiking' && <HikingSvg />}
-                {sportType === 'cycling' && <CyclingSvg />}
-                {sportType === 'swimming' && <SwimmingSvg />}
-                {sportType === 'skiing' && <SkiingSvg />}
-                {sportType === 'all' && <AllSvg />}
-              </>
+              <MonthOfLifePoster mode={mode} sportType={sportType} />
             )}
           </Suspense>
         </div>
@@ -1001,7 +977,7 @@ const ActivityList: React.FC = () => {
               <ActivityCard
                 key={dataList[0].period}
                 period={dataList[0].period}
-                summary={toDisplaySummary(dataList[0].summary)}
+                summary={toDisplaySummary(dataList[0].summary, mode)}
                 dailyDistances={dataList[0].summary.dailyDistances}
                 interval={interval}
                 activities={
@@ -1056,7 +1032,7 @@ const ActivityList: React.FC = () => {
                           <ActivityCard
                             key={cardData.period}
                             period={cardData.period}
-                            summary={toDisplaySummary(cardData.summary)}
+                            summary={toDisplaySummary(cardData.summary, mode)}
                             dailyDistances={cardData.summary.dailyDistances}
                             interval={interval}
                             activities={

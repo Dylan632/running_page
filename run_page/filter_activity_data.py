@@ -1,7 +1,16 @@
 import argparse
 import json
+import shutil
 import sqlite3
+import tempfile
 from pathlib import Path
+
+from activity_snapshot import (
+    SnapshotValidationError,
+    load_database_run_ids,
+    load_snapshot,
+    publish_contents_atomically,
+)
 
 
 def parse_args():
@@ -98,12 +107,39 @@ def main():
     args = parse_args()
     allowed_types = set(args.types)
     exclude_run_ids = set(args.exclude_run_ids)
-    json_before, json_after = filter_json(
-        args.json_file, allowed_types, args.min_distance, exclude_run_ids
-    )
-    db_before, db_after = filter_db(
-        args.db_file, allowed_types, args.min_distance, exclude_run_ids
-    )
+    json_path = Path(args.json_file)
+    database_path = Path(args.db_file)
+    with tempfile.TemporaryDirectory(prefix="activity-filter-") as temporary_directory:
+        candidate_json_path = Path(temporary_directory) / "activities.json"
+        candidate_database_path = Path(temporary_directory) / "data.db"
+        shutil.copy2(json_path, candidate_json_path)
+        if database_path.exists():
+            shutil.copy2(database_path, candidate_database_path)
+
+        json_before, json_after = filter_json(
+            candidate_json_path,
+            allowed_types,
+            args.min_distance,
+            exclude_run_ids,
+        )
+        db_before, db_after = filter_db(
+            candidate_database_path,
+            allowed_types,
+            args.min_distance,
+            exclude_run_ids,
+        )
+
+        candidate_snapshot = load_snapshot(candidate_json_path)
+        publication = [(json_path, candidate_json_path.read_bytes())]
+        if database_path.exists():
+            database_run_ids = load_database_run_ids(candidate_database_path)
+            if candidate_snapshot.run_ids != database_run_ids:
+                raise SnapshotValidationError(
+                    "filtered JSON and database contain different run_id values"
+                )
+            publication.append((database_path, candidate_database_path.read_bytes()))
+        publish_contents_atomically(publication)
+
     print(
         "Filtered activities: "
         f"json {json_before}->{json_after}, "

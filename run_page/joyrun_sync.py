@@ -658,74 +658,45 @@ class Joyrun:
 
 
 def _generate_svg_profile(athlete, min_grid_distance):
-    # To generate svg for 'Total' in the left-up map
     if not athlete:
-        # Skip to avoid override
-        print("Skipping gen_svg. Fill your name with --athlete if you don't want skip")
+        print(
+            "Skipping artifact publication. Fill your name with --athlete to enable it"
+        )
         return
-    print(
-        f"Running scripts for [Make svg GitHub profile] with athlete={athlete} min_grid_distance={min_grid_distance}"
+
+    if min_grid_distance != 10:
+        print(
+            "--min_grid_distance is deprecated; the shared running activity profile "
+            "controls poster thresholds"
+        )
+
+    published_at = (
+        datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     )
-    cmd_args_list = [
-        [
-            sys.executable,
-            "run_page/gen_svg.py",
-            "--from-db",
-            "--title",
-            f"{athlete} Running",
-            "--type",
-            "github",
-            "--athlete",
-            athlete,
-            "--special-distance",
-            "10",
-            "--special-distance2",
-            "20",
-            "--special-color",
-            "yellow",
-            "--special-color2",
-            "red",
-            "--output",
-            "assets/github.svg",
-            "--use-localtime",
-            "--min-distance",
-            "0.5",
-        ],
-        [
-            sys.executable,
-            "run_page/gen_svg.py",
-            "--from-db",
-            "--title",
-            f"Over {min_grid_distance} Running",
-            "--type",
-            "grid",
-            "--athlete",
-            athlete,
-            "--special-distance",
-            "20",
-            "--special-distance2",
-            "40",
-            "--special-color",
-            "yellow",
-            "--special-color2",
-            "red",
-            "--output",
-            "assets/grid.svg",
-            "--use-localtime",
-            "--min-distance",
-            str(min_grid_distance),
-        ],
-        [
-            sys.executable,
-            "run_page/gen_svg.py",
-            "--from-db",
-            "--type",
-            "circular",
-            "--use-localtime",
-        ],
+    print(
+        "Publishing validated running data and poster artifacts "
+        f"with athlete={athlete} published_at={published_at}"
+    )
+    cmd_args = [
+        "node",
+        "scripts/generate-activity-artifacts.mjs",
+        "generate",
+        "--mode",
+        "running",
+        "--input",
+        JSON_FILE,
+        "--published-at",
+        published_at,
+        "--data-output",
+        "public/data",
+        "--assets-output",
+        "assets",
+        "--python",
+        sys.executable,
+        "--athlete",
+        athlete,
     ]
-    for cmd_args in cmd_args_list:
-        subprocess.run(cmd_args, check=True)
+    subprocess.run(cmd_args, check=True)
 
 
 if __name__ == "__main__":

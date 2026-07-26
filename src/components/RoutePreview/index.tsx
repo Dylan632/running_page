@@ -1,8 +1,19 @@
 import React from 'react';
-import { pathForRun } from '@/utils/geoUtils';
+import {
+  getRouteBounds,
+  normalizeRouteGeometries,
+} from '@/modules/routeGeometry';
 import type { Activity } from '@/utils/utils';
 import { NO_ROUTE_DATA, INVALID_ROUTE_DATA, INDOOR_COLOR } from '@/utils/const';
 import styles from './style.module.css';
+
+const ROUTE_PREVIEW_COLORS = [
+  '#e74c3c',
+  '#3498db',
+  '#2ecc71',
+  '#f39c12',
+  '#9b59b6',
+];
 
 interface RoutePreviewProps {
   activities: Activity[];
@@ -14,8 +25,13 @@ const RoutePreview: React.FC<RoutePreviewProps> = ({
   className,
 }) => {
   // Filter activities that have polyline data
-  const activitiesWithRoutes = activities.filter(
-    (activity) => activity.summary_polyline
+  const activitiesWithRoutes = React.useMemo(
+    () => activities.filter((activity) => activity.summary_polyline),
+    [activities]
+  );
+  const routeGeometries = React.useMemo(
+    () => normalizeRouteGeometries(activitiesWithRoutes),
+    [activitiesWithRoutes]
   );
 
   if (activitiesWithRoutes.length === 0) {
@@ -27,23 +43,30 @@ const RoutePreview: React.FC<RoutePreviewProps> = ({
   }
 
   // Get all route coordinates
-  const allCoordinates: Array<{
-    path: [number, number][];
+  const previewRoutes: Array<{
+    runId: number;
+    coordinates: [number, number][];
     color: string;
     indoor: boolean;
-  }> = activitiesWithRoutes.map((activity, index) => {
-    const path = pathForRun(activity);
+  }> = routeGeometries.map((routeGeometry, index) => {
+    const activity = activitiesWithRoutes[index];
     const indoor =
       activity.subtype === 'indoor' || activity.subtype === 'treadmill';
     // Use different colors for multiple routes
-    const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6'];
-    const color = indoor ? INDOOR_COLOR : colors[index % colors.length];
-    return { path, color, indoor };
+    const color = indoor
+      ? INDOOR_COLOR
+      : ROUTE_PREVIEW_COLORS[index % ROUTE_PREVIEW_COLORS.length];
+    return {
+      runId: routeGeometry.runId,
+      coordinates: routeGeometry.coordinates,
+      color,
+      indoor,
+    };
   });
 
   // Calculate bounding box for all routes
-  const allPoints = allCoordinates.flatMap((route) => route.path);
-  if (allPoints.length === 0) {
+  const routeBounds = getRouteBounds(previewRoutes);
+  if (!routeBounds) {
     return (
       <div className={`${styles.routePreview} ${className || ''}`}>
         <div className={styles.noRoute}>{INVALID_ROUTE_DATA}</div>
@@ -51,21 +74,13 @@ const RoutePreview: React.FC<RoutePreviewProps> = ({
     );
   }
 
-  const lats = allPoints.map((point) => point[1]);
-  const lngs = allPoints.map((point) => point[0]);
-
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-
   // Add padding to bounds
   const padding = 0.001;
   const bounds = {
-    minLat: minLat - padding,
-    maxLat: maxLat + padding,
-    minLng: minLng - padding,
-    maxLng: maxLng + padding,
+    minLat: routeBounds.south - padding,
+    maxLat: routeBounds.north + padding,
+    minLng: routeBounds.west - padding,
+    maxLng: routeBounds.east + padding,
   };
 
   const boundsWidth = bounds.maxLng - bounds.minLng;
@@ -96,11 +111,10 @@ const RoutePreview: React.FC<RoutePreviewProps> = ({
         />
 
         {/* Routes */}
-        {allCoordinates.map((route) => {
-          if (route.path.length < 2) return null;
-          const routeKey = `${route.color}-${route.indoor}-${route.path.length}-${route.path[0].join(',')}-${route.path[route.path.length - 1].join(',')}`;
+        {previewRoutes.map((route) => {
+          if (route.coordinates.length < 2) return null;
 
-          const pathString = route.path
+          const pathString = route.coordinates
             .map((coord, index) => {
               const [x, y] = coordToSvg(coord[0], coord[1]);
               return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
@@ -108,7 +122,7 @@ const RoutePreview: React.FC<RoutePreviewProps> = ({
             .join(' ');
 
           return (
-            <g key={routeKey}>
+            <g key={route.runId}>
               {/* Route line */}
               <path
                 d={pathString}
@@ -122,10 +136,20 @@ const RoutePreview: React.FC<RoutePreviewProps> = ({
               />
 
               {/* Start point */}
-              {route.path.length > 0 && (
+              {route.coordinates.length > 0 && (
                 <circle
-                  cx={coordToSvg(route.path[0][0], route.path[0][1])[0]}
-                  cy={coordToSvg(route.path[0][0], route.path[0][1])[1]}
+                  cx={
+                    coordToSvg(
+                      route.coordinates[0][0],
+                      route.coordinates[0][1]
+                    )[0]
+                  }
+                  cy={
+                    coordToSvg(
+                      route.coordinates[0][0],
+                      route.coordinates[0][1]
+                    )[1]
+                  }
                   r="3"
                   fill="#2ecc71"
                   stroke="white"
@@ -134,18 +158,18 @@ const RoutePreview: React.FC<RoutePreviewProps> = ({
               )}
 
               {/* End point */}
-              {route.path.length > 1 && (
+              {route.coordinates.length > 1 && (
                 <circle
                   cx={
                     coordToSvg(
-                      route.path[route.path.length - 1][0],
-                      route.path[route.path.length - 1][1]
+                      route.coordinates[route.coordinates.length - 1][0],
+                      route.coordinates[route.coordinates.length - 1][1]
                     )[0]
                   }
                   cy={
                     coordToSvg(
-                      route.path[route.path.length - 1][0],
-                      route.path[route.path.length - 1][1]
+                      route.coordinates[route.coordinates.length - 1][0],
+                      route.coordinates[route.coordinates.length - 1][1]
                     )[1]
                   }
                   r="3"

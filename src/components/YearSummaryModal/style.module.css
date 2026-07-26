@@ -25,6 +25,8 @@
   position: absolute;
   top: 20px;
   right: 30px;
+  width: 44px;
+  height: 44px;
   background: none;
   border: none;
   color: #888;
@@ -38,6 +40,12 @@
   color: #fff;
 }
 
+.closeButton:focus-visible {
+  border-radius: 999px;
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
 .svg {
   width: auto;
   height: 90vh;
@@ -49,4 +57,16 @@
   color: #888;
   padding: 40px;
   text-align: center;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+  padding: 0;
 }

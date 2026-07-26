@@ -140,11 +140,11 @@ def parse_datetime_to_local(start_time, end_time, point):
 
 
 def get_normalized_sport_type(sport_type):
-    if sport_type == "Run":
+    if sport_type in {"Run", "VirtualRun"}:
         return "running"
     elif sport_type == "Walk":
         return "walking"
-    elif sport_type == "Ride":
+    elif sport_type in {"Ride", "VirtualRide", "Biking"}:
         return "cycling"
     else:
         return sport_type

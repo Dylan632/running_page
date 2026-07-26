@@ -5,17 +5,22 @@ import {
   useCallback,
   useRef,
   useSyncExternalStore,
+  startTransition,
+  lazy,
+  Suspense,
 } from 'react';
-import { Analytics } from '@vercel/analytics/react';
 import { Helmet } from 'react-helmet-async';
+import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import LocationStat from '@/components/LocationStat';
-import RunMap from '@/components/RunMap';
 import RunTable from '@/components/RunTable';
 import SVGStat from '@/components/SVGStat';
 import YearsStat from '@/components/YearsStat';
-import useActivities from '@/hooks/useActivities';
-import getSiteMetadata from '@/hooks/useSiteMetadata';
+import useActivities, {
+  preloadActivitiesWithRoutes,
+  useActivitiesWithRoutes,
+} from '@/hooks/useActivities';
+import useSiteMetadata from '@/hooks/useSiteMetadata';
 import { useInterval } from '@/hooks/useInterval';
 import { IS_CHINESE } from '@/utils/const';
 import {
@@ -35,7 +40,9 @@ import {
   type IViewState,
 } from '@/utils/geoUtils';
 import { useTheme, useThemeChangeCounter } from '@/hooks/useTheme';
-import { selectedActivityCopy } from '@/utils/activityMode';
+import { useActivityMode } from '@/modules/activity/ActivityModeProvider';
+
+const RunMap = lazy(() => import('@/components/RunMap'));
 
 const HASH_RUN_CHANGE_EVENT = 'running-page-hash-run-change';
 const SVG_STAT_TARGET_SELECTOR = 'path, polyline, rect';
@@ -93,20 +100,68 @@ const useRunHashId = () =>
   useSyncExternalStore(subscribeToRunHash, getRunIdFromHash, () => null);
 
 const Index = () => {
-  const { siteTitle, siteUrl } = getSiteMetadata();
-  const { activities, thisYear } = useActivities();
+  const { siteTitle, siteUrl } = useSiteMetadata();
+  const { mode, profile } = useActivityMode();
+  const { thisYear, years } = useActivities();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedYear = searchParams.get('year');
+  const year =
+    requestedYear &&
+    (requestedYear === 'Total' || years.includes(requestedYear))
+      ? requestedYear
+      : thisYear;
+  const { activities } = useActivitiesWithRoutes(year);
   const themeChangeCounter = useThemeChangeCounter();
-  const [year, setYear] = useState(thisYear);
   const [runIndex, setRunIndex] = useState(-1);
   const [title, setTitle] = useState('');
   // Animation states for replacing intervalIdRef
   const [isAnimating, setIsAnimating] = useState(false);
   const [currentAnimationIndex, setCurrentAnimationIndex] = useState(0);
   const [animationRuns, setAnimationRuns] = useState<Activity[]>([]);
+  const [pendingYear, setPendingYear] = useState<string | null>(null);
+  const [sidebarPanel, setSidebarPanel] = useState<'years' | 'location'>(
+    'years'
+  );
   const [currentFilter, setCurrentFilter] = useState<{
     item: string;
     func: (_run: Activity, _value: string) => boolean;
-  }>({ item: thisYear, func: filterYearRuns });
+  }>({ item: year, func: filterYearRuns });
+
+  const selectYear = useCallback(
+    async (nextYear: string, replace = false) => {
+      setPendingYear(nextYear);
+      const routeYears = nextYear === 'Total' ? years : [nextYear];
+      await preloadActivitiesWithRoutes(mode, routeYears).catch(() => {
+        // Commit the route below so the rejected resource is handled by the
+        // page error boundary, where the user can retry.
+      });
+      startTransition(() => {
+        setSearchParams(
+          (current) => {
+            const next = new URLSearchParams(current);
+            next.set('year', nextYear);
+            next.set('view', 'map');
+            return next;
+          },
+          { replace }
+        );
+        setPendingYear(null);
+      });
+    },
+    [mode, setSearchParams, years]
+  );
+
+  useEffect(() => {
+    if (!requestedYear || requestedYear === year) return;
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.set('year', year);
+        return next;
+      },
+      { replace: true }
+    );
+  }, [requestedYear, setSearchParams, year]);
 
   // Track if we're showing a single run from URL hash
   const singleRunId = useRunHashId();
@@ -116,16 +171,18 @@ const Index = () => {
 
   const selectedRunIdRef = useRef<number | null>(null);
   const selectedRunDateRef = useRef<string | null>(null);
+  const activeFilterItem =
+    currentFilter.func === filterYearRuns ? year : currentFilter.item;
 
   // Memoize expensive calculations
   const runs = useMemo(() => {
     return filterAndSortRuns(
       activities,
-      currentFilter.item,
+      activeFilterItem,
       currentFilter.func,
       sortDateFunc
     );
-  }, [activities, currentFilter.item, currentFilter.func]);
+  }, [activities, activeFilterItem, currentFilter.func]);
 
   const geoData = useMemo(() => {
     void themeChangeCounter;
@@ -193,21 +250,21 @@ const Index = () => {
     ) => {
       scrollToMap();
       if (name != 'Year') {
-        setYear(thisYear);
+        selectYear(thisYear);
       }
       setCurrentFilter({ item, func });
       setRunIndex(-1);
-      setTitle(`${item} ${name} ${selectedActivityCopy.heatmapTitle}`);
+      setTitle(`${item} ${name} ${profile.copy.heatmapTitle}`);
       // Reset single run state when changing filters
       clearRunHash();
     },
-    [thisYear]
+    [profile.copy.heatmapTitle, selectYear, thisYear]
   );
 
   const changeYear = useCallback(
     (y: string) => {
       // default year
-      setYear(y);
+      void selectYear(y);
 
       if ((viewState.zoom ?? 0) > 3 && bounds) {
         setViewState({
@@ -219,7 +276,7 @@ const Index = () => {
       // Stop current animation
       setIsAnimating(false);
     },
-    [viewState.zoom, bounds, changeByItem]
+    [viewState.zoom, bounds, changeByItem, selectYear]
   );
 
   const changeCity = useCallback(
@@ -306,19 +363,22 @@ const Index = () => {
         if (targetRun) {
           const runYear = targetRun.start_date_local.slice(0, 4);
           if (year !== runYear) {
-            setYear(runYear);
-            setCurrentFilter({ item: runYear, func: filterYearRuns });
+            void selectYear(runYear);
           }
         } else {
-          // If run doesn't exist, clear the hash and show a warning
-          console.warn(`Run with ID ${singleRunId} not found in activities`);
-          window.history.replaceState(null, '', window.location.pathname);
+          // Activity ids are mode-specific. Keep year/view state but clear an
+          // incompatible selection when switching modes.
+          window.history.replaceState(
+            null,
+            '',
+            `${window.location.pathname}${window.location.search}`
+          );
           notifyRunHashChange();
         }
       });
       return () => cancelAnimationFrame(frameId);
     }
-  }, [singleRunId, activities, year]);
+  }, [singleRunId, activities, selectYear, year]);
 
   useEffect(() => {
     if (singleRunId !== null && runs.length > 0) {
@@ -418,13 +478,33 @@ const Index = () => {
   return (
     <Layout>
       <Helmet>
-        <html lang="en" data-theme={theme} />
+        <html lang="zh-CN" data-theme={theme} />
       </Helmet>
-      <div className="w-full lg:w-1/3">
+      <div className="order-2 w-full lg:order-1 lg:w-1/3">
         <h1 className="my-12 mt-6 text-5xl font-extrabold italic">
           <a href={siteUrl}>{siteTitle}</a>
         </h1>
-        {(viewState.zoom ?? 0) <= 3 && IS_CHINESE ? (
+        {IS_CHINESE && (
+          <div className="mb-4 flex gap-2" role="group" aria-label="统计视图">
+            <button
+              type="button"
+              className="min-h-11 rounded-full border px-4 py-2"
+              aria-pressed={sidebarPanel === 'years'}
+              onClick={() => setSidebarPanel('years')}
+            >
+              年份
+            </button>
+            <button
+              type="button"
+              className="min-h-11 rounded-full border px-4 py-2"
+              aria-pressed={sidebarPanel === 'location'}
+              onClick={() => setSidebarPanel('location')}
+            >
+              地点
+            </button>
+          </div>
+        )}
+        {IS_CHINESE && sidebarPanel === 'location' ? (
           <LocationStat
             changeYear={changeYear}
             changeCity={changeCity}
@@ -434,16 +514,38 @@ const Index = () => {
           <YearsStat year={year} onClick={changeYear} />
         )}
       </div>
-      <div className="w-full lg:w-2/3" id="map-container">
-        <RunMap
-          title={title}
-          viewState={viewState}
-          geoData={animatedGeoData}
-          setViewState={setViewState}
-          changeYear={changeYear}
-          thisYear={year}
-          animationTrigger={animationTrigger}
-        />
+      <div
+        id="map-container"
+        data-app-ready={mode}
+        className="order-1 w-full lg:order-2 lg:w-2/3"
+      >
+        {pendingYear && (
+          <p className="sr-only" role="status" aria-live="polite">
+            正在加载 {pendingYear === 'Total' ? '全部年份' : pendingYear} 的路线
+          </p>
+        )}
+        <Suspense
+          fallback={
+            <div
+              className="flex h-[250px] items-center justify-center md:h-[600px]"
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+            >
+              正在加载地图…
+            </div>
+          }
+        >
+          <RunMap
+            title={title}
+            viewState={viewState}
+            geoData={animatedGeoData}
+            setViewState={setViewState}
+            changeYear={changeYear}
+            thisYear={year}
+            animationTrigger={animationTrigger}
+          />
+        </Suspense>
         {year === 'Total' ? (
           <SVGStat />
         ) : (
@@ -455,8 +557,6 @@ const Index = () => {
           />
         )}
       </div>
-      {/* Enable Audiences in Vercel Analytics: https://vercel.com/docs/concepts/analytics/audiences/quickstart */}
-      {import.meta.env.VERCEL && <Analytics />}
     </Layout>
   );
 };

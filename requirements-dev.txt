@@ -1,3 +1,4 @@
 -r requirements.txt
 # Ci
-black
+black==25.1.0
+ruff==0.12.5

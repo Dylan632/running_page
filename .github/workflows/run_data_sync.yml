@@ -1,7 +1,17 @@
-name: Run Data Sync
+name: Publish Activity Data
 
 on:
   workflow_dispatch:
+    inputs:
+      pages_mode:
+        description: Keep Pages unchanged, publish its canonical redirect, or rebuild it fully
+        required: true
+        type: choice
+        options:
+          - none
+          - redirect
+          - full
+        default: none
   schedule:
     - cron: '0 0 * * *'
   push:
@@ -9,36 +19,42 @@ on:
       - master
     paths:
       - .github/workflows/run_data_sync.yml
+      - scripts/generate-activity-artifacts.mjs
+      - scripts/publish-activity-data.mjs
+      - src/modules/activity/activity-profiles.json
+      - run_page/activity_snapshot.py
+      - run_page/filter_activity_data.py
+      - run_page/keep_http.py
       - run_page/keep_sync.py
       - run_page/gen_svg.py
+      - run_page/gpxtrackposter/**
       - requirements.txt
 
+permissions:
+  contents: write
+
+concurrency:
+  group: run-data-sync-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
-  # Personal running-page config
   RUN_TYPE: keep
   ATHLETE: Dylan
-  TITLE: Dylan's Running Records
-  MIN_GRID_DISTANCE: 10
-  TITLE_GRID: Over 10km Runs
-
+  BIRTHDAY_MONTH: 1989-03
   IGNORE_START_END_RANGE: 10
   IGNORE_POLYLINE: 'ktjrFoemeU~IorGq}DeB'
   IGNORE_RANGE: 10
   USE_CLOUDFLARE_WARP: false
-  SAVE_DATA_IN_GITHUB_CACHE: false
-  DATA_CACHE_PREFIX: 'track_data'
-  BUILD_GH_PAGES: true
   SAVE_TO_PARQENT: false
-  GENERATE_MONTH_OF_LIFE: true
-  BIRTHDAY_MONTH: 1989-03
 
 jobs:
   sync:
-    name: Sync Keep running data only
+    name: Validate and publish both activity modes
     runs-on: ubuntu-latest
-
+    outputs:
+      source_sha: ${{ steps.push.outputs.source_sha }}
     steps:
-      - name: Checkout
+      - name: Check out the writable master branch
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -47,73 +63,184 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
           cache: pip
-          cache-dependency-path: 'requirements.txt'
+          cache-dependency-path: requirements.txt
 
-      - name: Install dependencies
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Capture one publication timestamp and both last-known-good snapshots
+        shell: bash
         run: |
-          pip install -r requirements.txt
+          set -euo pipefail
+          PUBLICATION_TIMESTAMP="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          echo "PUBLICATION_TIMESTAMP=$PUBLICATION_TIMESTAMP" >> "$GITHUB_ENV"
+          mkdir -p \
+            "$RUNNER_TEMP/.activity-last-known-good/running" \
+            "$RUNNER_TEMP/.activity-last-known-good/cycling"
+          cp public/data/running/metadata.json \
+            "$RUNNER_TEMP/.activity-last-known-good/running/activities.json"
+          cp public/data/cycling/metadata.json \
+            "$RUNNER_TEMP/.activity-last-known-good/cycling/activities.json"
 
-      - name: Clean old generated activity data
+      - name: Prepare an isolated running candidate
         run: |
           rm -f run_page/data.db src/static/activities.json imported.json
           rm -rf activities GPX_OUT TCX_OUT FIT_OUT
-          mkdir -p activities GPX_OUT TCX_OUT FIT_OUT assets src/static
-          find assets -maxdepth 1 -name '*.svg' ! -name 'start.svg' ! -name 'end.svg' -delete
+          mkdir -p activities GPX_OUT TCX_OUT FIT_OUT src/static
 
-      - name: Run sync Keep script for running only
+      - name: Sync Keep running data
         run: |
-          python run_page/keep_sync.py ${{ secrets.KEEP_MOBILE }} ${{ secrets.KEEP_PASSWORD }} --with-gpx --sync-types running
+          python run_page/keep_sync.py \
+            "${{ secrets.KEEP_MOBILE }}" \
+            "${{ secrets.KEEP_PASSWORD }}" \
+            --with-gpx \
+            --sync-types running
 
-      - name: Make svg GitHub profile
-        env:
-          TITLE: ${{ env.TITLE }}
-          TITLE_GRID: ${{ env.TITLE_GRID }}
-          ATHLETE: ${{ env.ATHLETE }}
-          MIN_GRID_DISTANCE: ${{ env.MIN_GRID_DISTANCE }}
+      - name: Validate the complete running candidate
         run: |
-          python run_page/gen_svg.py --from-db --title "$TITLE" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 10 --special-distance2 21.0975 --special-color "#ffa400" --special-color2 "#ff0000" --output assets/github.svg --use-localtime --min-distance 0.5 --sport-type running
-          python run_page/gen_svg.py --from-db --title "$TITLE_GRID" --type grid --athlete "$ATHLETE" --output assets/grid.svg --special-color "#ffa400" --special-color2 "#ff0000" --special-distance 10 --special-distance2 21.0975 --use-localtime --min-distance "$MIN_GRID_DISTANCE" --sport-type running
-          python run_page/gen_svg.py --from-db --type circular --use-localtime --sport-type running
-          for year in $(seq 2015 $(date +"%Y")); do
-            python run_page/gen_svg.py --from-db --year "$year" --language zh_CN --title "${year} Running" --type github --github-style "align-firstday" --athlete "$ATHLETE" --special-distance 10 --special-distance2 21.0975 --special-color "#ffa400" --special-color2 "#ff0000" --output "assets/github_${year}.svg" --use-localtime --min-distance 0.5 --sport-type running
-          done
+          python run_page/activity_snapshot.py validate \
+            --json src/static/activities.json \
+            --db run_page/data.db \
+            --previous-json "$RUNNER_TEMP/.activity-last-known-good/running/activities.json" \
+            --metadata "$RUNNER_TEMP/running-activity-snapshot.json"
 
-      - name: Make month of life
-        if: env.GENERATE_MONTH_OF_LIFE == 'true'
+      - name: Generate profile-driven running artifacts
         run: |
-          python run_page/gen_svg.py --from-db --type monthoflife --birth "${{ env.BIRTHDAY_MONTH }}" --special-color "#f9d367" --special-color2 "#f0a1a8" --output assets/mol_running.svg --use-localtime --athlete "${{ env.ATHLETE }}" --title "Runner Month of Life" --sport-type running
-          python run_page/gen_svg.py --from-db --type monthoflife --birth "${{ env.BIRTHDAY_MONTH }}" --special-color "#f9d367" --special-color2 "#f0a1a8" --output assets/mol.svg --use-localtime --athlete "${{ env.ATHLETE }}" --title "Month of Life" --sport-type running
+          node scripts/generate-activity-artifacts.mjs generate \
+            --mode running \
+            --input src/static/activities.json \
+            --published-at "$PUBLICATION_TIMESTAMP" \
+            --data-output public/data \
+            --assets-output assets \
+            --python python \
+            --athlete "$ATHLETE" \
+            --birth-month "$BIRTHDAY_MONTH"
 
-      - name: Make year summary
-        if: env.GENERATE_MONTH_OF_LIFE == 'true'
+      - name: Load the cycling publication profile
         run: |
-          python run_page/gen_svg.py --from-db --type year_summary --output assets/year_summary.svg --athlete "${{ env.ATHLETE }}" --sport-type running
+          node scripts/generate-activity-artifacts.mjs export-profile \
+            --mode cycling \
+            --github-env "$GITHUB_ENV"
 
-      - name: Drop raw activity files before committing
+      - name: Prepare an isolated cycling candidate
         run: |
+          rm -f run_page/data.db src/static/activities.json imported.json
           rm -rf activities GPX_OUT TCX_OUT FIT_OUT
-          mkdir -p activities GPX_OUT TCX_OUT FIT_OUT
-          touch activities/.gitkeep GPX_OUT/.gitkeep TCX_OUT/.gitkeep FIT_OUT/.gitkeep
+          mkdir -p activities GPX_OUT TCX_OUT FIT_OUT src/static
 
-      - name: Push regenerated running data
+      - name: Sync Keep cycling data
         run: |
+          python run_page/keep_sync.py \
+            "${{ secrets.KEEP_MOBILE }}" \
+            "${{ secrets.KEEP_PASSWORD }}" \
+            --sync-types cycling \
+            --min-distance "$ACTIVITY_MIN_DISTANCE_METERS"
+          python run_page/filter_activity_data.py \
+            --types $ACTIVITY_TYPES \
+            --min-distance "$ACTIVITY_MIN_DISTANCE_METERS" \
+            --exclude-run-ids $ACTIVITY_EXCLUDE_RUN_IDS
+
+      - name: Sync manual GPX cycling data
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f "manual_gpx/taihu_route.polyline.b64" ]; then
+            python run_page/write_taihu_manual_gpx.py
+          fi
+          if compgen -G "manual_gpx/*.gpx" > /dev/null; then
+            cp manual_gpx/*.gpx GPX_OUT/
+          fi
+          if compgen -G "GPX_OUT/*.gpx" > /dev/null; then
+            python run_page/gpx_sync.py
+            python run_page/filter_activity_data.py \
+              --types $ACTIVITY_TYPES \
+              --min-distance "$ACTIVITY_MIN_DISTANCE_METERS" \
+              --exclude-run-ids $ACTIVITY_EXCLUDE_RUN_IDS
+          else
+            echo "No manual GPX cycling data found."
+          fi
+
+      - name: Backfill missing historical cycling tracks
+        shell: bash
+        run: |
+          set -euo pipefail
+          if compgen -G "manual_backfill/*.json" > /dev/null; then
+            python run_page/backfill_activity_data.py manual_backfill/*.json
+            python run_page/filter_activity_data.py \
+              --types $ACTIVITY_TYPES \
+              --min-distance "$ACTIVITY_MIN_DISTANCE_METERS" \
+              --exclude-run-ids $ACTIVITY_EXCLUDE_RUN_IDS
+          else
+            echo "No manual backfill cycling data found."
+          fi
+
+      - name: Validate the complete cycling candidate
+        run: |
+          python run_page/activity_snapshot.py validate \
+            --json src/static/activities.json \
+            --db run_page/data.db \
+            --previous-json "$RUNNER_TEMP/.activity-last-known-good/cycling/activities.json" \
+            --metadata "$RUNNER_TEMP/cycling-activity-snapshot.json"
+
+      - name: Generate profile-driven cycling artifacts
+        run: |
+          node scripts/generate-activity-artifacts.mjs generate \
+            --mode cycling \
+            --input src/static/activities.json \
+            --published-at "$PUBLICATION_TIMESTAMP" \
+            --data-output public/data \
+            --assets-output assets \
+            --python python \
+            --athlete "$ATHLETE" \
+            --birth-month "$BIRTHDAY_MONTH"
+
+      - name: Verify both namespaces before changing the repository
+        run: |
+          node scripts/generate-activity-artifacts.mjs verify \
+            --data-output public/data \
+            --assets-output assets
+
+      - name: Commit both validated modes atomically
+        id: push
+        shell: bash
+        run: |
+          set -euo pipefail
           git config --local user.email 'action@github.com'
           git config --local user.name 'GitHub Action'
-          git add -A
-          git commit -m 'rebuild running data only' || echo 'nothing to commit'
-          git push || echo 'nothing to push'
+          git add public/data assets/running assets/cycling
+          if git diff --cached --quiet; then
+            echo 'Nothing to commit'
+          else
+            git commit -m 'publish validated running and cycling artifacts'
+            git push
+          fi
+          echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload validation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: activity-snapshots-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/running-activity-snapshot.json
+            ${{ runner.temp }}/cycling-activity-snapshot.json
+          retention-days: 30
 
   publish_pages:
-    name: Publish GitHub Pages
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.pages_mode != 'none' }}
+    name: Publish explicitly requested GitHub Pages mode
     needs: sync
     permissions:
       contents: read
       pages: write
       id-token: write
     uses: ./.github/workflows/gh-pages.yml
-    secrets: inherit
     with:
-      save_data_in_github_cache: false
-      data_cache_prefix: track_data
+      deployment_mode: ${{ inputs.pages_mode }}
+      source_sha: ${{ needs.sync.outputs.source_sha }}

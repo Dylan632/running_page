@@ -36,9 +36,7 @@ jobs:
         run: black . --diff --color && black . --check
 
       - name: Lint with Ruff
-        run: |
-          pip install ruff
-          ruff check .
+        run: ruff check .
 
   node_lint_and_test:
     runs-on: ubuntu-latest
@@ -62,11 +60,13 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
-      - name: Run check and build
+      - name: Run complete delivery checks
+        shell: bash
         run: |
-          pnpm test
-          pnpm run check
-          pnpm run lint
-          pnpm run build
+          set -euo pipefail
+          git status --porcelain --untracked-files=all > "$RUNNER_TEMP/before-delivery-status"
+          pnpm run ci
+          git status --porcelain --untracked-files=all > "$RUNNER_TEMP/after-delivery-status"
+          cmp "$RUNNER_TEMP/before-delivery-status" "$RUNNER_TEMP/after-delivery-status"

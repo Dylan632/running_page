@@ -1,28 +1,21 @@
-import { lazy, Suspense, useEffect } from 'react';
-import { totalStat } from '@assets/index';
-import { loadSvgComponent } from '@/utils/svgUtils';
-import { initSvgColorAdjustments } from '@/utils/colorUtils';
+import { Suspense } from 'react';
+import { getPosterComponents } from '@assets/index';
+import { useActivityMode } from '@/modules/activity/ActivityModeProvider';
+import type { ActivityMode } from '@/modules/activity/profiles';
 
-// Lazy load both github.svg and grid.svg
-const GithubSvg = lazy(() => loadSvgComponent(totalStat, './github.svg'));
-
-const GridSvg = lazy(() => loadSvgComponent(totalStat, './grid.svg'));
+const posterPath = (mode: ActivityMode, name: string) => `./${mode}/${name}`;
 
 const SVGStat = () => {
-  useEffect(() => {
-    // Initialize SVG color adjustments when component mounts
-    const timer = setTimeout(() => {
-      initSvgColorAdjustments();
-    }, 100); // Small delay to ensure SVG is rendered
-
-    return () => clearTimeout(timer);
-  }, []);
+  const { mode } = useActivityMode();
+  const posters = getPosterComponents(mode).totalStat;
+  const GithubSvg = posters[posterPath(mode, 'github.svg')];
+  const GridSvg = posters[posterPath(mode, 'grid.svg')];
 
   return (
-    <div id="svgStat">
+    <div id="svgStat" data-activity-mode={mode}>
       <Suspense fallback={<div className="text-center">Loading...</div>}>
-        <GithubSvg className="github-svg mt-4 h-auto w-full" />
-        <GridSvg className="grid-svg mt-4 h-auto w-full" />
+        {GithubSvg && <GithubSvg className="github-svg mt-4 h-auto w-full" />}
+        {GridSvg && <GridSvg className="grid-svg mt-4 h-auto w-full" />}
       </Suspense>
     </div>
   );

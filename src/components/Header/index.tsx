@@ -1,12 +1,14 @@
 import type { ReactElement } from 'react';
+import { Link } from 'react-router-dom';
 import MusicPlayer from '@/components/MusicPlayer';
-import getSiteMetadata from '@/hooks/useSiteMetadata';
+import useSiteMetadata from '@/hooks/useSiteMetadata';
 import { useTheme, Theme } from '@/hooks/useTheme';
-import { ACTIVITY_MODE } from '@/utils/activityMode';
+import { useActivityMode } from '@/modules/activity/ActivityModeProvider';
 import styles from './style.module.css';
 
 const Header = () => {
-  const { logo, activityLinks, profileUrl, navLinks } = getSiteMetadata();
+  const { logo, activityLinks, profileUrl, navLinks } = useSiteMetadata();
+  const { hrefForMode, mode } = useActivityMode();
   const { theme, setTheme } = useTheme();
 
   const icons: Record<Theme, ReactElement> = {
@@ -57,12 +59,12 @@ const Header = () => {
       <nav className="running-header mx-auto mt-4 flex w-full max-w-7xl flex-col items-center justify-between gap-4 px-4 md:mt-12 md:flex-row md:gap-0 md:px-6 lg:px-16">
         <div className="flex w-full flex-wrap items-center gap-3 md:w-auto md:gap-4">
           <a
-            className="running-brand flex items-center gap-3 md:gap-4"
+            className="running-brand flex min-h-11 items-center gap-3 md:gap-4"
             href={profileUrl}
           >
             <picture>
               <img
-                className="h-10 w-10 rounded-full md:h-16 md:w-16"
+                className="h-11 w-11 rounded-full md:h-16 md:w-16"
                 alt="logo"
                 src={logo}
               />
@@ -71,29 +73,35 @@ const Header = () => {
           </a>
           <nav className={styles.activitySwitch} aria-label="运动类型">
             {activityLinks.map((activity) => {
-              const isActive = activity.mode === ACTIVITY_MODE;
+              const isActive = activity.mode === mode;
 
               return (
-                <a
+                <Link
                   key={activity.mode}
                   className={`${styles.activityLink} ${
                     isActive ? styles.activityLinkActive : ''
                   }`}
-                  href={activity.url}
+                  to={hrefForMode(activity.mode)}
                   aria-current={isActive ? 'page' : undefined}
                 >
                   {activity.name}
-                </a>
+                </Link>
               );
             })}
           </nav>
         </div>
         <div className="flex w-full items-center justify-end gap-3 text-right md:w-auto">
+          <Link
+            to={`/${mode}/summary`}
+            className="running-header-link inline-flex min-h-11 min-w-11 items-center justify-center text-lg lg:text-base"
+          >
+            趋势
+          </Link>
           {navLinks.map((n) => (
             <a
               key={n.url}
               href={n.url}
-              className="running-header-link text-lg lg:text-base"
+              className="running-header-link inline-flex min-h-11 items-center text-lg lg:text-base"
             >
               {n.name}
             </a>

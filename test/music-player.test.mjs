@@ -115,6 +115,34 @@ const trackWindowTimeouts = (window) => {
   };
 };
 
+const renderHeaderMarkup = async (path = '/cycling') => {
+  const { MemoryRouter, Route, Routes } = await import('react-router-dom');
+  const { ActivityModeProvider } = await vite.ssrLoadModule(
+    '/src/modules/activity/ActivityModeProvider.tsx'
+  );
+  const { default: Header } = await vite.ssrLoadModule(
+    '/src/components/Header/index.tsx'
+  );
+  return renderToStaticMarkup(
+    React.createElement(
+      MemoryRouter,
+      { initialEntries: [path] },
+      React.createElement(
+        Routes,
+        null,
+        React.createElement(Route, {
+          path: '/:activityMode',
+          element: React.createElement(
+            ActivityModeProvider,
+            null,
+            React.createElement(Header)
+          ),
+        })
+      )
+    )
+  );
+};
+
 test('renders the collapsed Spotify cycling playlist player contract', async () => {
   const { default: MusicPlayer } = await vite.ssrLoadModule(
     '/src/components/MusicPlayer/index.tsx'
@@ -144,10 +172,7 @@ test('renders the collapsed Spotify cycling playlist player contract', async () 
 });
 
 test('places the music control after About and before the theme toggle', async () => {
-  const { default: Header } = await vite.ssrLoadModule(
-    '/src/components/Header/index.tsx'
-  );
-  const html = renderToStaticMarkup(React.createElement(Header));
+  const html = await renderHeaderMarkup();
   const dom = new JSDOM(html);
 
   try {
@@ -180,12 +205,7 @@ test('places the music control after About and before the theme toggle', async (
 });
 
 test('shows running and cycling as an explicit page switch', async () => {
-  const expectedMode =
-    process.env.VITE_ACTIVITY_MODE === 'cycling' ? 'cycling' : 'running';
-  const { default: Header } = await vite.ssrLoadModule(
-    '/src/components/Header/index.tsx'
-  );
-  const html = renderToStaticMarkup(React.createElement(Header));
+  const html = await renderHeaderMarkup('/cycling?year=2026&view=map');
   const dom = new JSDOM(html);
 
   try {
@@ -209,20 +229,14 @@ test('shows running and cycling as an explicit page switch', async () => {
     assert.equal(links.length, 2);
     assert.equal(
       runningLink?.getAttribute('href'),
-      'https://running-page-zeta-lake.vercel.app/'
+      '/running?year=2026&view=map'
     );
     assert.equal(
       cyclingLink?.getAttribute('href'),
-      'https://dylan632.github.io/cycling_page/'
+      '/cycling?year=2026&view=map'
     );
-    assert.equal(
-      runningLink?.getAttribute('aria-current'),
-      expectedMode === 'running' ? 'page' : null
-    );
-    assert.equal(
-      cyclingLink?.getAttribute('aria-current'),
-      expectedMode === 'cycling' ? 'page' : null
-    );
+    assert.equal(runningLink?.getAttribute('aria-current'), null);
+    assert.equal(cyclingLink?.getAttribute('aria-current'), 'page');
   } finally {
     dom.window.close();
   }

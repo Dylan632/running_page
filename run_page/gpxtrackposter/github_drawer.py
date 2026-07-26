@@ -174,9 +174,12 @@ class GithubDrawer(TracksDrawer):
                         break
                     rect_y += 3.5
                     color = self.empty_color
-                    date_title = str(github_rect_day)
-                    if date_title in self.poster.tracks_by_date:
-                        tracks = self.poster.tracks_by_date[date_title]
+                    date_key = str(github_rect_day)
+                    date_title = date_key
+                    special_tier = 0
+                    has_activity = date_key in self.poster.tracks_by_date
+                    if has_activity:
+                        tracks = self.poster.tracks_by_date[date_key]
                         length = sum([t.length for t in tracks])
                         distance1 = self.poster.special_distance["special_distance"]
                         distance2 = self.poster.special_distance["special_distance2"]
@@ -185,26 +188,55 @@ class GithubDrawer(TracksDrawer):
                             color = self.poster.colors.get(
                                 "special2"
                             ) or self.poster.colors.get("special")
+                            special_tier = 2
                         elif distance >= distance1:
                             color = self.poster.colors.get("special")
+                            special_tier = 1
                         else:
                             color = self.color(self.poster.length_range_by_date, length)
                         str_length = format_float(self.poster.m2u(length))
                         date_title = f"{date_title} {str_length} {self.poster.u()}"
 
                     rect = dr.rect((rect_x, rect_y), dom, fill=color)
+                    semantic_classes = ["poster-calendar-cell"]
+                    if not has_activity:
+                        semantic_classes.append("svg-color-inactive-cell")
+                    elif special_tier == 1:
+                        semantic_classes.extend(
+                            ["svg-special-color", "svg-special-fill"]
+                        )
+                    elif special_tier == 2:
+                        semantic_classes.extend(
+                            ["svg-special-color2", "svg-special-fill"]
+                        )
+                    else:
+                        semantic_classes.append("svg-color-active-cell")
+                    self.poster.semantic(
+                        rect,
+                        "calendar-cell",
+                        *semantic_classes,
+                        date=date_key,
+                        has_activity=str(has_activity).lower(),
+                        special_tier=special_tier,
+                    )
                     rect.set_desc(title=date_title)
                     dr.add(rect)
                     # Add diagonal stripe overlay for indoor days
-                    day_key = date_title.split(" ")[0]
+                    day_key = date_key
                     if day_key in self.poster.tracks_by_date:
                         if self._has_indoor_track(self.poster.tracks_by_date[day_key]):
+                            overlay = dr.rect(
+                                (rect_x, rect_y),
+                                dom,
+                                fill="url(#indoor-stripe)",
+                                style="pointer-events: none;",
+                            )
                             dr.add(
-                                dr.rect(
-                                    (rect_x, rect_y),
-                                    dom,
-                                    fill="url(#indoor-stripe)",
-                                    style="pointer-events: none;",
+                                self.poster.semantic(
+                                    overlay,
+                                    "indoor-overlay",
+                                    "poster-indoor-overlay",
+                                    date=date_key,
                                 )
                             )
                     github_rect_day += datetime.timedelta(1)

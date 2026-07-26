@@ -183,6 +183,27 @@ def main():
         action="store_true",
         help="activities db file",
     )
+    args_parser.add_argument(
+        "--from-json",
+        dest="from_json",
+        metavar="FILE",
+        type=str,
+        help="Validated activity snapshot JSON file.",
+    )
+    args_parser.add_argument(
+        "--activity-type",
+        dest="activity_types",
+        action="append",
+        default=[],
+        help="Raw activity type accepted from --from-json; repeat as needed.",
+    )
+    args_parser.add_argument(
+        "--exclude-run-id",
+        dest="exclude_run_ids",
+        action="append",
+        default=[],
+        help="Activity id excluded from --from-json; repeat as needed.",
+    )
 
     args_parser.add_argument(
         "--github-style",
@@ -232,7 +253,17 @@ def main():
     loader.special_file_names = args.special
     loader.min_length = args.min_distance * 1000
 
-    if args.from_db:
+    if args.from_db and args.from_json:
+        raise ParameterError("--from-db and --from-json are mutually exclusive.")
+
+    if args.from_json:
+        tracks = loader.load_tracks_from_json(
+            args.from_json,
+            args.type == "grid",
+            activity_types=args.activity_types,
+            exclude_run_ids=args.exclude_run_ids,
+        )
+    elif args.from_db:
         # for svg from db here if you want gpx please do not use --from-db
         # args.type == "grid" means have polyline data or not
         tracks = loader.load_tracks_from_db(SQL_FILE, args.type == "grid")
@@ -275,6 +306,7 @@ def main():
         "text": args.text_color,
     }
     p.units = args.units
+    p.activity_mode = args.sport_type
     p.set_tracks(tracks)
     # circular not add footer and header
     p.drawer_type = "plain" if is_circular else "title"

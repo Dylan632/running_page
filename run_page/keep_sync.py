@@ -6,6 +6,7 @@ import time
 import zlib
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from xml.dom import minidom
 import eviltransform
 import gpxpy
@@ -21,6 +22,8 @@ from config import (
 )
 from Crypto.Cipher import AES
 from generator import Generator
+from activity_snapshot import atomic_write
+from keep_http import KeepRequestError, collect_keep_records, request_json
 from utils import adjust_time
 import xml.etree.ElementTree as ET
 
@@ -59,11 +62,19 @@ def login(session, mobile, password):
         "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
     }
     data = {"mobile": mobile, "password": password}
-    r = session.post(LOGIN_API, headers=headers, data=data)
-    if r.ok:
-        token = r.json()["data"]["token"]
-        headers["Authorization"] = f"Bearer {token}"
-        return session, headers
+    payload = request_json(
+        session,
+        "POST",
+        LOGIN_API,
+        headers=headers,
+        data=data,
+    )
+    try:
+        token = payload["data"]["token"]
+    except (KeyError, TypeError) as error:
+        raise KeepRequestError("Keep login response did not include a token") from error
+    headers["Authorization"] = f"Bearer {token}"
+    return session, headers
 
 
 def meets_min_distance(stats, min_distance):
@@ -84,35 +95,43 @@ def get_to_download_runs_ids(session, headers, sport_type, min_distance=0):
     result = []
 
     while 1:
-        r = session.get(
+        payload = request_json(
+            session,
+            "GET",
             RUN_DATA_API.format(sport_type=sport_type, last_date=last_date),
             headers=headers,
         )
-        if r.ok:
-            run_logs = r.json()["data"]["records"]
+        try:
+            run_logs = payload["data"]["records"]
+            next_last_date = payload["data"]["lastTimestamp"]
+        except (KeyError, TypeError) as error:
+            raise KeepRequestError(
+                f"Keep {sport_type} list response was incomplete"
+            ) from error
 
-            for i in run_logs:
-                logs = [j["stats"] for j in i["logs"]]
-                result.extend(
-                    k["id"]
-                    for k in logs
-                    if not k["isDoubtful"] and meets_min_distance(k, min_distance)
-                )
-            last_date = r.json()["data"]["lastTimestamp"]
-            since_time = datetime.fromtimestamp(last_date // 1000, tz=timezone.utc)
-            print(f"pares keep ids data since {since_time}")
-            time.sleep(1)  # spider rule
-            if not last_date:
-                break
+        for record_group in run_logs:
+            logs = [record["stats"] for record in record_group["logs"]]
+            result.extend(
+                record["id"]
+                for record in logs
+                if not record["isDoubtful"] and meets_min_distance(record, min_distance)
+            )
+        last_date = next_last_date
+        since_time = datetime.fromtimestamp(last_date // 1000, tz=timezone.utc)
+        print(f"pares keep ids data since {since_time}")
+        time.sleep(1)  # spider rule
+        if not last_date:
+            break
     return result
 
 
 def get_single_run_data(session, headers, run_id, sport_type):
-    r = session.get(
-        RUN_LOG_API.format(sport_type=sport_type, run_id=run_id), headers=headers
+    return request_json(
+        session,
+        "GET",
+        RUN_LOG_API.format(sport_type=sport_type, run_id=run_id),
+        headers=headers,
     )
-    if r.ok:
-        return r.json()
 
 
 def decode_runmap_data(text, is_geo=False):
@@ -259,16 +278,17 @@ def get_all_keep_tracks(
             old_tcx_ids = [
                 i.split(".")[0] for i in old_tcx_ids if not i.startswith(".")
             ]
-        for run in runs:
-            print(f"parsing keep id {run}")
-            try:
-                run_data = get_single_run_data(s, headers, run, api)
-                track = parse_raw_data_to_nametuple(
-                    run_data, old_gpx_ids, old_tcx_ids, with_gpx, with_tcx
-                )
-                tracks.append(track)
-            except Exception as e:
-                print(f"Something wrong paring keep id {run}: " + str(e))
+
+        def load_run(run_id):
+            print(f"parsing keep id {run_id}")
+            return get_single_run_data(s, headers, run_id, api)
+
+        def parse_run(run_data):
+            return parse_raw_data_to_nametuple(
+                run_data, old_gpx_ids, old_tcx_ids, with_gpx, with_tcx
+            )
+
+        tracks.extend(collect_keep_records(runs, load_run, parse_run))
     return tracks
 
 
@@ -485,29 +505,17 @@ def find_nearest_hr(
 
 
 def download_keep_gpx(gpx_data, keep_id):
-    try:
-        print(f"downloading keep_id {str(keep_id)} gpx")
-        file_path = os.path.join(GPX_FOLDER, str(keep_id) + ".gpx")
-        with open(file_path, "w") as fb:
-            fb.write(gpx_data)
-        return file_path
-    except Exception as e:
-        print(f"Something wrong to download keep gpx {str(e)}")
-        print(f"wrong id {keep_id}")
-        pass
+    print(f"downloading keep_id {str(keep_id)} gpx")
+    file_path = Path(GPX_FOLDER) / f"{keep_id}.gpx"
+    atomic_write(file_path, gpx_data.encode())
+    return str(file_path)
 
 
 def download_keep_tcx(tcx_data, keep_id):
-    try:
-        print(f"downloading keep_id {str(keep_id)} tcx")
-        file_path = os.path.join(TCX_FOLDER, str(keep_id) + ".tcx")
-        with open(file_path, "w") as fb:
-            fb.write(tcx_data)
-        return file_path
-    except Exception as e:
-        print(f"Something wrong to download keep tcx {str(e)}")
-        print(f"wrong id {keep_id}")
-        pass
+    print(f"downloading keep_id {str(keep_id)} tcx")
+    file_path = Path(TCX_FOLDER) / f"{keep_id}.tcx"
+    atomic_write(file_path, tcx_data.encode())
+    return str(file_path)
 
 
 def run_keep_sync(
@@ -532,8 +540,7 @@ def run_keep_sync(
     generator.sync_from_app(new_tracks)
 
     activities_list = generator.load()
-    with open(JSON_FILE, "w") as f:
-        json.dump(activities_list, f)
+    atomic_write(Path(JSON_FILE), json.dumps(activities_list).encode())
 
 
 if __name__ == "__main__":

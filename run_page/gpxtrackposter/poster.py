@@ -61,6 +61,17 @@ class Poster:
         self.set_language(None)
         self.tc_offset = datetime.now(pytz.timezone("Asia/Shanghai")).utcoffset()
         self.github_style = "align-firstday"
+        self.activity_mode = "all"
+
+    @staticmethod
+    def semantic(element, role, *classes, **data):
+        """Attach stable presentation semantics without relying on SVG colors."""
+        element.attribs["data-poster-role"] = role
+        if classes:
+            element.attribs["class"] = " ".join(classes)
+        for name, value in data.items():
+            element.attribs[f"data-{name.replace('_', '-')}"] = str(value)
+        return element
 
     def set_language(self, language):
         if language:
@@ -114,9 +125,25 @@ class Poster:
         if self.drawer_type == "year_summary":
             # Year summary has its own layout, use full size
             height = height
-        d = svgwrite.Drawing(output, (f"{width}mm", f"{height}mm"))
+        # Custom data-* attributes are deliberate publication semantics used
+        # by the runtime and deployment probes. svgwrite's SVG 1.1 validator
+        # rejects those otherwise-valid extension attributes.
+        d = svgwrite.Drawing(output, (f"{width}mm", f"{height}mm"), debug=False)
+        self.semantic(
+            d,
+            "poster",
+            "activity-poster",
+            activity_mode=self.activity_mode,
+            poster_type=self.drawer_type,
+        )
         d.viewbox(0, 0, self.width, height)
-        d.add(d.rect((0, 0), (width, height), fill=self.colors["background"]))
+        background = d.rect(
+            (0, 0),
+            (width, height),
+            fill=self.colors["background"],
+            stroke="none",
+        )
+        d.add(self.semantic(background, "background", "poster-background"))
         if self.drawer_type == "year_summary":
             # Year summary drawer handles its own layout
             self.__draw_tracks(d, XY(width - 10, height - 10), XY(5, 5))
@@ -150,7 +177,8 @@ class Poster:
     def __draw_header(self, d):
         text_color = self.colors["text"]
         title_style = "font-size:12px; font-family:Arial; font-weight:bold;"
-        d.add(d.text(self.title, insert=(10, 20), fill=text_color, style=title_style))
+        title = d.text(self.title, insert=(10, 20), fill=text_color, style=title_style)
+        d.add(self.semantic(title, "title", "poster-title"))
 
     def __activity_label(self):
         title = self.title or ""
@@ -203,11 +231,21 @@ class Poster:
                 )
             )
 
+            primary_swatch = d.rect(
+                (special_marker_x, self.height - 17),
+                (2.6, 2.6),
+                fill=self.colors["special"],
+                stroke="none",
+            )
             d.add(
-                d.rect(
-                    (special_marker_x, self.height - 17),
-                    (2.6, 2.6),
-                    fill=self.colors["special"],
+                self.semantic(
+                    primary_swatch,
+                    "legend-swatch",
+                    "poster-legend-swatch",
+                    "svg-special-color",
+                    "svg-special-fill",
+                    special_tier=1,
+                    threshold_km=special_distance1,
                 )
             )
 
@@ -220,11 +258,21 @@ class Poster:
                 )
             )
 
+            secondary_swatch = d.rect(
+                (special_marker_x, self.height - 13),
+                (2.6, 2.6),
+                fill=self.colors["special2"],
+                stroke="none",
+            )
             d.add(
-                d.rect(
-                    (special_marker_x, self.height - 13),
-                    (2.6, 2.6),
-                    fill=self.colors["special2"],
+                self.semantic(
+                    secondary_swatch,
+                    "legend-swatch",
+                    "poster-legend-swatch",
+                    "svg-special-color2",
+                    "svg-special-fill",
+                    special_tier=2,
+                    threshold_km=special_distance2,
                 )
             )
 

@@ -1,11 +1,14 @@
-import * as mapboxPolyline from '@mapbox/polyline';
-import gcoord from 'gcoord';
-import { WebMercatorViewport } from '@math.gl/web-mercator';
 import type { FeatureCollection, LineString, Feature } from 'geojson';
 import type { GeoJsonProperties } from 'geojson';
 import type { RPGeometry } from '@/static/run_countries';
 import worldGeoJsonUrl from '@/static/world.zh.json?url';
 import { getMapThemeFromCurrentTheme } from '@/hooks/useTheme';
+import {
+  fitRouteGeometries,
+  normalizeRouteGeometries,
+  type Coordinate,
+  type RouteViewState,
+} from '@/modules/routeGeometry';
 import {
   CYCLING_COLOR,
   getMapTileVendorStyles,
@@ -14,47 +17,16 @@ import {
   INDOOR_COLOR,
   MAIN_COLOR,
   MAP_TILE_STYLES,
-  NEED_FIX_MAP,
   RUN_TRAIL_COLOR,
   SWIMMING_COLOR,
   WALKING_COLOR,
 } from './const';
 import type { Activity } from './utils';
-import { locationForRun } from './utils';
 import { getEffectiveTheme } from './themeUtils';
 
-export type Coordinate = [number, number];
+export type { Coordinate } from '@/modules/routeGeometry';
 
-export interface IViewState {
-  longitude?: number;
-  latitude?: number;
-  zoom?: number;
-}
-
-export const pathForRun = (run: Activity): Coordinate[] => {
-  try {
-    if (!run.summary_polyline) {
-      return [];
-    }
-    const c = mapboxPolyline.decode(run.summary_polyline);
-    // reverse lat long for mapbox
-    c.forEach((arr) => {
-      [arr[0], arr[1]] = !NEED_FIX_MAP
-        ? [arr[1], arr[0]]
-        : gcoord.transform([arr[1], arr[0]], gcoord.GCJ02, gcoord.WGS84);
-    });
-    // try to use location city coordinate instead, if runpath is incomplete
-    if (c.length === 2 && String(c[0]) === String(c[1])) {
-      const { coordinate } = locationForRun(run);
-      if (coordinate?.[0] && coordinate?.[1]) {
-        return [coordinate, coordinate];
-      }
-    }
-    return c;
-  } catch (_err) {
-    return [];
-  }
-};
+export type IViewState = RouteViewState;
 
 const colorForRun = (run: Activity): string => {
   const dynamicRunColor = getRuntimeRunColor();
@@ -90,24 +62,29 @@ const colorForRun = (run: Activity): string => {
 
 export const geoJsonForRuns = (
   runs: Activity[]
-): FeatureCollection<LineString> => ({
-  type: 'FeatureCollection',
-  features: runs.map((run) => {
-    const points = pathForRun(run);
-    const color = colorForRun(run);
-    return {
-      type: 'Feature',
-      properties: {
-        color: color,
-        indoor: run.subtype === 'indoor' || run.subtype === 'treadmill',
-      },
-      geometry: {
-        type: 'LineString',
-        coordinates: points,
-      },
-    };
-  }),
-});
+): FeatureCollection<LineString> => {
+  const routeGeometries = normalizeRouteGeometries(runs);
+
+  return {
+    type: 'FeatureCollection',
+    features: runs.map((run, index) => {
+      const routeGeometry = routeGeometries[index];
+      const points = routeGeometry.coordinates;
+      const color = colorForRun(run);
+      return {
+        type: 'Feature',
+        properties: {
+          color: color,
+          indoor: run.subtype === 'indoor' || run.subtype === 'treadmill',
+        },
+        geometry: {
+          type: 'LineString',
+          coordinates: points,
+        },
+      };
+    }),
+  };
+};
 
 let worldGeoJsonPromise: Promise<FeatureCollection<RPGeometry>> | undefined;
 
@@ -140,39 +117,12 @@ export const geoJsonForMap = async (): Promise<
 
 export const getBoundsForGeoData = (
   geoData: FeatureCollection<LineString>
-): IViewState => {
-  const { features } = geoData;
-  let points: Coordinate[] = [];
-  // find first have data
-  for (const f of features) {
-    if (f.geometry.coordinates.length) {
-      points = f.geometry.coordinates as Coordinate[];
-      break;
-    }
-  }
-  if (points.length === 0) {
-    return { longitude: 20, latitude: 20, zoom: 3 };
-  }
-  if (points.length === 2 && String(points[0]) === String(points[1])) {
-    return { longitude: points[0][0], latitude: points[0][1], zoom: 9 };
-  }
-  // Calculate corner values of bounds
-  const pointsLong = points.map((point) => point[0]) as number[];
-  const pointsLat = points.map((point) => point[1]) as number[];
-  const cornersLongLat: [Coordinate, Coordinate] = [
-    [Math.min(...pointsLong), Math.min(...pointsLat)],
-    [Math.max(...pointsLong), Math.max(...pointsLat)],
-  ];
-  const viewState = new WebMercatorViewport({
-    width: 800,
-    height: 600,
-  }).fitBounds(cornersLongLat, { padding: 200 });
-  let { longitude, latitude, zoom } = viewState;
-  if (features.length > 1) {
-    zoom = 11.5;
-  }
-  return { longitude, latitude, zoom };
-};
+): IViewState =>
+  fitRouteGeometries(
+    geoData.features.map(({ geometry }) => ({
+      coordinates: geometry.coordinates as Coordinate[],
+    }))
+  );
 
 export const getMapStyle = (
   vendor: string,
