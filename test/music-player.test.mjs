@@ -179,6 +179,55 @@ test('places the music control after About and before the theme toggle', async (
   }
 });
 
+test('shows running and cycling as an explicit page switch', async () => {
+  const expectedMode =
+    process.env.VITE_ACTIVITY_MODE === 'cycling' ? 'cycling' : 'running';
+  const { default: Header } = await vite.ssrLoadModule(
+    '/src/components/Header/index.tsx'
+  );
+  const html = renderToStaticMarkup(React.createElement(Header));
+  const dom = new JSDOM(html);
+
+  try {
+    const header = dom.window.document.querySelector('.running-header');
+    const brand = header?.querySelector('.running-brand');
+    const activitySwitch = header?.querySelector('nav[aria-label="运动类型"]');
+    const links = [...(activitySwitch?.querySelectorAll('a') ?? [])];
+    const runningLink = links.find(
+      (link) => link.textContent?.trim() === '跑步'
+    );
+    const cyclingLink = links.find(
+      (link) => link.textContent?.trim() === '骑行'
+    );
+
+    assert.equal(
+      brand?.getAttribute('href'),
+      'https://github.com/Dylan632',
+      'the avatar and name should no longer switch activity pages'
+    );
+    assert.ok(activitySwitch);
+    assert.equal(links.length, 2);
+    assert.equal(
+      runningLink?.getAttribute('href'),
+      'https://running-page-zeta-lake.vercel.app/'
+    );
+    assert.equal(
+      cyclingLink?.getAttribute('href'),
+      'https://dylan632.github.io/cycling_page/'
+    );
+    assert.equal(
+      runningLink?.getAttribute('aria-current'),
+      expectedMode === 'running' ? 'page' : null
+    );
+    assert.equal(
+      cyclingLink?.getAttribute('aria-current'),
+      expectedMode === 'cycling' ? 'page' : null
+    );
+  } finally {
+    dom.window.close();
+  }
+});
+
 test('keeps the player mounted and manages close focus across interactions', async () => {
   const dom = new JSDOM(
     '<!doctype html><html><body><main id="root"></main><button id="outside-target" type="button">Outside</button><span id="outside-static">Outside text</span></body></html>',

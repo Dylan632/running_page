@@ -2,10 +2,11 @@ import type { ReactElement } from 'react';
 import MusicPlayer from '@/components/MusicPlayer';
 import getSiteMetadata from '@/hooks/useSiteMetadata';
 import { useTheme, Theme } from '@/hooks/useTheme';
+import { ACTIVITY_MODE } from '@/utils/activityMode';
 import styles from './style.module.css';
 
 const Header = () => {
-  const { logo, activitySwitchUrl, navLinks } = getSiteMetadata();
+  const { logo, activityLinks, profileUrl, navLinks } = getSiteMetadata();
   const { theme, setTheme } = useTheme();
 
   const icons: Record<Theme, ReactElement> = {
@@ -54,10 +55,10 @@ const Header = () => {
   return (
     <>
       <nav className="running-header mx-auto mt-4 flex w-full max-w-7xl flex-col items-center justify-between gap-4 px-4 md:mt-12 md:flex-row md:gap-0 md:px-6 lg:px-16">
-        <div className="flex w-full items-center gap-3 md:w-auto md:gap-4">
+        <div className="flex w-full flex-wrap items-center gap-3 md:w-auto md:gap-4">
           <a
             className="running-brand flex items-center gap-3 md:gap-4"
-            href={activitySwitchUrl}
+            href={profileUrl}
           >
             <picture>
               <img
@@ -68,6 +69,24 @@ const Header = () => {
             </picture>
             <span className="running-brand-name">Dylan</span>
           </a>
+          <nav className={styles.activitySwitch} aria-label="运动类型">
+            {activityLinks.map((activity) => {
+              const isActive = activity.mode === ACTIVITY_MODE;
+
+              return (
+                <a
+                  key={activity.mode}
+                  className={`${styles.activityLink} ${
+                    isActive ? styles.activityLinkActive : ''
+                  }`}
+                  href={activity.url}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  {activity.name}
+                </a>
+              );
+            })}
+          </nav>
         </div>
         <div className="flex w-full items-center justify-end gap-3 text-right md:w-auto">
           {navLinks.map((n) => (

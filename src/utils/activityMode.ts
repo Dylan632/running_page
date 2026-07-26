@@ -1,4 +1,4 @@
-type ActivityMode = 'running' | 'cycling';
+export type ActivityMode = 'running' | 'cycling';
 
 interface ActivityFilterCandidate {
   distance?: number | null;
