@@ -34,6 +34,8 @@ const PRIMARY_CLUSTER_MIN_ROUTE_COUNT = 2;
 const PRIMARY_CLUSTER_MIN_SHARE = 0.6;
 const PRIMARY_CLUSTER_MIN_LEAD_RATIO = 1.5;
 const PRIMARY_CLUSTER_MIN_SEPARATION_KM = 75;
+const PRIMARY_LOCAL_ROUTE_RADIUS_KM = 50;
+const PRIMARY_CLUSTER_MAX_ZOOM = 14;
 const EARTH_RADIUS_KM = 6371;
 
 const routeGeometryCache = new Map<string, NormalizedRouteGeometry>();
@@ -213,13 +215,24 @@ const densestAnchorCluster = (
   return densestCluster;
 };
 
-const primaryRouteAnchors = (
+interface AnchoredRoute {
+  anchor: Coordinate;
+  geometryIndex: number;
+}
+
+interface PrimaryRouteCluster {
+  center: Coordinate;
+  routes: AnchoredRoute[];
+}
+
+const primaryRouteCluster = (
   geometries: readonly RouteCoordinateGeometry[]
-): Coordinate[] | null => {
-  const anchors = geometries.flatMap((geometry) => {
+): PrimaryRouteCluster | null => {
+  const anchoredRoutes = geometries.flatMap((geometry, geometryIndex) => {
     const anchor = firstValidCoordinate(geometry);
-    return anchor ? [anchor] : [];
+    return anchor ? [{ anchor, geometryIndex }] : [];
   });
+  const anchors = anchoredRoutes.map(({ anchor }) => anchor);
   const allAnchorIndexes = anchors.map((_, index) => index);
   const primaryCluster = densestAnchorCluster(anchors, allAnchorIndexes);
   const primaryClusterSet = new Set(primaryCluster);
@@ -251,16 +264,35 @@ const primaryRouteAnchors = (
   );
   if (!hasDistantRoutes) return null;
 
-  return primaryCluster.map((routeIndex) => anchors[routeIndex]);
+  return {
+    center: primaryCenter,
+    routes: primaryCluster.map((routeIndex) => anchoredRoutes[routeIndex]),
+  };
 };
 
 export const fitPrimaryRouteGeometries = (
   geometries: readonly RouteCoordinateGeometry[]
 ): RouteViewState => {
-  const routeAnchors = primaryRouteAnchors(geometries);
-  if (!routeAnchors) return fitRouteGeometries(geometries);
+  const primaryCluster = primaryRouteCluster(geometries);
+  if (!primaryCluster) return fitRouteGeometries(geometries);
 
-  return fitRouteGeometries(
-    routeAnchors.map((anchor) => ({ coordinates: [anchor] }))
+  const viewState = fitRouteGeometries(
+    primaryCluster.routes.map(({ anchor, geometryIndex }) => {
+      const geometry = geometries[geometryIndex];
+      const isLocalRoute = geometry.coordinates.every(
+        (coordinate) =>
+          distanceInKilometers(primaryCluster.center, coordinate) <=
+          PRIMARY_LOCAL_ROUTE_RADIUS_KM
+      );
+      return isLocalRoute ? geometry : { coordinates: [anchor] };
+    })
   );
+
+  return {
+    ...viewState,
+    zoom: Math.min(
+      viewState.zoom ?? PRIMARY_CLUSTER_MAX_ZOOM,
+      PRIMARY_CLUSTER_MAX_ZOOM
+    ),
+  };
 };

@@ -245,7 +245,7 @@ test('does not merge a chain of neighboring starts into one activity area', asyn
   );
 });
 
-test('2025 annual views focus the primary Wuxi cluster for both modes', async () => {
+test('real annual views focus their primary activity area at a useful zoom', async () => {
   const { createActivityDataRepository } = await vite.ssrLoadModule(
     '/src/modules/activity/activityData.ts'
   );
@@ -267,27 +267,63 @@ test('2025 annual views focus the primary Wuxi cluster for both modes', async ()
     fetcher,
   });
 
-  for (const mode of ['running', 'cycling']) {
-    const loadedActivities = await repository.loadActivities(mode, ['2025']);
+  const cases = [
+    {
+      mode: 'running',
+      year: '2025',
+      longitudeRange: [120.1, 120.4],
+      latitudeRange: [31.4, 31.7],
+      minimumZoomGain: 2,
+    },
+    {
+      mode: 'cycling',
+      year: '2025',
+      longitudeRange: [120.1, 120.4],
+      latitudeRange: [31.4, 31.7],
+      minimumZoomGain: 1.5,
+    },
+    {
+      mode: 'running',
+      year: '2020',
+      longitudeRange: [119.3, 119.7],
+      latitudeRange: [35.8, 36.1],
+      minimumZoomGain: 2,
+    },
+  ];
+
+  for (const {
+    mode,
+    year,
+    longitudeRange,
+    latitudeRange,
+    minimumZoomGain,
+  } of cases) {
+    const loadedActivities = await repository.loadActivities(mode, [year]);
     const activities = loadedActivities.filter((item) =>
-      item.start_date_local.startsWith('2025')
+      item.start_date_local.startsWith(year)
     );
     const geoData = geoJsonForRuns(activities);
     const fullView = getBoundsForGeoData(geoData);
     const primaryView = getPrimaryBoundsForGeoData(geoData);
 
-    assert.ok(activities.length > 0, `${mode}: missing 2025 activities`);
+    assert.ok(activities.length > 0, `${mode}: missing ${year} activities`);
     assert.ok(
-      primaryView.longitude > 120.1 && primaryView.longitude < 120.4,
-      `${mode}: default longitude should focus Wuxi`
+      primaryView.longitude > longitudeRange[0] &&
+        primaryView.longitude < longitudeRange[1],
+      `${mode} ${year}: default longitude should focus the primary area`
     );
     assert.ok(
-      primaryView.latitude > 31.4 && primaryView.latitude < 31.7,
-      `${mode}: default latitude should focus Wuxi`
+      primaryView.latitude > latitudeRange[0] &&
+        primaryView.latitude < latitudeRange[1],
+      `${mode} ${year}: default latitude should focus the primary area`
     );
     assert.ok(
-      primaryView.zoom > fullView.zoom + (mode === 'cycling' ? 1.5 : 2),
-      `${mode}: primary view should be tighter than the all-route view`
+      primaryView.zoom > fullView.zoom + minimumZoomGain,
+      `${mode} ${year}: primary view should be tighter than all routes`
+    );
+    assert.ok(
+      primaryView.zoom <= 14,
+      `${mode} ${year}: primary view must keep local routes in view`
     );
   }
 });
