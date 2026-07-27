@@ -35,6 +35,13 @@ const activity = (overrides = {}) => ({
   ...overrides,
 });
 
+const shortRouteAt = ([longitude, latitude]) => ({
+  coordinates: [
+    [longitude, latitude],
+    [longitude + 0.01, latitude + 0.01],
+  ],
+});
+
 test('normalizes and caches route geometry by run id and polyline', async () => {
   const { normalizeRouteGeometry } = await vite.ssrLoadModule(
     '/src/modules/routeGeometry/index.ts'
@@ -155,22 +162,12 @@ test('fits an annual overview to a clear primary activity cluster', async () => 
     [120.22, 31.49],
     [120.23, 31.52],
     [120.24, 31.5],
-  ].map(([longitude, latitude]) => ({
-    coordinates: [
-      [longitude, latitude],
-      [longitude + 0.01, latitude + 0.01],
-    ],
-  }));
+  ].map(shortRouteAt);
   const distantRoutes = [
     [118.78, 32.04],
     [118.8, 32.06],
     [118.82, 32.08],
-  ].map(([longitude, latitude]) => ({
-    coordinates: [
-      [longitude, latitude],
-      [longitude + 0.01, latitude + 0.01],
-    ],
-  }));
+  ].map(shortRouteAt);
   const geometries = [...primaryRoutes, ...distantRoutes];
 
   const fullView = fitRouteGeometries(geometries);
@@ -196,12 +193,7 @@ test('keeps the full annual view when no activity cluster clearly leads', async 
     [118.8, 32.06],
     [118.82, 32.08],
     [118.84, 32.1],
-  ].map(([longitude, latitude]) => ({
-    coordinates: [
-      [longitude, latitude],
-      [longitude + 0.01, latitude + 0.01],
-    ],
-  }));
+  ].map(shortRouteAt);
 
   assert.deepEqual(
     fitPrimaryRouteGeometries(geometries),

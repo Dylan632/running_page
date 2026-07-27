@@ -116,23 +116,18 @@ export const geoJsonForMap = async (): Promise<
   };
 };
 
+const routeGeometriesForGeoData = (geoData: FeatureCollection<LineString>) =>
+  geoData.features.map(({ geometry }) => ({
+    coordinates: geometry.coordinates as Coordinate[],
+  }));
+
 export const getBoundsForGeoData = (
   geoData: FeatureCollection<LineString>
-): IViewState =>
-  fitRouteGeometries(
-    geoData.features.map(({ geometry }) => ({
-      coordinates: geometry.coordinates as Coordinate[],
-    }))
-  );
+): IViewState => fitRouteGeometries(routeGeometriesForGeoData(geoData));
 
 export const getPrimaryBoundsForGeoData = (
   geoData: FeatureCollection<LineString>
-): IViewState =>
-  fitPrimaryRouteGeometries(
-    geoData.features.map(({ geometry }) => ({
-      coordinates: geometry.coordinates as Coordinate[],
-    }))
-  );
+): IViewState => fitPrimaryRouteGeometries(routeGeometriesForGeoData(geoData));
 
 export const getMapStyle = (
   vendor: string,
