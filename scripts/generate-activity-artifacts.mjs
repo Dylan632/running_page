@@ -12,6 +12,10 @@ import {
 } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { readActivityJson } from './lib/activity-json.mjs';
+import {
+  assertPublishedActivitiesMatchPolicy,
+  createActivityPublicationPolicy,
+} from './lib/activity-policy.mjs';
 
 const DEFAULT_PROFILE_PATH = 'src/modules/activity/activity-profiles.json';
 const KNOWN_COMMANDS = new Set([
@@ -352,6 +356,11 @@ const verifyMode = async (profile, dataOutput, assetsOutput) => {
 
   const metadataText = await readFile(join(modeData, 'metadata.json'), 'utf8');
   const metadata = JSON.parse(metadataText);
+  assertPublishedActivitiesMatchPolicy({
+    activities: metadata,
+    expectedCount: manifest.activityCount,
+    policy: createActivityPublicationPolicy(profile),
+  });
   if (
     metadata.length !== manifest.activityCount ||
     checksum(metadataText) !== manifest.metadataChecksum ||

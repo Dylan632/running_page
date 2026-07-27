@@ -6,6 +6,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
+import {
+  assertPublishedActivitiesMatchPolicy,
+  createActivityPublicationPolicy,
+} from './lib/activity-policy.mjs';
 
 const ACTIVITY_PROFILE_PATH = new URL(
   '../src/modules/activity/activity-profiles.json',
@@ -15,76 +19,12 @@ const ACTIVITY_PROFILE_PATH = new URL(
 const loadActivityProfiles = async () => {
   const source = JSON.parse(await readFile(ACTIVITY_PROFILE_PATH, 'utf8'));
   const profiles = Object.entries(source?.profiles ?? {}).map(
-    ([key, profile]) => {
-      const minimumDistance = Number(profile?.publication?.minDistanceMeters);
-      if (
-        !profile ||
-        profile.mode !== key ||
-        !Array.isArray(profile.activityTypes) ||
-        profile.activityTypes.length === 0 ||
-        !profile.activityTypes.every(
-          (activityType) =>
-            typeof activityType === 'string' && activityType.length > 0
-        ) ||
-        !Number.isFinite(minimumDistance) ||
-        minimumDistance < 0 ||
-        !Array.isArray(profile.publication?.excludeRunIds)
-      ) {
-        throw new Error(`Invalid activity profile: ${key}`);
-      }
-      return {
-        mode: key,
-        activityTypes: new Set(profile.activityTypes),
-        minDistanceMeters: minimumDistance,
-        excludeRunIds: new Set(profile.publication.excludeRunIds.map(String)),
-      };
-    }
+    ([key, profile]) => createActivityPublicationPolicy(profile, key)
   );
   if (profiles.length === 0) {
     throw new Error('Activity profile has no modes to monitor');
   }
   return profiles;
-};
-
-const assertPublishedActivitiesMatchProfile = ({
-  activities,
-  manifest,
-  profile,
-}) => {
-  const { mode, activityTypes, minDistanceMeters, excludeRunIds } = profile;
-  if (
-    !Array.isArray(activities) ||
-    activities.length !== manifest.activityCount
-  ) {
-    throw new Error(
-      `${mode} metadata violates publication policy: expected ${manifest.activityCount} activities`
-    );
-  }
-
-  const runIds = new Set();
-  for (const activity of activities) {
-    const runId =
-      typeof activity?.run_id === 'string' ||
-      typeof activity?.run_id === 'number'
-        ? String(activity.run_id)
-        : '';
-    const distance = Number(activity?.distance);
-    if (
-      !runId ||
-      runIds.has(runId) ||
-      !activityTypes.has(activity?.type) ||
-      activity?.distance === '' ||
-      activity?.distance === null ||
-      !Number.isFinite(distance) ||
-      distance <= minDistanceMeters ||
-      excludeRunIds.has(runId)
-    ) {
-      throw new Error(
-        `${mode} metadata violates publication policy at activity ${runId || '(missing id)'}`
-      );
-    }
-    runIds.add(runId);
-  }
 };
 
 const parseArgs = (argv) => {
@@ -270,10 +210,10 @@ const inspectActivityData = async ({
   );
   if (requireCache) assertClientCachePolicy(metadataResponse);
   const activities = await metadataResponse.json();
-  assertPublishedActivitiesMatchProfile({
+  assertPublishedActivitiesMatchPolicy({
     activities,
-    manifest,
-    profile,
+    expectedCount: manifest.activityCount,
+    policy: profile,
   });
 
   const routeResponse = await fetchChecked(

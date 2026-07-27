@@ -72,3 +72,54 @@ else:
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
+
+test('Hiking sync keeps mountaineering records and skips walking records early', () => {
+  const result = runPython(`
+import ast
+
+source = open("run_page/keep_sync.py", encoding="utf-8").read()
+tree = ast.parse(source)
+mapping = next(
+    node
+    for node in tree.body
+    if isinstance(node, ast.Assign)
+    and any(
+        isinstance(target, ast.Name) and target.id == "KEEP_SYNC_DATA_TYPES"
+        for target in node.targets
+    )
+)
+strava_mapping = next(
+    node
+    for node in tree.body
+    if isinstance(node, ast.Assign)
+    and any(
+        isinstance(target, ast.Name) and target.id == "KEEP2STRAVA"
+        for target in node.targets
+    )
+)
+function = next(
+    node
+    for node in tree.body
+    if isinstance(node, ast.FunctionDef)
+    and node.name == "matches_sync_data_type"
+)
+namespace = {}
+exec(
+    compile(
+        ast.Module(body=[mapping, function], type_ignores=[]),
+        "<keep-sync-policy>",
+        "exec",
+    ),
+    namespace,
+)
+matches = namespace["matches_sync_data_type"]
+
+assert matches({"dataType": "mountaineering"}, "hiking")
+assert not matches({"dataType": "indoorWalking"}, "hiking")
+assert not matches({"dataType": "outdoorWalking"}, "hiking")
+assert matches({}, "hiking")
+assert ast.literal_eval(strava_mapping.value)["indoorWalking"] == "Walk"
+  `);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+});

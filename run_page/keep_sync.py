@@ -28,8 +28,14 @@ from utils import adjust_time
 import xml.etree.ElementTree as ET
 
 KEEP_SPORT_TYPES = ["running", "hiking", "cycling"]
+KEEP_SYNC_DATA_TYPES = {
+    "running": {"outdoorRunning", "indoorRunning"},
+    "hiking": {"mountaineering"},
+    "cycling": {"outdoorCycling"},
+}
 KEEP2STRAVA = {
     "outdoorWalking": "Walk",
+    "indoorWalking": "Walk",
     "outdoorRunning": "Run",
     "outdoorCycling": "Ride",
     "indoorRunning": "VirtualRun",
@@ -37,6 +43,7 @@ KEEP2STRAVA = {
 }
 KEEP2TCX = {
     "outdoorWalking": "Walking",
+    "indoorWalking": "Walking",
     "outdoorRunning": "Running",
     "outdoorCycling": "Biking",
     "indoorRunning": "Running",
@@ -90,6 +97,13 @@ def meets_min_distance(stats, min_distance):
     return distance > min_distance
 
 
+def matches_sync_data_type(stats, sport_type):
+    data_type = stats.get("dataType")
+    if not data_type:
+        return True
+    return data_type in KEEP_SYNC_DATA_TYPES.get(sport_type, set())
+
+
 def get_to_download_runs_ids(session, headers, sport_type, min_distance=0):
     last_date = 0
     result = []
@@ -114,7 +128,9 @@ def get_to_download_runs_ids(session, headers, sport_type, min_distance=0):
             result.extend(
                 record["id"]
                 for record in logs
-                if not record["isDoubtful"] and meets_min_distance(record, min_distance)
+                if not record["isDoubtful"]
+                and meets_min_distance(record, min_distance)
+                and matches_sync_data_type(record, sport_type)
             )
         last_date = next_last_date
         since_time = datetime.fromtimestamp(last_date // 1000, tz=timezone.utc)

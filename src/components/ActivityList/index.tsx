@@ -144,6 +144,15 @@ interface ActivityListCache {
 }
 
 const activityListCache = new WeakMap<Activity[], ActivityListCache>();
+const NORMALIZED_SPORT_TYPES: Readonly<Record<string, string>> = {
+  Run: 'running',
+  Walk: 'walking',
+  Hiking: 'hiking',
+  Ride: 'cycling',
+};
+
+const normalizeSportType = (activityType: string): string =>
+  NORMALIZED_SPORT_TYPES[activityType] ?? activityType;
 
 const getActivityListCache = (activityData: Activity[]) => {
   let cache = activityListCache.get(activityData);
@@ -161,23 +170,9 @@ const getSportTypeOptions = (activityData: Activity[]) => {
   const cache = getActivityListCache(activityData);
   if (cache.sportTypeOptions) return cache.sportTypeOptions;
 
-  const sportTypeSet = new Set(activityData.map((activity) => activity.type));
-  if (sportTypeSet.has('Run')) {
-    sportTypeSet.delete('Run');
-    sportTypeSet.add('running');
-  }
-  if (sportTypeSet.has('Walk')) {
-    sportTypeSet.delete('Walk');
-    sportTypeSet.add('walking');
-  }
-  if (sportTypeSet.has('Hiking')) {
-    sportTypeSet.delete('Hiking');
-    sportTypeSet.add('hiking');
-  }
-  if (sportTypeSet.has('Ride')) {
-    sportTypeSet.delete('Ride');
-    sportTypeSet.add('cycling');
-  }
+  const sportTypeSet = new Set(
+    activityData.map((activity) => normalizeSportType(activity.type))
+  );
   cache.sportTypeOptions = ['all', ...sportTypeSet];
   return cache.sportTypeOptions;
 };
@@ -235,20 +230,9 @@ const generateLabels = (interval: string, period: string): number[] => {
 };
 
 const matchesSportType = (activity: Activity, sportTypeArg: string) => {
-  if (sportTypeArg === 'all') return true;
-  if (sportTypeArg === 'running') {
-    return activity.type === 'running' || activity.type === 'Run';
-  }
-  if (sportTypeArg === 'walking') {
-    return activity.type === 'walking' || activity.type === 'Walk';
-  }
-  if (sportTypeArg === 'cycling') {
-    return activity.type === 'cycling' || activity.type === 'Ride';
-  }
-  if (sportTypeArg === 'hiking') {
-    return activity.type === 'Hiking';
-  }
-  return activity.type === sportTypeArg;
+  return (
+    sportTypeArg === 'all' || normalizeSportType(activity.type) === sportTypeArg
+  );
 };
 
 const createEmptyActivitySummary = (): ActivitySummary => ({

@@ -10,6 +10,7 @@ on:
     paths:
       - .github/workflows/run_data_sync.yml
       - scripts/generate-activity-artifacts.mjs
+      - scripts/lib/activity-policy.mjs
       - scripts/publish-activity-data.mjs
       - src/modules/activity/activity-profiles.json
       - run_page/activity_snapshot.py

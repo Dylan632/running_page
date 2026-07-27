@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -462,6 +463,71 @@ test('artifact verification rejects a tampered committed data snapshot', async (
 
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /invalid cycling publication metadata/i);
+  } finally {
+    await rm(fixtureDir, { recursive: true, force: true });
+  }
+});
+
+test('artifact verification rejects checksummed activities outside the profile policy', async () => {
+  const fixtureDir = await mkdtemp(join(tmpdir(), 'artifact-policy-'));
+  const dataOutput = join(fixtureDir, 'data');
+  const assetsOutput = join(fixtureDir, 'assets');
+
+  try {
+    await Promise.all([
+      mkdir(dataOutput, { recursive: true }),
+      mkdir(assetsOutput, { recursive: true }),
+    ]);
+    await Promise.all([
+      cp('public/data/cycling', join(dataOutput, 'cycling'), {
+        recursive: true,
+      }),
+      cp('assets/cycling', join(assetsOutput, 'cycling'), { recursive: true }),
+    ]);
+
+    const modeDirectory = join(dataOutput, 'cycling');
+    const metadataPath = join(modeDirectory, 'metadata.json');
+    const manifestPath = join(modeDirectory, 'manifest.json');
+    const metadata = JSON.parse(await readFile(metadataPath, 'utf8'));
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+    metadata[0].type = 'Walk';
+    metadata[0].distance = 10_000;
+
+    const metadataText = `${JSON.stringify(metadata)}\n`;
+    const checksum = (content) =>
+      createHash('sha256').update(content).digest('hex');
+    manifest.metadataChecksum = checksum(metadataText);
+    manifest.artifactChecksum = checksum(
+      `${JSON.stringify({
+        metadataChecksum: manifest.metadataChecksum,
+        routeChecksums: manifest.routeChecksums,
+      })}\n`
+    );
+    await Promise.all([
+      writeFile(metadataPath, metadataText),
+      writeFile(manifestPath, `${JSON.stringify(manifest)}\n`),
+    ]);
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        'scripts/generate-activity-artifacts.mjs',
+        'verify',
+        '--mode',
+        'cycling',
+        '--data-output',
+        dataOutput,
+        '--assets-output',
+        assetsOutput,
+      ],
+      { cwd: process.cwd(), encoding: 'utf8' }
+    );
+
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.stderr,
+      /cycling metadata violates publication policy/i
+    );
   } finally {
     await rm(fixtureDir, { recursive: true, force: true });
   }
