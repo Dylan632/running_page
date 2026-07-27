@@ -82,11 +82,12 @@ const waitForAnimationFrames = (page) =>
   );
 
 const createBrowserPage = async (width) => {
+  const isMobile = width <= 768;
   const context = await browser.newContext({
     viewport: { width, height: VIEWPORT_HEIGHT },
     deviceScaleFactor: 1,
-    hasTouch: true,
-    isMobile: true,
+    hasTouch: isMobile,
+    isMobile,
     locale: 'zh-CN',
     timezoneId: 'Asia/Shanghai',
     colorScheme: 'light',
@@ -925,6 +926,394 @@ test(
         await session.page.locator('tbody button[aria-pressed="true"]').count(),
         0,
         'The cycling table retained the running activity selection'
+      );
+
+      session.assertNoRuntimeErrors();
+    } finally {
+      await session.context.close();
+    }
+  }
+);
+
+test(
+  'location and time filters focus the latest matching routed activity',
+  { timeout: 60_000 },
+  async () => {
+    const session = await createBrowserPage(1280);
+    try {
+      await openActivityPage(session.page, 'running');
+      await session.page.getByRole('button', { name: '地点' }).click();
+
+      const selectLatestMatch = async (filterName) => {
+        const previousHash = new URL(session.page.url()).hash;
+        await session.page.getByRole('button', { name: filterName }).click();
+        await session.page.waitForFunction(
+          (oldHash) =>
+            window.location.hash.startsWith('#run_') &&
+            window.location.hash !== oldHash,
+          previousHash,
+          { timeout: 10_000 }
+        );
+        await session.page
+          .locator('tbody button[type="button"][aria-pressed="true"]')
+          .waitFor({ state: 'visible', timeout: 5_000 });
+
+        const selectedState = await session.page.evaluate(() => {
+          const selected = document.querySelector(
+            'tbody button[type="button"][aria-pressed="true"]'
+          );
+          return {
+            hash: window.location.hash,
+            label: selected?.getAttribute('aria-label') ?? '',
+            year: new URL(window.location.href).searchParams.get('year'),
+          };
+        });
+        const selectedYear = selectedState.label.match(/\d{4}/)?.[0] ?? '';
+
+        assert.ok(selectedState.hash.startsWith('#run_'));
+        assert.ok(
+          selectedState.label.startsWith('在地图上取消定位'),
+          `Filter ${filterName} did not select a table activity`
+        );
+        assert.equal(
+          selectedState.year,
+          selectedYear,
+          `Filter ${filterName} loaded ${selectedState.year}, but selected ${selectedState.label}`
+        );
+      };
+
+      const wuxiFilter = /^无锡市 \d+ km$/;
+      await selectLatestMatch(wuxiFilter);
+      const wuxiHash = new URL(session.page.url()).hash;
+      await session.page.getByRole('button', { name: wuxiFilter }).click();
+      await session.page.waitForTimeout(250);
+      assert.equal(
+        new URL(session.page.url()).hash,
+        wuxiHash,
+        'Selecting the active city again cleared its latest route'
+      );
+      assert.equal(
+        await session.page
+          .locator('tbody button[type="button"][aria-pressed="true"]')
+          .count(),
+        1,
+        'Selecting the active city again cleared the selected activity'
+      );
+      await selectLatestMatch(/^清晨跑步 \d+ Runs$/);
+      await selectLatestMatch(/^午后跑步 \d+ Runs$/);
+
+      session.assertNoRuntimeErrors();
+    } finally {
+      await session.context.close();
+    }
+  }
+);
+
+test(
+  'a stale year request cannot override a newer location filter',
+  { timeout: 60_000 },
+  async () => {
+    const session = await createBrowserPage(1280);
+    let releaseYearRequest;
+    let markYearRequestStarted;
+    const yearRequestStarted = new Promise((resolve) => {
+      markYearRequestStarted = resolve;
+    });
+    const yearRequestGate = new Promise((resolve) => {
+      releaseYearRequest = resolve;
+    });
+
+    await session.context.route(
+      '**/data/running/routes/2020.json*',
+      async (route) => {
+        markYearRequestStarted();
+        await yearRequestGate;
+        await route.continue();
+      }
+    );
+
+    try {
+      await openActivityPage(session.page, 'running');
+      await session.page
+        .getByRole('button', { name: '显示2020 年活动', exact: true })
+        .click();
+      await yearRequestStarted;
+
+      await session.page.getByRole('button', { name: '地点' }).click();
+      await session.page
+        .getByRole('button', { name: /^无锡市 \d+ km$/ })
+        .click();
+      await session.page.waitForFunction(
+        () =>
+          new URL(window.location.href).searchParams.get('year') === '2025' &&
+          window.location.hash.startsWith('#run_'),
+        undefined,
+        { timeout: 10_000 }
+      );
+      const expectedHash = new URL(session.page.url()).hash;
+
+      releaseYearRequest();
+      await session.page.waitForTimeout(500);
+
+      assert.equal(
+        new URL(session.page.url()).searchParams.get('year'),
+        '2025',
+        'The stale year request replaced the newer location filter'
+      );
+      assert.equal(
+        new URL(session.page.url()).hash,
+        expectedHash,
+        'The stale year request cleared the newer location selection'
+      );
+      session.assertNoRuntimeErrors();
+    } finally {
+      releaseYearRequest?.();
+      await session.context.close();
+    }
+  }
+);
+
+test(
+  'a stale location filter cannot override a newer table selection',
+  { timeout: 60_000 },
+  async () => {
+    const session = await createBrowserPage(1280);
+    let releaseFilterRequest;
+    let markFilterRequestStarted;
+    const filterRequestStarted = new Promise((resolve) => {
+      markFilterRequestStarted = resolve;
+    });
+    const filterRequestGate = new Promise((resolve) => {
+      releaseFilterRequest = resolve;
+    });
+
+    await session.context.route(
+      '**/data/running/routes/2024.json*',
+      async (route) => {
+        markFilterRequestStarted();
+        await filterRequestGate;
+        await route.continue();
+      }
+    );
+
+    try {
+      await openActivityPage(session.page, 'running');
+      await session.page.getByRole('button', { name: '地点' }).click();
+      await session.page
+        .getByRole('button', { name: /^清晨跑步 \d+ Runs$/ })
+        .click();
+      await filterRequestStarted;
+
+      await session.page
+        .locator('tbody button[type="button"][aria-pressed="false"]')
+        .first()
+        .click();
+      await session.page.waitForFunction(() =>
+        window.location.hash.startsWith('#run_')
+      );
+      const manuallySelectedHash = new URL(session.page.url()).hash;
+
+      releaseFilterRequest();
+      await session.page.waitForTimeout(500);
+
+      assert.equal(
+        new URL(session.page.url()).searchParams.get('year'),
+        '2025',
+        'The stale location filter changed the manually selected year'
+      );
+      assert.equal(
+        new URL(session.page.url()).hash,
+        manuallySelectedHash,
+        'The stale location filter replaced the manual table selection'
+      );
+      assert.equal(
+        await session.page
+          .locator('tbody button[type="button"][aria-pressed="true"]')
+          .count(),
+        1
+      );
+      session.assertNoRuntimeErrors();
+    } finally {
+      releaseFilterRequest?.();
+      await session.context.close();
+    }
+  }
+);
+
+test(
+  'a stale location filter cannot override browser history navigation',
+  { timeout: 60_000 },
+  async () => {
+    const session = await createBrowserPage(1280);
+    let releaseFilterRequest;
+    let markFilterRequestStarted;
+    const filterRequestStarted = new Promise((resolve) => {
+      markFilterRequestStarted = resolve;
+    });
+    const filterRequestGate = new Promise((resolve) => {
+      releaseFilterRequest = resolve;
+    });
+
+    await session.context.route(
+      '**/data/running/routes/2024.json*',
+      async (route) => {
+        markFilterRequestStarted();
+        await filterRequestGate;
+        await route.continue();
+      }
+    );
+
+    try {
+      await openActivityPage(session.page, 'running');
+      await session.page
+        .locator('tbody button[type="button"][aria-pressed="false"]')
+        .first()
+        .click();
+      await session.page.waitForFunction(() =>
+        window.location.hash.startsWith('#run_')
+      );
+      const mapTitle = session.page.locator(
+        '#map-container span[class*="runTitle"]'
+      );
+      await session.page.waitForFunction(
+        () =>
+          (
+            document.querySelector('#map-container span[class*="runTitle"]')
+              ?.textContent ?? ''
+          ).trim().length > 0
+      );
+
+      await session.page.getByRole('button', { name: '地点' }).click();
+      await session.page
+        .getByRole('button', { name: /^清晨跑步 \d+ Runs$/ })
+        .click();
+      await filterRequestStarted;
+
+      await session.page.goBack();
+      await session.page.waitForFunction(
+        () =>
+          new URL(window.location.href).searchParams.get('year') === '2025' &&
+          window.location.hash === ''
+      );
+
+      releaseFilterRequest();
+      await session.page.waitForTimeout(500);
+
+      assert.equal(
+        new URL(session.page.url()).searchParams.get('year'),
+        '2025',
+        'The stale location filter changed the history-selected year'
+      );
+      assert.equal(
+        new URL(session.page.url()).hash,
+        '',
+        'The stale location filter replaced the history-selected route state'
+      );
+      assert.equal(
+        await session.page
+          .locator('tbody button[type="button"][aria-pressed="true"]')
+          .count(),
+        0
+      );
+      assert.equal(
+        (await mapTitle.textContent())?.trim(),
+        '',
+        'The history navigation left the previous route title visible'
+      );
+      session.assertNoRuntimeErrors();
+    } finally {
+      releaseFilterRequest?.();
+      await session.context.close();
+    }
+  }
+);
+
+test(
+  'summary cards use the available desktop width and stay responsive',
+  { timeout: 60_000 },
+  async () => {
+    const session = await createBrowserPage(1972);
+    try {
+      const response = await session.page.goto(`${origin}/running/summary`, {
+        waitUntil: 'domcontentloaded',
+      });
+      assert.equal(response?.ok(), true, 'Failed to load /running/summary');
+
+      const sportFilter = session.page.getByLabel('运动类型筛选');
+      await sportFilter.waitFor({ state: 'visible' });
+      await session.page
+        .locator('article:visible')
+        .first()
+        .waitFor({ state: 'visible', timeout: 5_000 });
+      await waitForAnimationFrames(session.page);
+
+      const desktopLayout = await sportFilter.evaluate((filter) => {
+        const filterBar = filter.closest('div');
+        const activityList = filterBar?.parentElement;
+        const main = activityList?.closest('main');
+        const visibleCards = [
+          ...(activityList?.querySelectorAll('article') ?? []),
+        ]
+          .filter((card) => getComputedStyle(card).visibility !== 'hidden')
+          .map((card) => card.getBoundingClientRect());
+        if (!activityList || !main || visibleCards.length < 3) {
+          throw new Error('Summary layout elements are missing');
+        }
+
+        const mainRect = main.getBoundingClientRect();
+        const listRect = activityList.getBoundingClientRect();
+        const firstCardTop = visibleCards[0].top;
+        return {
+          firstRowColumns: visibleCards.filter(
+            (card) => Math.abs(card.top - firstCardTop) <= 1
+          ).length,
+          listToMainRatio: listRect.width / mainRect.width,
+          rightGap: mainRect.right - listRect.right,
+        };
+      });
+
+      assert.ok(
+        desktopLayout.listToMainRatio >= 0.8,
+        `Summary uses only ${(desktopLayout.listToMainRatio * 100).toFixed(1)}% of the desktop shell`
+      );
+      assert.ok(
+        desktopLayout.rightGap <= 80,
+        `Summary leaves ${desktopLayout.rightGap.toFixed(1)}px unused on the right`
+      );
+      assert.ok(
+        desktopLayout.firstRowColumns >= 3,
+        `Desktop summary rendered only ${desktopLayout.firstRowColumns} card per row`
+      );
+
+      await session.page.setViewportSize({
+        width: 390,
+        height: VIEWPORT_HEIGHT,
+      });
+      await waitForAnimationFrames(session.page);
+      const mobileLayout = await sportFilter.evaluate((filter) => {
+        const activityList = filter.closest('div')?.parentElement;
+        const visibleCards = [
+          ...(activityList?.querySelectorAll('article') ?? []),
+        ]
+          .filter((card) => getComputedStyle(card).visibility !== 'hidden')
+          .map((card) => card.getBoundingClientRect());
+        const firstCardTop = visibleCards[0]?.top ?? 0;
+        return {
+          documentWidth: document.documentElement.scrollWidth,
+          firstRowColumns: visibleCards.filter(
+            (card) => Math.abs(card.top - firstCardTop) <= 1
+          ).length,
+          viewportWidth: window.innerWidth,
+        };
+      });
+      assert.ok(
+        mobileLayout.documentWidth <= mobileLayout.viewportWidth + 1,
+        `Mobile summary overflows by ${mobileLayout.documentWidth - mobileLayout.viewportWidth}px`
+      );
+      assert.equal(
+        mobileLayout.firstRowColumns,
+        1,
+        'Mobile summary should remain a single column'
       );
 
       session.assertNoRuntimeErrors();

@@ -17,11 +17,16 @@ import RunTable from '@/components/RunTable';
 import SVGStat from '@/components/SVGStat';
 import YearsStat from '@/components/YearsStat';
 import useActivities, {
+  loadActivitiesWithRoutes,
   preloadActivitiesWithRoutes,
   useActivitiesWithRoutes,
 } from '@/hooks/useActivities';
 import useSiteMetadata from '@/hooks/useSiteMetadata';
 import { useInterval } from '@/hooks/useInterval';
+import {
+  findLatestRoutedActivity,
+  getMatchingActivitiesByRecency,
+} from '@/modules/activity/latestMatchingActivity';
 import { IS_CHINESE } from '@/utils/const';
 import {
   Activity,
@@ -104,7 +109,7 @@ const useRunHashId = () =>
 const Index = () => {
   const { siteTitle, siteUrl } = useSiteMetadata();
   const { mode, profile } = useActivityMode();
-  const { thisYear, years } = useActivities();
+  const { activities: activityMetadata, thisYear, years } = useActivities();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedYear = searchParams.get('year');
   const year =
@@ -121,6 +126,13 @@ const Index = () => {
   const [currentAnimationIndex, setCurrentAnimationIndex] = useState(0);
   const [animationRuns, setAnimationRuns] = useState<Activity[]>([]);
   const [pendingYear, setPendingYear] = useState<string | null>(null);
+  const pendingFilterTargetRef = useRef<{
+    runId: ActivityId;
+    year: string;
+  } | null>(null);
+  const [filterTargetRequestVersion, setFilterTargetRequestVersion] =
+    useState(0);
+  const navigationRequestIdRef = useRef(0);
   const [sidebarPanel, setSidebarPanel] = useState<'years' | 'location'>(
     'years'
   );
@@ -130,13 +142,28 @@ const Index = () => {
   }>({ item: year, func: filterYearRuns });
 
   const selectYear = useCallback(
-    async (nextYear: string, replace = false) => {
+    async (
+      nextYear: string,
+      replace = false,
+      requestId?: number
+    ): Promise<boolean> => {
+      const activeRequestId = requestId ?? navigationRequestIdRef.current + 1;
+      if (requestId === undefined) {
+        navigationRequestIdRef.current = activeRequestId;
+      } else if (navigationRequestIdRef.current !== requestId) {
+        return false;
+      }
+
       setPendingYear(nextYear);
       const routeYears = nextYear === 'Total' ? years : [nextYear];
       await preloadActivitiesWithRoutes(mode, routeYears).catch(() => {
         // Commit the route below so the rejected resource is handled by the
         // page error boundary, where the user can retry.
       });
+      if (navigationRequestIdRef.current !== activeRequestId) {
+        return false;
+      }
+
       startTransition(() => {
         setSearchParams(
           (current) => {
@@ -149,6 +176,7 @@ const Index = () => {
         );
         setPendingYear(null);
       });
+      return true;
     },
     [mode, setSearchParams, years]
   );
@@ -177,24 +205,53 @@ const Index = () => {
     currentFilter.func === filterYearRuns ? year : currentFilter.item;
 
   useEffect(() => {
+    navigationRequestIdRef.current += 1;
+    pendingFilterTargetRef.current = null;
     const frameId = requestAnimationFrame(() => {
+      setPendingYear(null);
       setRunIndex(-1);
       setTitle('');
       selectedRunIdRef.current = null;
       selectedRunDateRef.current = null;
     });
-    return () => cancelAnimationFrame(frameId);
+    return () => {
+      navigationRequestIdRef.current += 1;
+      cancelAnimationFrame(frameId);
+    };
   }, [mode]);
+
+  useEffect(() => {
+    const invalidatePendingNavigation = () => {
+      navigationRequestIdRef.current += 1;
+      pendingFilterTargetRef.current = null;
+      setPendingYear(null);
+      setRunIndex(-1);
+      setTitle('');
+      selectedRunIdRef.current = null;
+      selectedRunDateRef.current = null;
+    };
+
+    window.addEventListener('popstate', invalidatePendingNavigation);
+    return () => {
+      window.removeEventListener('popstate', invalidatePendingNavigation);
+    };
+  }, []);
 
   // Memoize expensive calculations
   const runs = useMemo(() => {
+    void filterTargetRequestVersion;
     return filterAndSortRuns(
       activities,
       activeFilterItem,
       currentFilter.func,
       sortDateFunc
     );
-  }, [activities, activeFilterItem, currentFilter.func]);
+  }, [
+    activities,
+    activeFilterItem,
+    currentFilter.func,
+    filterTargetRequestVersion,
+  ]);
 
   const geoData = useMemo(() => {
     void themeChangeCounter;
@@ -265,20 +322,18 @@ const Index = () => {
       func: (_run: Activity, _value: string) => boolean
     ) => {
       scrollToMap();
-      if (name != 'Year') {
-        selectYear(thisYear);
-      }
       setCurrentFilter({ item, func });
       setRunIndex(-1);
       setTitle(`${item} ${name} ${profile.copy.heatmapTitle}`);
       // Reset single run state when changing filters
       clearRunHash();
     },
-    [profile.copy.heatmapTitle, selectYear, thisYear]
+    [profile.copy.heatmapTitle]
   );
 
   const changeYear = useCallback(
     (y: string) => {
+      pendingFilterTargetRef.current = null;
       // default year
       void selectYear(y);
 
@@ -295,22 +350,105 @@ const Index = () => {
     [viewState.zoom, bounds, changeByItem, selectYear]
   );
 
+  const changeToLatestMatchingActivity = useCallback(
+    async (
+      item: string,
+      name: string,
+      func: (_run: Activity, _value: string) => boolean
+    ) => {
+      const requestId = navigationRequestIdRef.current + 1;
+      navigationRequestIdRef.current = requestId;
+      pendingFilterTargetRef.current = null;
+      const matchingActivities = getMatchingActivitiesByRecency({
+        activities: activityMetadata,
+        item,
+        matches: func,
+      });
+      const latestMetadataMatch = matchingActivities[0];
+
+      if (!latestMetadataMatch) {
+        changeByItem(item, name, func);
+        pendingFilterTargetRef.current = null;
+        setPendingYear(null);
+        return;
+      }
+
+      const latestMetadataYear = latestMetadataMatch.start_date_local.slice(
+        0,
+        4
+      );
+      setPendingYear(latestMetadataYear);
+
+      const commitFilter = async (
+        targetYear: string,
+        targetRunId: ActivityId | null = null
+      ) => {
+        changeByItem(item, name, func);
+        pendingFilterTargetRef.current = targetRunId
+          ? { runId: targetRunId, year: targetYear }
+          : null;
+        if (targetRunId) {
+          setFilterTargetRequestVersion((version) => version + 1);
+        }
+        if (targetYear === year) {
+          setPendingYear(null);
+          return;
+        }
+        await selectYear(targetYear, false, requestId);
+      };
+
+      let latestRoutedMatch: Activity | null;
+      try {
+        latestRoutedMatch = await findLatestRoutedActivity({
+          activitiesByRecency: matchingActivities,
+          loadYear: (targetYear) =>
+            loadActivitiesWithRoutes(mode, [targetYear]),
+        });
+      } catch {
+        if (navigationRequestIdRef.current !== requestId) {
+          return;
+        }
+        await commitFilter(latestMetadataYear);
+        return;
+      }
+
+      if (navigationRequestIdRef.current !== requestId) {
+        return;
+      }
+
+      if (!latestRoutedMatch) {
+        await commitFilter(latestMetadataYear);
+        return;
+      }
+
+      const targetYear = latestRoutedMatch.start_date_local.slice(0, 4);
+      await commitFilter(targetYear, latestRoutedMatch.run_id);
+    },
+    [activityMetadata, changeByItem, mode, selectYear, year]
+  );
+
   const changeCity = useCallback(
     (city: string) => {
-      changeByItem(city, 'City', filterCityRuns);
+      void changeToLatestMatchingActivity(city, 'City', filterCityRuns);
     },
-    [changeByItem]
+    [changeToLatestMatchingActivity]
   );
 
   const changeTitle = useCallback(
     (title: string) => {
-      changeByItem(title, 'Title', filterTitleRuns);
+      void changeToLatestMatchingActivity(title, 'Title', filterTitleRuns);
     },
-    [changeByItem]
+    [changeToLatestMatchingActivity]
   );
 
   const locateActivity = useCallback(
-    (runIds: RunIds) => {
+    (runIds: RunIds, invalidatePendingNavigation = true) => {
+      if (invalidatePendingNavigation) {
+        navigationRequestIdRef.current += 1;
+        pendingFilterTargetRef.current = null;
+        setPendingYear(null);
+      }
+
       const ids = new Set(runIds);
 
       const selectedRuns = !runIds.length
@@ -407,12 +545,34 @@ const Index = () => {
           (run) => run.run_id === singleRunId
         );
         if (runExistsInCurrentRuns) {
-          locateActivity([singleRunId]);
+          locateActivity([singleRunId], false);
         }
       });
       return () => cancelAnimationFrame(frameId);
     }
   }, [runs, singleRunId, locateActivity]);
+
+  useEffect(() => {
+    const pendingFilterTarget = pendingFilterTargetRef.current;
+    if (!pendingFilterTarget || pendingFilterTarget.year !== year) {
+      return;
+    }
+
+    const targetRun = activities.find(
+      (activity) =>
+        activity.run_id === pendingFilterTarget.runId &&
+        Boolean(activity.summary_polyline)
+    );
+    const targetIsFiltered = runs.some(
+      (activity) => activity.run_id === pendingFilterTarget.runId
+    );
+    if (!targetRun || !targetIsFiltered) {
+      return;
+    }
+
+    pendingFilterTargetRef.current = null;
+    setRunHash(targetRun.run_id);
+  }, [activities, runs, year]);
 
   // Update bounds when geoData changes
   useEffect(() => {

@@ -158,6 +158,15 @@ export const preloadActivitiesWithRoutes = (
   years: string[]
 ): Promise<void> => getActivityResource(mode, years).preload();
 
+export const loadActivitiesWithRoutes = async (
+  mode: ActivityMode,
+  years: string[]
+): Promise<Activity[]> => {
+  const resource = getActivityResource(mode, years);
+  await resource.preload();
+  return resource.read();
+};
+
 export const resetActivityData = () => {
   activityResources.clear();
   processedActivitiesCache = null;

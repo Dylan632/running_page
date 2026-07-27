@@ -24,6 +24,55 @@ after(async () => {
   await vite?.close();
 });
 
+test('latest matching activity falls back to the newest record with route data', async () => {
+  const { findLatestRoutedActivity, getMatchingActivitiesByRecency } =
+    await vite.ssrLoadModule('/src/modules/activity/latestMatchingActivity.ts');
+  const activities = [
+    {
+      run_id: 'newest-without-route',
+      name: 'Morning run',
+      start_date_local: '2026-04-16 08:29:32',
+    },
+    {
+      run_id: 'unrelated',
+      name: 'Evening run',
+      start_date_local: '2026-04-15 19:29:32',
+    },
+    {
+      run_id: 'newest-routed-match',
+      name: 'Morning run',
+      start_date_local: '2025-06-06 08:29:32',
+    },
+    {
+      run_id: 'older-routed-match',
+      name: 'Morning run',
+      start_date_local: '2024-04-16 08:29:32',
+    },
+  ];
+  const loadedYears = [];
+  const routesByYear = new Map([
+    ['2026', [{ ...activities[0], summary_polyline: null }]],
+    ['2025', [{ ...activities[2], summary_polyline: 'encoded-2025-route' }]],
+    ['2024', [{ ...activities[3], summary_polyline: 'encoded-2024-route' }]],
+  ]);
+
+  const activitiesByRecency = getMatchingActivitiesByRecency({
+    activities,
+    item: 'Morning run',
+    matches: (activity, item) => activity.name === item,
+  });
+  const selected = await findLatestRoutedActivity({
+    activitiesByRecency,
+    loadYear: async (year) => {
+      loadedYears.push(year);
+      return routesByYear.get(year) ?? [];
+    },
+  });
+
+  assert.equal(selected?.run_id, 'newest-routed-match');
+  assert.deepEqual(loadedYears, ['2026', '2025']);
+});
+
 test('activity switch stays on the same origin and preserves route context', async () => {
   const { MemoryRouter, Route, Routes } = await import('react-router-dom');
   const { ActivityModeProvider } = await vite.ssrLoadModule(
