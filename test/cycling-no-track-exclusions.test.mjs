@@ -16,8 +16,12 @@ test('cycling publish permanently excludes the two no-track Keep activities', ()
     assert.doesNotMatch(workflow, new RegExp(`\\b${runId}\\b`));
   }
   assert.match(workflow, /generate-activity-artifacts\.mjs export-profile/);
+  const cyclingSteps = workflow.slice(
+    workflow.indexOf('- name: Load the cycling publication profile'),
+    workflow.indexOf('- name: Load the hiking publication profile')
+  );
   assert.equal(
-    (workflow.match(/\$ACTIVITY_EXCLUDE_RUN_IDS/g) ?? []).length,
+    (cyclingSteps.match(/\$ACTIVITY_EXCLUDE_RUN_IDS/g) ?? []).length,
     3,
     'all three cycling filters must use the shared permanent exclusions'
   );
