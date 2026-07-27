@@ -44,6 +44,7 @@ import {
   geoJsonForRuns,
   getBoundsForGeoData,
   getPrimaryBoundsForGeoData,
+  getTotalOverviewBoundsForRuns,
   type IViewState,
 } from '@/utils/geoUtils';
 import { useTheme, useThemeChangeCounter } from '@/hooks/useTheme';
@@ -260,12 +261,12 @@ const Index = () => {
 
   // for auto zoom
   const bounds = useMemo(() => {
-    const isAnnualOverview =
-      currentFilter.func === filterYearRuns && year !== 'Total';
-    return isAnnualOverview
-      ? getPrimaryBoundsForGeoData(geoData)
-      : getBoundsForGeoData(geoData);
-  }, [currentFilter.func, geoData, year]);
+    const isYearOverview = currentFilter.func === filterYearRuns;
+    if (!isYearOverview) return getBoundsForGeoData(geoData);
+    return year === 'Total'
+      ? getTotalOverviewBoundsForRuns(mode, runs)
+      : getPrimaryBoundsForGeoData(geoData);
+  }, [currentFilter.func, geoData, mode, runs, year]);
 
   const [viewState, setViewState] = useState<IViewState>(() => ({
     ...bounds,

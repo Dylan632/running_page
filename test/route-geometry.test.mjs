@@ -18,6 +18,28 @@ after(async () => {
   await vite?.close();
 });
 
+const createFixtureActivityRepository = async () => {
+  const { createActivityDataRepository } = await vite.ssrLoadModule(
+    '/src/modules/activity/activityData.ts'
+  );
+  const fetcher = async (input) => {
+    const { pathname } = new URL(String(input), 'https://fixture.test');
+    try {
+      const body = await readFile(
+        new URL(`../public${pathname}`, import.meta.url)
+      );
+      return new Response(body, { status: 200 });
+    } catch {
+      return new Response('', { status: 404 });
+    }
+  };
+
+  return createActivityDataRepository({
+    baseUrl: '/data',
+    fetcher,
+  });
+};
+
 const activity = (overrides = {}) => ({
   run_id: 42,
   name: 'Known route',
@@ -246,26 +268,9 @@ test('does not merge a chain of neighboring starts into one activity area', asyn
 });
 
 test('real annual views focus their primary activity area at a useful zoom', async () => {
-  const { createActivityDataRepository } = await vite.ssrLoadModule(
-    '/src/modules/activity/activityData.ts'
-  );
   const { geoJsonForRuns, getBoundsForGeoData, getPrimaryBoundsForGeoData } =
     await vite.ssrLoadModule('/src/utils/geoUtils.ts');
-  const fetcher = async (input) => {
-    const { pathname } = new URL(String(input), 'https://fixture.test');
-    try {
-      const body = await readFile(
-        new URL(`../public${pathname}`, import.meta.url)
-      );
-      return new Response(body, { status: 200 });
-    } catch {
-      return new Response('', { status: 404 });
-    }
-  };
-  const repository = createActivityDataRepository({
-    baseUrl: '/data',
-    fetcher,
-  });
+  const repository = await createFixtureActivityRepository();
 
   const cases = [
     {
@@ -326,6 +331,53 @@ test('real annual views focus their primary activity area at a useful zoom', asy
       `${mode} ${year}: primary view must keep local routes in view`
     );
   }
+});
+
+test('running Total opens on the Yangtze River Delta while cycling Total stays unchanged', async () => {
+  const { geoJsonForRuns, getBoundsForGeoData, getTotalOverviewBoundsForRuns } =
+    await vite.ssrLoadModule('/src/utils/geoUtils.ts');
+  const repository = await createFixtureActivityRepository();
+  const loadAllActivities = async (mode) => {
+    const manifest = JSON.parse(
+      await readFile(
+        new URL(`../public/data/${mode}/manifest.json`, import.meta.url),
+        'utf8'
+      )
+    );
+    return repository.loadActivities(mode, manifest.years);
+  };
+  const [runningActivities, cyclingActivities] = await Promise.all([
+    loadAllActivities('running'),
+    loadAllActivities('cycling'),
+  ]);
+
+  const runningView = getTotalOverviewBoundsForRuns(
+    'running',
+    runningActivities
+  );
+  const cyclingView = getTotalOverviewBoundsForRuns(
+    'cycling',
+    cyclingActivities
+  );
+  const unchangedCyclingView = getBoundsForGeoData(
+    geoJsonForRuns(cyclingActivities)
+  );
+
+  assert.ok(
+    runningView.longitude > 119 && runningView.longitude < 121,
+    'running Total should open over the Yangtze River Delta'
+  );
+  assert.ok(runningView.latitude > 31 && runningView.latitude < 32.5);
+  assert.ok(runningView.zoom > 6 && runningView.zoom < 8);
+  assert.ok(
+    Math.abs(runningView.zoom - cyclingView.zoom) < 0.5,
+    'running and cycling Total should open at a similar regional scale'
+  );
+  assert.deepEqual(
+    cyclingView,
+    unchangedCyclingView,
+    'cycling Total must keep its current viewport'
+  );
 });
 
 test('theme changes recolor routes without replacing normalized coordinates', async () => {

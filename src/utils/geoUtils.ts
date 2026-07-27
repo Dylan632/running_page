@@ -6,10 +6,12 @@ import { getMapThemeFromCurrentTheme } from '@/hooks/useTheme';
 import {
   fitPrimaryRouteGeometries,
   fitRouteGeometries,
+  getRouteBounds,
   normalizeRouteGeometries,
   type Coordinate,
   type RouteViewState,
 } from '@/modules/routeGeometry';
+import type { ActivityMode } from '@/modules/activity/profiles';
 import {
   CYCLING_COLOR,
   getMapTileVendorStyles,
@@ -22,12 +24,19 @@ import {
   SWIMMING_COLOR,
   WALKING_COLOR,
 } from './const';
-import type { Activity } from './utils';
+import { locationForRun, type Activity } from './utils';
 import { getEffectiveTheme } from './themeUtils';
 
 export type { Coordinate } from '@/modules/routeGeometry';
 
 export type IViewState = RouteViewState;
+
+const YANGTZE_RIVER_DELTA_PROVINCES = new Set([
+  '上海市',
+  '江苏省',
+  '浙江省',
+  '安徽省',
+]);
 
 const colorForRun = (run: Activity): string => {
   const dynamicRunColor = getRuntimeRunColor();
@@ -128,6 +137,26 @@ export const getBoundsForGeoData = (
 export const getPrimaryBoundsForGeoData = (
   geoData: FeatureCollection<LineString>
 ): IViewState => fitPrimaryRouteGeometries(routeGeometriesForGeoData(geoData));
+
+export const getTotalOverviewBoundsForRuns = (
+  mode: ActivityMode,
+  runs: Activity[]
+): IViewState => {
+  const allRouteGeometries = normalizeRouteGeometries(runs);
+  if (mode !== 'running') {
+    return fitRouteGeometries(allRouteGeometries);
+  }
+
+  const regionalRouteGeometries = normalizeRouteGeometries(
+    runs.filter((run) =>
+      YANGTZE_RIVER_DELTA_PROVINCES.has(locationForRun(run).province ?? '')
+    )
+  );
+
+  return getRouteBounds(regionalRouteGeometries)
+    ? fitRouteGeometries(regionalRouteGeometries)
+    : fitRouteGeometries(allRouteGeometries);
+};
 
 export const getMapStyle = (
   vendor: string,
