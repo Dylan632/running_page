@@ -228,10 +228,7 @@ test('poster assets are selected by mode and remain lazy', async () => {
     ),
     true
   );
-  assert.doesNotMatch(
-    svgStatSource,
-    /setTimeout|initSvgColorAdjustments|useEffect/
-  );
+  assert.doesNotMatch(svgStatSource, /setTimeout|initSvgColorAdjustments/);
   assert.match(svgStatSource, /getPosterComponents\(mode\)/);
 });
 

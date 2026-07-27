@@ -995,6 +995,150 @@ test(
 );
 
 test(
+  'Total posters provide a keyboard dialog and a 44px route-list alternative',
+  { timeout: 60_000 },
+  async () => {
+    const session = await createBrowserPage(390);
+    try {
+      const response = await session.page.goto(
+        `${origin}/running?year=Total&view=map`,
+        { waitUntil: 'domcontentloaded' }
+      );
+      assert.equal(response?.ok(), true, 'Failed to load running Total');
+
+      const calendarPosterButton = session.page.getByRole('button', {
+        name: '放大查看全部年份跑步日历海报',
+      });
+      const routesPosterButton = session.page.getByRole('button', {
+        name: '放大查看长距离跑步路线海报',
+      });
+      const routeSelect = session.page.getByLabel('使用列表选择一条路线');
+      await calendarPosterButton.waitFor({ state: 'visible' });
+      await routesPosterButton.waitFor({ state: 'visible' });
+      await routeSelect.waitFor({ state: 'visible' });
+
+      for (const target of [
+        calendarPosterButton,
+        routesPosterButton,
+        routeSelect,
+      ]) {
+        const box = await target.boundingBox();
+        assert.ok(box);
+        assert.ok(
+          box.height >= MIN_TOUCH_TARGET_PX && box.width >= MIN_TOUCH_TARGET_PX,
+          `Total poster control is below ${MIN_TOUCH_TARGET_PX}px: ${JSON.stringify(box)}`
+        );
+      }
+
+      await routesPosterButton.focus();
+      await session.page.keyboard.press('Enter');
+      const dialog = session.page.getByRole('dialog', {
+        name: '长距离跑步路线海报',
+      });
+      await dialog.waitFor({ state: 'visible' });
+      assert.equal(
+        await session.page.evaluate(() =>
+          document.activeElement?.getAttribute('aria-label')
+        ),
+        '关闭长距离跑步路线海报'
+      );
+      const closeButton = session.page.getByRole('button', {
+        name: '关闭长距离跑步路线海报',
+      });
+      const closeButtonFocusStyle = await closeButton.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          color: style.outlineColor,
+          style: style.outlineStyle,
+          width: style.outlineWidth,
+        };
+      });
+      assert.deepEqual(closeButtonFocusStyle, {
+        color: 'rgb(255, 255, 255)',
+        style: 'solid',
+        width: '3px',
+      });
+
+      const posterSvg = dialog.locator('svg');
+      const posterBox = await posterSvg.boundingBox();
+      const viewBox = (await posterSvg.getAttribute('viewBox'))
+        ?.split(/\s+/)
+        .map(Number);
+      assert.ok(posterBox);
+      assert.equal(viewBox?.length, 4, 'Total poster is missing its viewBox');
+      const renderedRatio = posterBox.width / posterBox.height;
+      const intrinsicRatio = viewBox[2] / viewBox[3];
+      assert.ok(
+        posterBox.width >= 900,
+        `Total poster did not enlarge enough for mobile reading: ${posterBox.width}px`
+      );
+      assert.ok(
+        Math.abs(renderedRatio - intrinsicRatio) < 0.01,
+        `Total poster aspect ratio was distorted: ${renderedRatio} vs ${intrinsicRatio}`
+      );
+      await session.page.keyboard.press('Tab');
+      assert.equal(
+        await dialog.evaluate((element) => document.activeElement === element),
+        true,
+        'The scrollable poster canvas is not keyboard-focusable'
+      );
+      await session.page.keyboard.press('ArrowRight');
+      await session.page.keyboard.press('ArrowDown');
+      await session.page.waitForFunction(
+        () => {
+          const activeDialog = document.querySelector('[role="dialog"]');
+          return (
+            activeDialog &&
+            activeDialog.scrollLeft > 0 &&
+            activeDialog.scrollTop > 0
+          );
+        },
+        null,
+        { timeout: 2_000 }
+      );
+      const scrollState = await dialog.evaluate((element) => ({
+        left: element.scrollLeft,
+        top: element.scrollTop,
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+      }));
+      assert.ok(
+        scrollState.scrollWidth > scrollState.clientWidth,
+        `Total poster dialog is not horizontally scrollable: ${JSON.stringify(scrollState)}`
+      );
+      assert.ok(
+        scrollState.left > 0 && scrollState.top > 0,
+        `Total poster dialog did not pan with the keyboard: ${JSON.stringify(scrollState)}`
+      );
+
+      await session.page.keyboard.press('Escape');
+      await dialog.waitFor({ state: 'detached' });
+      assert.equal(
+        await routesPosterButton.evaluate(
+          (element) => document.activeElement === element
+        ),
+        true,
+        'Focus was not restored to the Total poster launcher'
+      );
+
+      const routeOptions = await routeSelect.locator('option').all();
+      assert.ok(routeOptions.length > 1, 'No poster routes were listed');
+      const routeId = await routeOptions[1].getAttribute('value');
+      assert.ok(routeId);
+      await routeSelect.selectOption(routeId);
+      await session.page.waitForFunction(
+        (expectedHash) => window.location.hash === expectedHash,
+        `#run_${routeId}`
+      );
+
+      session.assertNoRuntimeErrors();
+    } finally {
+      await session.context.close();
+    }
+  }
+);
+
+test(
   'a failed activity request shows a retry within two seconds and recovers',
   { timeout: 60_000 },
   async () => {

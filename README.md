@@ -185,7 +185,7 @@ Clone or fork the repo.
 git clone https://github.com/yihong0618/running_page.git --depth=1
 ```
 
-## Installation and testing (node >= 20 python >= 3.11)
+## Installation and testing (Node.js >= 22.12, Python >= 3.12)
 
 ```bash
 pip3 install -r requirements.txt
@@ -445,7 +445,7 @@ python run_page/fit_sync.py
 - If you only want `tcx` files add args --tcx
 - If you only want `fit` files add args --fit
 - If you are using Garmin as a data source, it is recommended that you pull the code to your local environment to run and obtain the Garmin secret.
-  **The Python version must be >=3.8**
+  **The Python version must be >=3.12**
 
 #### Get Garmin Secret
 
@@ -490,7 +490,7 @@ python run_page/garmin_sync.py xxxxxxxxxxxxxx(secret_string) --only-run
 - If you only want `tcx` files add args --tcx
 - If you only want `fit` files add args --fit
 - If you are using Garmin as a data source, it is recommended that you pull the code to your local environment to run and obtain the Garmin secret.
-  **The Python version must be >=3.10**
+  **The Python version must be >=3.12**
 
 #### Get Garmin CN Secret
 
@@ -530,7 +530,7 @@ python run_page/garmin_sync.py xxxxxxxxxxxxxx(secret_string)  --is-cn --only-run
 <br>
 
 - If you only want to sync `type running` add args --only-run
-  **The Python version must be >=3.10**
+  **The Python version must be >=3.12**
 
 #### Get Garmin CN Secret
 
@@ -1178,9 +1178,15 @@ For more display effects, see:
 
 1. Go to repository's `Settings -> GitHub Pages -> Source`, choose `GitHub Actions`
 
-2. Go to the repository's `Actions -> Workflows -> All Workflows`, choose `Run Data Sync` from the left panel, and click `Run workflow`.
-   - The `Run Data Sync` will update data and then trigger the `Publish GitHub Pages` workflow
-   - Make sure the workflow runs without errors.
+2. Go to the repository's `Actions -> Workflows -> All Workflows`, choose
+   `Publish Activity Data`, and click `Run workflow`.
+   - The workflow validates and publishes running and cycling artifacts
+     atomically, then dispatches CI for that exact commit.
+   - After CI succeeds, `Deploy verified SHA to Vercel Production` stages,
+     verifies, and promotes the same commit. It then publishes the GitHub Pages
+     compatibility redirect.
+   - Make sure the data, CI, Vercel, and Pages workflows all complete without
+     errors.
 
 3. Open your website to check on the results
    - note if the website doesn't reflect the latest data, please refresh it by `F5`.
@@ -1262,16 +1268,18 @@ Take the keep app as an example. Close the app after running, and then automatic
 
 </details>
 
-## Storing Data Files in GitHub Cache
+## Activity data safety
 
 <details>
-<summary>Storing Data Files in GitHub Cache</summary>
+<summary>Validation and last-known-good recovery</summary>
 
 <br>
 
-When `SAVE_DATA_IN_GITHUB_CACHE` is set to `true` in the `run_data_sync.yml` file, the script can store fetched and intermediate data files in the GitHub Action Cache. This helps keep your GitHub commit history and directory clean.
-
-If you are deploying using GitHub Pages, it is recommended to set this value to `true`, and set `BUILD_GH_PAGES` to true.
+`Publish Activity Data` builds running and cycling candidates in isolation,
+checks them against the last-known-good snapshots, and commits both namespaces
+only after every invariant passes. Validation evidence is retained as a workflow
+artifact. GitHub Pages is a compatibility redirect; the verified Vercel
+deployment is the canonical site.
 
 </details>
 

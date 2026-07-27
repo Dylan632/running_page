@@ -195,7 +195,7 @@ R.I.P. 希望大家都能健康顺利的跑过终点，逝者安息。
 git clone https://github.com/yihong0618/running_page.git --depth=1
 ```
 
-## 安装及测试 (node >= 20 python >= 3.11)
+## 安装及测试（Node.js >= 22.12，Python >= 3.12）
 
 ```bash
 pip3 install -r requirements.txt
@@ -587,7 +587,7 @@ python run_page/tulipsport_sync.py nLgy****RyahI
 
 - 如果你想同步 `fit` 格式，增加命令 --fit
 
-- 如果你使用 Garmin 作为数据源建议您将代码拉取到本地获取 Garmin 国际区的密钥，注意**Python 版本必须>=3.8**
+- 如果你使用 Garmin 作为数据源建议您将代码拉取到本地获取 Garmin 国际区的密钥，注意**Python 版本必须>=3.12**
 
 #### 获取佳明国际区的密钥
 
@@ -620,7 +620,7 @@ python run_page/garmin_sync.py xxxxxxxxxxx
 - 如果你只想同步跑步数据请增加 --only-run
 - 如果你想同步 `tcx` 格式，增加命令 --tcx
 - 如果你想同步 `fit` 格式，增加命令 --fit
-- 如果你使用 Garmin 作为数据源建议您将代码拉取到本地获取 Garmin 国际区的密钥，注意**Python 版本必须>=3.10**
+- 如果你使用 Garmin 作为数据源建议您将代码拉取到本地获取 Garmin 国际区的密钥，注意**Python 版本必须>=3.12**
 
 #### 获取佳明 CN 的密钥
 
@@ -659,7 +659,7 @@ python run_page/garmin_sync.py xxxxxxxxxx --is-cn --only-run
 <br>
 
 - 如果你只想同步 `type running` 使用参数 --only-run
-  **The Python version must be >=3.10**
+  **The Python version must be >=3.12**
 
 #### 获取佳明 CN 的密钥
 
@@ -1303,9 +1303,11 @@ python3 run_page/auto_share_sync.py --api_key xxxxxxxxx --base_url xxxxxxxx --da
 
 1. 进入仓库的 "Settings -> GitHub Pages -> Source"，选择 "GitHub Actions"
 
-2. 进入仓库的 "Actions -> Workflows -> All Workflows"，选择左侧面板的 "Run Data Sync"，然后点击 "Run workflow"
-   - "Run Data Sync" 将更新数据，然后触发 "Publish GitHub Pages" 工作流
-   - 确认工作流运行没有错误
+2. 进入仓库的 “Actions -> Workflows -> All Workflows”，选择
+   “Publish Activity Data”，然后点击 “Run workflow”
+   - 该工作流会分别校验跑步与骑行候选数据，再以一个原子提交发布两个命名空间，并为这个精确提交启动 CI
+   - CI 成功后，“Deploy verified SHA to Vercel Production” 会暂存、验证并提升同一个提交，最后发布 GitHub Pages 兼容跳转
+   - 确认数据、CI、Vercel 与 Pages 工作流均无错误
 
 3. 打开网站检查结果
    - 如果网站没有反映最新数据，请使用“F5”刷新页面
@@ -1381,16 +1383,14 @@ Actions [源码](https://github.com/yihong0618/running_page/blob/master/.github/
 
 </details>
 
-## GitHub Cache
+## 运动数据安全
 
 <details>
-<summary>把数据文件放在 GitHub Cache 中</summary>
+<summary>校验与最近可用版本恢复</summary>
 
 <br>
 
-`run_data_sync.yml` 中的 `SAVE_DATA_IN_GITHUB_CACHE` 设置为 `true` 时，可以把脚本抓取和中间产生的数据文件放到 GitHub Actions Cache 中。这样可以让你的 GitHub commit 历史和目录保持干净。
-
-如果你用 `GitHub Pages` 部署建议把这个值设置成 `true`。
+“Publish Activity Data” 会隔离生成跑步与骑行候选数据，与最近可用快照比较，并且只在全部不变量通过后同时提交两个命名空间。校验证据会保留为工作流产物。GitHub Pages 只承担兼容跳转，经过验证的 Vercel 部署才是正式站点。
 
 </details>
 

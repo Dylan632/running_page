@@ -562,7 +562,7 @@ const Index = () => {
           />
         </Suspense>
         {year === 'Total' ? (
-          <SVGStat />
+          <SVGStat runs={runs} locateActivity={locateActivity} />
         ) : (
           <RunTable
             runs={runs}
