@@ -520,7 +520,7 @@ test('resource budget CLI checks route-critical chunks and initial activity data
     await Promise.all([
       mkdir(assetsDir, { recursive: true }),
       mkdir(manifestDir, { recursive: true }),
-      ...['running', 'cycling'].flatMap((mode) => [
+      ...['running', 'cycling', 'hiking'].flatMap((mode) => [
         mkdir(join(dataDir, mode, 'routes'), { recursive: true }),
       ]),
     ]);
@@ -533,7 +533,7 @@ test('resource budget CLI checks route-critical chunks and initial activity data
       writeFile(join(assetsDir, 'page.js'), 'page'),
       writeFile(join(assetsDir, 'summary.js'), 'summary'),
       writeFile(join(assetsDir, 'mapbox.js'), randomBytes(400_000)),
-      ...['running', 'cycling'].flatMap((mode) => [
+      ...['running', 'cycling', 'hiking'].flatMap((mode) => [
         writeFile(
           join(dataDir, mode, 'manifest.json'),
           JSON.stringify({ latestYear: '2026' })
@@ -571,6 +571,17 @@ test('resource budget CLI checks route-critical chunks and initial activity data
     });
     assert.notEqual(failing.status, 0);
     assert.match(failing.stderr, /running.*30000/i);
+
+    await Promise.all([
+      writeFile(join(dataDir, 'running', 'metadata.json'), '[]'),
+      writeFile(join(dataDir, 'hiking', 'metadata.json'), randomBytes(40_000)),
+    ]);
+    const hikingFailing = spawnSync(process.execPath, args, {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    });
+    assert.notEqual(hikingFailing.status, 0);
+    assert.match(hikingFailing.stderr, /hiking.*30000/i);
   } finally {
     await rm(fixtureDir, { recursive: true, force: true });
   }

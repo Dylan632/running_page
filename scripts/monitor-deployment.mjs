@@ -1,13 +1,91 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 
-const MODES = ['running', 'cycling'];
+const ACTIVITY_PROFILE_PATH = new URL(
+  '../src/modules/activity/activity-profiles.json',
+  import.meta.url
+);
+
+const loadActivityProfiles = async () => {
+  const source = JSON.parse(await readFile(ACTIVITY_PROFILE_PATH, 'utf8'));
+  const profiles = Object.entries(source?.profiles ?? {}).map(
+    ([key, profile]) => {
+      const minimumDistance = Number(profile?.publication?.minDistanceMeters);
+      if (
+        !profile ||
+        profile.mode !== key ||
+        !Array.isArray(profile.activityTypes) ||
+        profile.activityTypes.length === 0 ||
+        !profile.activityTypes.every(
+          (activityType) =>
+            typeof activityType === 'string' && activityType.length > 0
+        ) ||
+        !Number.isFinite(minimumDistance) ||
+        minimumDistance < 0 ||
+        !Array.isArray(profile.publication?.excludeRunIds)
+      ) {
+        throw new Error(`Invalid activity profile: ${key}`);
+      }
+      return {
+        mode: key,
+        activityTypes: new Set(profile.activityTypes),
+        minDistanceMeters: minimumDistance,
+        excludeRunIds: new Set(profile.publication.excludeRunIds.map(String)),
+      };
+    }
+  );
+  if (profiles.length === 0) {
+    throw new Error('Activity profile has no modes to monitor');
+  }
+  return profiles;
+};
+
+const assertPublishedActivitiesMatchProfile = ({
+  activities,
+  manifest,
+  profile,
+}) => {
+  const { mode, activityTypes, minDistanceMeters, excludeRunIds } = profile;
+  if (
+    !Array.isArray(activities) ||
+    activities.length !== manifest.activityCount
+  ) {
+    throw new Error(
+      `${mode} metadata violates publication policy: expected ${manifest.activityCount} activities`
+    );
+  }
+
+  const runIds = new Set();
+  for (const activity of activities) {
+    const runId =
+      typeof activity?.run_id === 'string' ||
+      typeof activity?.run_id === 'number'
+        ? String(activity.run_id)
+        : '';
+    const distance = Number(activity?.distance);
+    if (
+      !runId ||
+      runIds.has(runId) ||
+      !activityTypes.has(activity?.type) ||
+      activity?.distance === '' ||
+      activity?.distance === null ||
+      !Number.isFinite(distance) ||
+      distance <= minDistanceMeters ||
+      excludeRunIds.has(runId)
+    ) {
+      throw new Error(
+        `${mode} metadata violates publication policy at activity ${runId || '(missing id)'}`
+      );
+    }
+    runIds.add(runId);
+  }
+};
 
 const parseArgs = (argv) => {
   const args = {};
@@ -135,11 +213,12 @@ const parseManifestTimestamp = (value, field, { requireUtc = false } = {}) => {
 
 const inspectActivityData = async ({
   origin,
-  mode,
+  profile,
   maxDataAgeHours,
   requireCache,
   protectionBypass,
 }) => {
+  const { mode } = profile;
   const manifestResponse = await fetchChecked(
     `${origin}/data/${mode}/manifest.json`,
     'application/json',
@@ -183,6 +262,19 @@ const inspectActivityData = async ({
   if (latestActivityTimestamp - Date.now() > 24 * 3_600_000) {
     throw new Error(`${mode} latest activity is dated too far in the future`);
   }
+
+  const metadataResponse = await fetchChecked(
+    `${origin}/data/${mode}/metadata.json`,
+    'application/json',
+    { protectionBypass }
+  );
+  if (requireCache) assertClientCachePolicy(metadataResponse);
+  const activities = await metadataResponse.json();
+  assertPublishedActivitiesMatchProfile({
+    activities,
+    manifest,
+    profile,
+  });
 
   const routeResponse = await fetchChecked(
     `${origin}/data/${mode}/routes/${manifest.latestYear}.json`,
@@ -578,6 +670,7 @@ export const monitorDeployment = async ({
   protectionBypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
 }) => {
   const normalizedOrigin = normalizeOrigin(origin);
+  const profiles = await loadActivityProfiles();
   if (
     !Number.isFinite(maxDataAgeHours) ||
     maxDataAgeHours <= 0 ||
@@ -586,7 +679,8 @@ export const monitorDeployment = async ({
     throw new Error('max data age must be between 0 and 2160 hours');
   }
 
-  for (const mode of MODES) {
+  for (const profile of profiles) {
+    const { mode } = profile;
     const response = await fetchChecked(
       `${normalizedOrigin}/${mode}`,
       'text/html',
@@ -598,7 +692,7 @@ export const monitorDeployment = async ({
     }
     await inspectActivityData({
       origin: normalizedOrigin,
-      mode,
+      profile,
       maxDataAgeHours,
       requireCache,
       protectionBypass,

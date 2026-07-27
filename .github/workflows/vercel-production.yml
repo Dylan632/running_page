@@ -308,7 +308,7 @@ jobs:
             echo "- Source SHA: \`$SOURCE_SHA\`"
             echo "- Immutable deployment: ${{ steps.deploy.outputs.url }}"
             echo "- Canonical origin: $CANONICAL_ORIGIN"
-            echo "- Both /running and /cycling passed HTTP, data freshness, cache, and browser error probes."
+            echo "- /running, /cycling, and /hiking passed HTTP, data freshness, cache, and browser error probes."
             echo "- Legacy Pages redirect and rollback metadata were saved as an artifact."
           } >> "$GITHUB_STEP_SUMMARY"
 

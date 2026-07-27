@@ -74,6 +74,8 @@ export const buildRedirectHtml = ({ canonicalOrigin, legacyBasePath }) => {
           destination = pathname;
         } else if (/^\\/cycling(?:\\/|$)/.test(pathname)) {
           destination = pathname;
+        } else if (/^\\/hiking(?:\\/|$)/.test(pathname)) {
+          destination = pathname;
         } else if (/^\\/(?:total|summary)(?:\\/|$)/.test(pathname)) {
           destination = '/cycling/summary';
         }
@@ -112,6 +114,7 @@ export const buildLegacyRedirect = async ({
       '/summary': '/cycling/summary',
       '/running/*': '/running/*',
       '/cycling/*': '/cycling/*',
+      '/hiking/*': '/hiking/*',
     },
   };
 

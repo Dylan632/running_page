@@ -31,7 +31,13 @@ const runNode = (args, options = {}) =>
     child.on('close', (code) => resolve({ code, stdout, stderr }));
   });
 
-test('Vercel serves both SPA activity paths with freshness-aware data caching', async () => {
+const monitorActivityByMode = {
+  running: { run_id: 'run', type: 'Run', distance: 5_000 },
+  cycling: { run_id: 'ride', type: 'Ride', distance: 20_000 },
+  hiking: { run_id: 'hike', type: 'Hiking', distance: 1_001 },
+};
+
+test('Vercel serves all SPA activity paths with freshness-aware data caching', async () => {
   const config = await readJson('vercel.json');
 
   assert.equal(config.framework, 'vite');
@@ -246,6 +252,10 @@ test('production workflow deploys only the current exact SHA after successful CI
     workflow,
     /deployment_mode: redirect[\s\S]*?source_sha:.*workflow_run\.head_sha/
   );
+  assert.match(
+    workflow,
+    /\/running, \/cycling, and \/hiking passed HTTP, data freshness, cache, and browser error probes/
+  );
 });
 
 test('the same workflow runs a scheduled production health monitor', async () => {
@@ -412,10 +422,12 @@ test('legacy Pages redirect artifact preserves query/hash and maps old paths', a
       assert.match(html, /window\.location\.replace/);
       assert.match(html, /total\|summary/);
       assert.match(html, /\/cycling\/summary/);
+      assert.match(html, /\\\/hiking/);
     }
     assert.equal(manifest.canonicalOrigin, 'https://records.example');
     assert.equal(manifest.defaultActivityPath, '/cycling');
     assert.equal(manifest.legacyBasePath, '/cycling_page');
+    assert.equal(manifest.mappings['/hiking/*'], '/hiking/*');
   } finally {
     await rm(output, { recursive: true, force: true });
   }
@@ -429,7 +441,7 @@ test('deployment monitor checks SPA routes, cache policy, and publication freshn
     .slice(0, 19);
   const server = createServer((request, response) => {
     const path = new URL(request.url, 'http://localhost').pathname;
-    if (path === '/running' || path === '/cycling') {
+    if (path === '/running' || path === '/cycling' || path === '/hiking') {
       response.setHeader('content-type', 'text/html; charset=utf-8');
       response.end(
         '<!doctype html><html><body><div id="root">activity</div></body></html>'
@@ -437,7 +449,7 @@ test('deployment monitor checks SPA routes, cache policy, and publication freshn
       return;
     }
     const manifestMatch = path.match(
-      /^\/data\/(running|cycling)\/manifest\.json$/
+      /^\/data\/(running|cycling|hiking)\/manifest\.json$/
     );
     if (manifestMatch) {
       response.setHeader('content-type', 'application/json');
@@ -456,8 +468,17 @@ test('deployment monitor checks SPA routes, cache policy, and publication freshn
       );
       return;
     }
+    const metadataMatch = path.match(
+      /^\/data\/(running|cycling|hiking)\/metadata\.json$/
+    );
+    if (metadataMatch) {
+      response.setHeader('content-type', 'application/json');
+      response.setHeader('cache-control', 'public, max-age=0, must-revalidate');
+      response.end(JSON.stringify([monitorActivityByMode[metadataMatch[1]]]));
+      return;
+    }
     const routeMatch = path.match(
-      /^\/data\/(running|cycling)\/routes\/2026\.json$/
+      /^\/data\/(running|cycling|hiking)\/routes\/2026\.json$/
     );
     if (routeMatch) {
       response.setHeader('content-type', 'application/json');
@@ -490,11 +511,118 @@ test('deployment monitor checks SPA routes, cache policy, and publication freshn
     assert.equal(result.code, 0, result.stderr);
     assert.match(result.stdout, /running.*fresh/);
     assert.match(result.stdout, /cycling.*fresh/);
+    assert.match(result.stdout, /hiking.*fresh/);
     assert.match(result.stdout, /deployment monitor passed/);
   } finally {
     await new Promise((resolve, reject) =>
       server.close((error) => (error ? reject(error) : resolve()))
     );
+  }
+});
+
+test('deployment monitor rejects activities outside the published mode policy', async () => {
+  const invalidCases = [
+    {
+      name: 'a hike at the exact 1 km boundary',
+      mode: 'hiking',
+      activity: { run_id: 'boundary', type: 'Hiking', distance: 1_000 },
+    },
+    {
+      name: 'a non-Hiking walking activity',
+      mode: 'hiking',
+      activity: { run_id: 'walk', type: 'Walk', distance: 2_000 },
+    },
+    {
+      name: 'an indoor VirtualRun',
+      mode: 'running',
+      activity: { run_id: 'indoor', type: 'VirtualRun', distance: 5_000 },
+    },
+  ];
+
+  for (const invalidCase of invalidCases) {
+    const publishedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const server = createServer((request, response) => {
+      const path = new URL(request.url, 'http://localhost').pathname;
+      const pageMatch = path.match(/^\/(running|cycling|hiking)$/);
+      if (pageMatch) {
+        response.setHeader('content-type', 'text/html; charset=utf-8');
+        response.end('<div id="root">activity</div>');
+        return;
+      }
+      const manifestMatch = path.match(
+        /^\/data\/(running|cycling|hiking)\/manifest\.json$/
+      );
+      if (manifestMatch) {
+        response.setHeader('content-type', 'application/json');
+        response.end(
+          JSON.stringify({
+            schemaVersion: 1,
+            mode: manifestMatch[1],
+            activityCount: 1,
+            publishedAt,
+            latestActivityDate: publishedAt,
+            latestYear: '2026',
+            years: ['2026'],
+            checksum: 'a'.repeat(64),
+          })
+        );
+        return;
+      }
+      const metadataMatch = path.match(
+        /^\/data\/(running|cycling|hiking)\/metadata\.json$/
+      );
+      if (metadataMatch) {
+        const mode = metadataMatch[1];
+        response.setHeader('content-type', 'application/json');
+        response.end(
+          JSON.stringify([
+            mode === invalidCase.mode
+              ? invalidCase.activity
+              : monitorActivityByMode[mode],
+          ])
+        );
+        return;
+      }
+      const routeMatch = path.match(
+        /^\/data\/(running|cycling|hiking)\/routes\/2026\.json$/
+      );
+      if (routeMatch) {
+        response.setHeader('content-type', 'application/json');
+        response.end(
+          JSON.stringify([
+            {
+              run_id: routeMatch[1],
+              summary_polyline: 'encoded-polyline',
+            },
+          ])
+        );
+        return;
+      }
+      response.statusCode = 404;
+      response.end('not found');
+    });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+
+    try {
+      const result = await runNode([
+        'scripts/monitor-deployment.mjs',
+        '--origin',
+        `http://127.0.0.1:${address.port}`,
+        '--max-data-age-hours',
+        '24',
+      ]);
+      assert.notEqual(
+        result.code,
+        0,
+        `${invalidCase.name} unexpectedly passed production monitoring`
+      );
+      assert.match(result.stderr, /publication policy/i);
+    } finally {
+      await new Promise((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve()))
+      );
+    }
   }
 });
 
@@ -524,13 +652,13 @@ test('deployment monitor authenticates protected HTTP checks without leaking its
       response.end('protected');
       return;
     }
-    if (path === '/running' || path === '/cycling') {
+    if (path === '/running' || path === '/cycling' || path === '/hiking') {
       response.setHeader('content-type', 'text/html; charset=utf-8');
       response.end('<div id="root">activity</div>');
       return;
     }
     const manifestMatch = path.match(
-      /^\/data\/(running|cycling)\/manifest\.json$/
+      /^\/data\/(running|cycling|hiking)\/manifest\.json$/
     );
     if (manifestMatch) {
       response.setHeader('content-type', 'application/json');
@@ -548,8 +676,16 @@ test('deployment monitor authenticates protected HTTP checks without leaking its
       );
       return;
     }
+    const metadataMatch = path.match(
+      /^\/data\/(running|cycling|hiking)\/metadata\.json$/
+    );
+    if (metadataMatch) {
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify([monitorActivityByMode[metadataMatch[1]]]));
+      return;
+    }
     const routeMatch = path.match(
-      /^\/data\/(running|cycling)\/routes\/2026\.json$/
+      /^\/data\/(running|cycling|hiking)\/routes\/2026\.json$/
     );
     if (routeMatch) {
       response.setHeader('content-type', 'application/json');
@@ -591,10 +727,16 @@ test('deployment monitor authenticates protected HTTP checks without leaking its
       [
         '/running',
         '/data/running/manifest.json',
+        '/data/running/metadata.json',
         '/data/running/routes/2026.json',
         '/cycling',
         '/data/cycling/manifest.json',
+        '/data/cycling/metadata.json',
         '/data/cycling/routes/2026.json',
+        '/hiking',
+        '/data/hiking/manifest.json',
+        '/data/hiking/metadata.json',
+        '/data/hiking/routes/2026.json',
       ]
     );
     assert.ok(
@@ -658,6 +800,11 @@ test('deployment monitor fails closed on a stale publication even when activity 
       );
       return;
     }
+    if (/^\/data\/running\/metadata\.json$/.test(path)) {
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify([monitorActivityByMode.running]));
+      return;
+    }
     response.statusCode = 404;
     response.end('not found');
   });
@@ -712,6 +859,11 @@ test('deployment monitor rejects same-origin mode redirects', async () => {
           checksum: 'a'.repeat(64),
         })
       );
+      return;
+    }
+    if (/^\/data\/running\/metadata\.json$/.test(path)) {
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify([monitorActivityByMode.running]));
       return;
     }
     if (/^\/data\/running\/routes\/2026\.json$/.test(path)) {

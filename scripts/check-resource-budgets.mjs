@@ -8,6 +8,7 @@ const parseArgs = (argv) => {
     criticalBudget: 350_000,
     data: 'public/data',
     dist: 'dist',
+    profile: 'src/modules/activity/activity-profiles.json',
   };
 
   for (let index = 0; index < argv.length; index += 2) {
@@ -23,6 +24,8 @@ const parseArgs = (argv) => {
       args.data = value;
     } else if (flag === '--dist') {
       args.dist = value;
+    } else if (flag === '--profile') {
+      args.profile = value;
     } else {
       throw new Error(`Unknown argument: ${flag}`);
     }
@@ -125,6 +128,11 @@ const checkActivityData = async ({ budget, dataDirectory, mode }) => {
 const check = async (args) => {
   const distDirectory = resolve(args.dist);
   const dataDirectory = resolve(args.data);
+  const profileSource = await readJson(resolve(args.profile));
+  const activityModes = Object.keys(profileSource?.profiles ?? {});
+  if (activityModes.length === 0) {
+    throw new Error('Activity profile has no modes to check');
+  }
   const manifest = await readJson(
     resolveInside(distDirectory, '.vite/manifest.json')
   );
@@ -156,16 +164,13 @@ const check = async (args) => {
       manifest,
       routeKey: summaryRouteKey,
     }),
-    checkActivityData({
-      budget: args.activityBudget,
-      dataDirectory,
-      mode: 'running',
-    }),
-    checkActivityData({
-      budget: args.activityBudget,
-      dataDirectory,
-      mode: 'cycling',
-    }),
+    ...activityModes.map((mode) =>
+      checkActivityData({
+        budget: args.activityBudget,
+        dataDirectory,
+        mode,
+      })
+    ),
   ]);
 };
 
