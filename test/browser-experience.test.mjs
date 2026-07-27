@@ -986,7 +986,14 @@ test(
       await selectLatestMatch(wuxiFilter);
       const wuxiHash = new URL(session.page.url()).hash;
       await session.page.getByRole('button', { name: wuxiFilter }).click();
-      await session.page.waitForTimeout(250);
+      await session.page.waitForFunction(
+        (expectedHash) =>
+          window.location.hash === expectedHash &&
+          document.querySelectorAll(
+            'tbody button[type="button"][aria-pressed="true"]'
+          ).length === 1,
+        wuxiHash
+      );
       assert.equal(
         new URL(session.page.url()).hash,
         wuxiHash,
@@ -1042,7 +1049,7 @@ test(
       await session.page.getByRole('button', { name: '地点' }).click();
       await session.page
         .getByRole('button', { name: /^无锡市 \d+ km$/ })
-        .click();
+        .dispatchEvent('click');
       await session.page.waitForFunction(
         () =>
           new URL(window.location.href).searchParams.get('year') === '2025' &&
