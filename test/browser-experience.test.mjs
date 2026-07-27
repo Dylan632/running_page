@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { constants } from 'node:fs';
-import { access } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { after, before, test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import axe from 'axe-core';
 import { chromium } from 'playwright-core';
 import { build, preview } from 'vite';
@@ -12,6 +13,15 @@ const MOBILE_WIDTHS = [375, 390, 768];
 const VIEWPORT_HEIGHT = 900;
 const MIN_TOUCH_TARGET_PX = 44;
 const DEFAULT_TIMEOUT_MS = 30_000;
+const VISUAL_SAMPLE_WIDTH = 48;
+const VISUAL_SAMPLE_HEIGHT = 72;
+const VISUAL_MAX_MEAN_DELTA = 18;
+const VISUAL_MAX_CHANGED_RATIO = 0.2;
+const VISUAL_FIXED_TIME = Date.parse('2026-07-27T04:00:00.000Z');
+const VISUAL_BASELINE_PATH = fileURLToPath(
+  new URL('./visual-baselines.json', import.meta.url)
+);
+const UPDATE_VISUAL_BASELINES = process.env.UPDATE_VISUAL_BASELINES === '1';
 
 const EMPTY_MAP_STYLE = JSON.stringify({
   version: 8,
@@ -23,6 +33,8 @@ const EMPTY_MAP_STYLE = JSON.stringify({
 let browser;
 let origin;
 let vite;
+let visualBaselines;
+const pendingVisualBaselines = {};
 
 const chromeCandidates = () => {
   const programFiles = [
@@ -75,7 +87,28 @@ const createBrowserPage = async (width) => {
     deviceScaleFactor: 1,
     hasTouch: true,
     isMobile: true,
+    locale: 'zh-CN',
+    timezoneId: 'Asia/Shanghai',
+    colorScheme: 'light',
+    reducedMotion: 'reduce',
   });
+
+  await context.addInitScript(
+    ({ fixedTime }) => {
+      const NativeDate = Date;
+      class FixedDate extends NativeDate {
+        constructor(...arguments_) {
+          super(...(arguments_.length === 0 ? [fixedTime] : arguments_));
+        }
+
+        static now() {
+          return fixedTime;
+        }
+      }
+      globalThis.Date = FixedDate;
+    },
+    { fixedTime: VISUAL_FIXED_TIME }
+  );
 
   // The map layout itself is under test, while the third-party tile service is
   // deliberately replaced with a valid empty style to keep CI deterministic.
@@ -314,8 +347,120 @@ const ownActivityDataRequests = (requestUrls) =>
         /^\/data\/(?:running|cycling)\//.test(url.pathname)
     );
 
+const captureVisualSample = async (page) => {
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await Promise.all(
+      [...document.images]
+        .filter((image) => !image.complete)
+        .map(
+          (image) =>
+            new Promise((resolve) => {
+              image.addEventListener('load', resolve, { once: true });
+              image.addEventListener('error', resolve, { once: true });
+            })
+        )
+    );
+  });
+  await waitForAnimationFrames(page);
+
+  const screenshot = await page.screenshot({
+    type: 'png',
+    animations: 'disabled',
+    caret: 'hide',
+    scale: 'css',
+  });
+  const sample = await page.evaluate(
+    async ({ data, height, width }) => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${data}`;
+      await image.decode();
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context) throw new Error('Could not create visual diff canvas');
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
+      context.drawImage(image, 0, 0, width, height);
+
+      const source = context.getImageData(0, 0, width, height).data;
+      const quantizedRgb = [];
+      for (let index = 0; index < source.length; index += 4) {
+        quantizedRgb.push(
+          Math.min(255, Math.round(source[index] / 16) * 16),
+          Math.min(255, Math.round(source[index + 1] / 16) * 16),
+          Math.min(255, Math.round(source[index + 2] / 16) * 16)
+        );
+      }
+      return quantizedRgb;
+    },
+    {
+      data: screenshot.toString('base64'),
+      height: VISUAL_SAMPLE_HEIGHT,
+      width: VISUAL_SAMPLE_WIDTH,
+    }
+  );
+
+  return {
+    sample: Buffer.from(sample).toString('base64'),
+    screenshot,
+  };
+};
+
+const assertVisualBaseline = ({ actual, baselineKey }) => {
+  const expectedBase64 = visualBaselines.images[baselineKey];
+  assert.ok(expectedBase64, `Missing visual baseline ${baselineKey}`);
+
+  const actualPixels = Buffer.from(actual, 'base64');
+  const expectedPixels = Buffer.from(expectedBase64, 'base64');
+  assert.equal(
+    actualPixels.length,
+    expectedPixels.length,
+    `Visual baseline ${baselineKey} has an incompatible sample size`
+  );
+
+  let changedPixels = 0;
+  let totalDelta = 0;
+  for (let index = 0; index < actualPixels.length; index += 3) {
+    const redDelta = Math.abs(actualPixels[index] - expectedPixels[index]);
+    const greenDelta = Math.abs(
+      actualPixels[index + 1] - expectedPixels[index + 1]
+    );
+    const blueDelta = Math.abs(
+      actualPixels[index + 2] - expectedPixels[index + 2]
+    );
+    const maximumDelta = Math.max(redDelta, greenDelta, blueDelta);
+    totalDelta += redDelta + greenDelta + blueDelta;
+    if (maximumDelta > 64) changedPixels += 1;
+  }
+
+  const pixelCount = actualPixels.length / 3;
+  const meanDelta = totalDelta / actualPixels.length;
+  const changedRatio = changedPixels / pixelCount;
+  assert.ok(
+    meanDelta <= VISUAL_MAX_MEAN_DELTA &&
+      changedRatio <= VISUAL_MAX_CHANGED_RATIO,
+    `${baselineKey} visual regression exceeded its budget: ` +
+      `mean delta ${meanDelta.toFixed(2)} (max ${VISUAL_MAX_MEAN_DELTA}), ` +
+      `changed pixels ${(changedRatio * 100).toFixed(2)}% ` +
+      `(max ${(VISUAL_MAX_CHANGED_RATIO * 100).toFixed(0)}%)`
+  );
+};
+
 before(async () => {
   const executablePath = await findChromeExecutable();
+  if (!UPDATE_VISUAL_BASELINES) {
+    visualBaselines = JSON.parse(await readFile(VISUAL_BASELINE_PATH, 'utf8'));
+    assert.equal(visualBaselines.schemaVersion, 1);
+    assert.equal(visualBaselines.sampleWidth, VISUAL_SAMPLE_WIDTH);
+    assert.equal(visualBaselines.sampleHeight, VISUAL_SAMPLE_HEIGHT);
+    assert.equal(
+      visualBaselines.fixedTime,
+      new Date(VISUAL_FIXED_TIME).toISOString()
+    );
+  }
 
   await build({
     logLevel: 'silent',
@@ -347,6 +492,20 @@ before(async () => {
 after(async () => {
   await browser?.close();
   await vite?.close();
+  if (UPDATE_VISUAL_BASELINES) {
+    const baselineDocument = {
+      schemaVersion: 1,
+      sampleWidth: VISUAL_SAMPLE_WIDTH,
+      sampleHeight: VISUAL_SAMPLE_HEIGHT,
+      fixedTime: new Date(VISUAL_FIXED_TIME).toISOString(),
+      images: pendingVisualBaselines,
+    };
+    await writeFile(
+      VISUAL_BASELINE_PATH,
+      `${JSON.stringify(baselineDocument, null, 2)}\n`,
+      'utf8'
+    );
+  }
 });
 
 test(
@@ -416,17 +575,89 @@ test(
                 .join(', ')}`
             );
 
-            const screenshot = await session.page.screenshot({ type: 'png' });
+            const baselineKey = `${mode}-${width}`;
+            const { sample, screenshot } = await captureVisualSample(
+              session.page
+            );
             assert.ok(
               screenshot.byteLength > 1_000,
               `Rendered screenshot for ${mode}/${width} was unexpectedly empty`
             );
+            if (UPDATE_VISUAL_BASELINES) {
+              pendingVisualBaselines[baselineKey] = sample;
+            } else {
+              assertVisualBaseline({ actual: sample, baselineKey });
+            }
+            if (process.env.VISUAL_ARTIFACT_DIR) {
+              await mkdir(process.env.VISUAL_ARTIFACT_DIR, {
+                recursive: true,
+              });
+              await writeFile(
+                join(process.env.VISUAL_ARTIFACT_DIR, `${baselineKey}.png`),
+                screenshot
+              );
+            }
             session.assertNoRuntimeErrors();
           } finally {
             await session.context.close();
           }
         });
       }
+    }
+  }
+);
+
+test(
+  'the primary activity journey completes in no more than three actions',
+  { timeout: 60_000 },
+  async () => {
+    const session = await createBrowserPage(390);
+    try {
+      await openActivityPage(session.page, 'running');
+      let actions = 0;
+
+      const cyclingLink = session.page
+        .locator('nav[aria-label="运动类型"] a')
+        .filter({ hasText: '骑行' });
+      await cyclingLink.click();
+      actions += 1;
+      await session.page
+        .locator('[data-app-ready="cycling"]')
+        .waitFor({ state: 'visible' });
+
+      const yearButton = session.page.getByRole('button', {
+        name: '显示2026 年活动',
+        exact: true,
+      });
+      await yearButton.click();
+      actions += 1;
+      await session.page.waitForURL(
+        (url) =>
+          url.pathname === '/cycling' && url.searchParams.get('year') === '2026'
+      );
+
+      const activityButton = session.page
+        .locator('tbody button[type="button"][aria-pressed]')
+        .first();
+      await activityButton.click();
+      actions += 1;
+      await session.page.waitForFunction(
+        () =>
+          window.location.hash.startsWith('#run_') &&
+          Boolean(
+            document.querySelector(
+              'tbody button[type="button"][aria-pressed="true"]'
+            )
+          )
+      );
+
+      assert.ok(
+        actions <= 3,
+        `Primary activity journey required ${actions} actions`
+      );
+      session.assertNoRuntimeErrors();
+    } finally {
+      await session.context.close();
     }
   }
 );

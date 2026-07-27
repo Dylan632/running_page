@@ -70,9 +70,20 @@ jobs:
 
       - name: Run complete delivery checks
         shell: bash
+        env:
+          VISUAL_ARTIFACT_DIR: ${{ runner.temp }}/visual-regression/node-${{ matrix.node }}
         run: |
           set -euo pipefail
           git status --porcelain --untracked-files=all > "$RUNNER_TEMP/before-delivery-status"
           pnpm run ci
           git status --porcelain --untracked-files=all > "$RUNNER_TEMP/after-delivery-status"
           cmp "$RUNNER_TEMP/before-delivery-status" "$RUNNER_TEMP/after-delivery-status"
+
+      - name: Upload responsive visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: responsive-visuals-node-${{ matrix.node }}
+          path: ${{ runner.temp }}/visual-regression/node-${{ matrix.node }}
+          if-no-files-found: error
+          retention-days: 14
