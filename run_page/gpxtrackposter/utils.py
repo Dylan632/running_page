@@ -144,6 +144,8 @@ def get_normalized_sport_type(sport_type):
         return "running"
     elif sport_type == "Walk":
         return "walking"
+    elif sport_type == "Hiking":
+        return "hiking"
     elif sport_type in {"Ride", "VirtualRide", "Biking"}:
         return "cycling"
     else:

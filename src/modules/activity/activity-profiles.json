@@ -14,7 +14,7 @@
         "journeyTitle": "Running Journey",
         "name": "Run"
       },
-      "activityTypes": ["Run", "VirtualRun", "running"],
+      "activityTypes": ["Run", "running"],
       "publication": {
         "minDistanceMeters": 0,
         "excludeRunIds": [],
@@ -79,6 +79,43 @@
           "special2": "#ff0000"
         },
         "outputNamespace": "cycling"
+      }
+    },
+    "hiking": {
+      "mode": "hiking",
+      "route": "/hiking",
+      "label": "徒步",
+      "siteTitle": "Dylan 的徒步记录",
+      "description": "Dylan 的个人徒步记录、路线和趋势",
+      "copy": {
+        "chineseVerb": "徒步",
+        "countDescription": " Hikes",
+        "heatmapTitle": "Hiking Heatmap",
+        "journeyTitle": "Hiking Journey",
+        "name": "Hike"
+      },
+      "activityTypes": ["Hiking"],
+      "publication": {
+        "minDistanceMeters": 1000,
+        "excludeRunIds": [],
+        "minimumRouteRatio": 0.5
+      },
+      "poster": {
+        "title": "Dylan's Hiking Records",
+        "gridTitle": "Over 5km Hikes",
+        "activityLabel": "Hiker",
+        "sportType": "hiking",
+        "minimumDistanceKm": 1,
+        "gridMinimumDistanceKm": 5,
+        "specialDistancesKm": [5, 10],
+        "colors": {
+          "background": "#222222",
+          "track": "#4DD2FF",
+          "text": "#FFFFFF",
+          "special": "#ffa400",
+          "special2": "#ff0000"
+        },
+        "outputNamespace": "hiking"
       }
     }
   }
