@@ -40,7 +40,7 @@ env:
 
 jobs:
   sync:
-    name: Validate and publish both activity modes
+    name: Validate and publish all activity modes
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.push.outputs.changed }}
@@ -67,7 +67,7 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Capture one publication timestamp and both last-known-good snapshots
+      - name: Capture one publication timestamp and all last-known-good snapshots
         shell: bash
         run: |
           set -euo pipefail
@@ -75,11 +75,19 @@ jobs:
           echo "PUBLICATION_TIMESTAMP=$PUBLICATION_TIMESTAMP" >> "$GITHUB_ENV"
           mkdir -p \
             "$RUNNER_TEMP/.activity-last-known-good/running" \
-            "$RUNNER_TEMP/.activity-last-known-good/cycling"
+            "$RUNNER_TEMP/.activity-last-known-good/cycling" \
+            "$RUNNER_TEMP/.activity-last-known-good/hiking"
           cp public/data/running/metadata.json \
             "$RUNNER_TEMP/.activity-last-known-good/running/activities.json"
           cp public/data/cycling/metadata.json \
             "$RUNNER_TEMP/.activity-last-known-good/cycling/activities.json"
+          if [ -f public/data/hiking/metadata.json ]; then
+            HIKING_PREVIOUS_SNAPSHOT="$RUNNER_TEMP/.activity-last-known-good/hiking/activities.json"
+            cp public/data/hiking/metadata.json "$HIKING_PREVIOUS_SNAPSHOT"
+            echo "HIKING_PREVIOUS_SNAPSHOT=$HIKING_PREVIOUS_SNAPSHOT" >> "$GITHUB_ENV"
+          else
+            echo "HIKING_PREVIOUS_SNAPSHOT=" >> "$GITHUB_ENV"
+          fi
 
       - name: Prepare an isolated running candidate
         run: |
@@ -193,25 +201,78 @@ jobs:
             --athlete "$ATHLETE" \
             --birth-month "$BIRTHDAY_MONTH"
 
-      - name: Verify both namespaces before changing the repository
+      - name: Load the hiking publication profile
+        run: |
+          node scripts/generate-activity-artifacts.mjs export-profile \
+            --mode hiking \
+            --github-env "$GITHUB_ENV"
+
+      - name: Prepare an isolated hiking candidate
+        run: |
+          rm -f run_page/data.db src/static/activities.json imported.json
+          rm -rf activities GPX_OUT TCX_OUT FIT_OUT
+          mkdir -p activities GPX_OUT TCX_OUT FIT_OUT src/static
+
+      - name: Sync Keep hiking data
+        run: |
+          python run_page/keep_sync.py \
+            "${{ secrets.KEEP_MOBILE }}" \
+            "${{ secrets.KEEP_PASSWORD }}" \
+            --sync-types hiking \
+            --min-distance "$ACTIVITY_MIN_DISTANCE_METERS"
+          python run_page/filter_activity_data.py \
+            --types $ACTIVITY_TYPES \
+            --min-distance "$ACTIVITY_MIN_DISTANCE_METERS" \
+            --exclude-run-ids $ACTIVITY_EXCLUDE_RUN_IDS
+
+      - name: Validate the complete hiking candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          previous_snapshot_args=()
+          if [[ -n "${HIKING_PREVIOUS_SNAPSHOT:-}" ]]; then
+            previous_snapshot_args=(
+              --previous-json "$HIKING_PREVIOUS_SNAPSHOT"
+            )
+          fi
+          python run_page/activity_snapshot.py validate \
+            --json src/static/activities.json \
+            --db run_page/data.db \
+            "${previous_snapshot_args[@]}" \
+            --metadata "$RUNNER_TEMP/hiking-activity-snapshot.json"
+
+      - name: Generate profile-driven hiking artifacts
+        run: |
+          node scripts/generate-activity-artifacts.mjs generate \
+            --mode hiking \
+            --input src/static/activities.json \
+            --published-at "$PUBLICATION_TIMESTAMP" \
+            --data-output public/data \
+            --assets-output assets \
+            --python python \
+            --athlete "$ATHLETE" \
+            --birth-month "$BIRTHDAY_MONTH"
+
+      - name: Verify all namespaces before changing the repository
         run: |
           node scripts/generate-activity-artifacts.mjs verify \
             --data-output public/data \
             --assets-output assets
 
-      - name: Commit both validated modes atomically
+      - name: Commit all validated modes atomically
         id: push
         shell: bash
         run: |
           set -euo pipefail
           git config --local user.email 'action@github.com'
           git config --local user.name 'GitHub Action'
-          git add public/data assets/running assets/cycling
+          git add public/data/running public/data/cycling public/data/hiking \
+            assets/running assets/cycling assets/hiking
           if git diff --cached --quiet; then
             echo 'Nothing to commit'
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
-            git commit -m 'publish validated running and cycling artifacts'
+            git commit -m 'publish validated activity artifacts'
             git push
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
@@ -239,4 +300,5 @@ jobs:
           path: |
             ${{ runner.temp }}/running-activity-snapshot.json
             ${{ runner.temp }}/cycling-activity-snapshot.json
+            ${{ runner.temp }}/hiking-activity-snapshot.json
           retention-days: 30

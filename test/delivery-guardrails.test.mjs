@@ -62,7 +62,7 @@ test('production and automation runtimes stay on a supported Node baseline', () 
   }
 });
 
-test('data sync is serialized, validates against last-known-good, and surfaces push errors', () => {
+test('all activity syncs are serialized, last-known-good guarded, and surface push errors', () => {
   const workflow = readFileSync('.github/workflows/run_data_sync.yml', 'utf8');
 
   assert.match(workflow, /concurrency:\s*\n\s+group: run-data-sync-/);
@@ -71,6 +71,13 @@ test('data sync is serialized, validates against last-known-good, and surfaces p
   assert.match(workflow, /contents: write/);
   assert.match(workflow, /\.activity-last-known-good\/running/);
   assert.match(workflow, /\.activity-last-known-good\/cycling/);
+  assert.match(workflow, /\.activity-last-known-good\/hiking/);
+  assert.match(workflow, /--sync-types hiking/);
+  assert.match(workflow, /--mode hiking/);
+  assert.match(
+    workflow,
+    /if \[ -f public\/data\/hiking\/metadata\.json \]; then/
+  );
   assert.match(workflow, /activity_snapshot\.py validate/);
   assert.match(workflow, /git diff --cached --quiet/);
   assert.match(workflow, /\n\s+git push\s*\n/);
@@ -94,6 +101,8 @@ test('GitHub Pages deploys only the immutable artifact from a verified build job
     /needs:\s*\n\s+- prepare_redirect\s*\n\s+- build_full/
   );
   assert.match(workflow, /generate-activity-artifacts\.mjs verify/);
+  assert.match(workflow, /Verify committed artifacts for all activity modes/);
+  assert.doesNotMatch(workflow, /dual-mode/i);
   assert.match(workflow, /pnpm run ci/);
   assert.equal(
     (workflow.match(/verify-github-ci\.mjs/g) ?? []).length,

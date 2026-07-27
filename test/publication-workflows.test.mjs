@@ -270,7 +270,7 @@ test('Pages is manual and defaults to a canonical redirect while full publicatio
   }
 });
 
-test('running sync dispatches exact-SHA CI without owning Pages publication', async () => {
+test('activity sync publishes Hiking with the other modes and dispatches exact-SHA CI', async () => {
   const [workflow, config] = await Promise.all([
     readFile('.github/workflows/run_data_sync.yml', 'utf8'),
     readFile('run_page/config.py', 'utf8'),
@@ -290,14 +290,25 @@ test('running sync dispatches exact-SHA CI without owning Pages publication', as
   assert.match(workflow, /PUBLICATION_TIMESTAMP="\$\(date -u/);
   assert.equal(
     (workflow.match(/--published-at "\$PUBLICATION_TIMESTAMP"/g) ?? []).length,
-    2
+    3
   );
   assert.match(workflow, /--mode running/);
   assert.match(workflow, /--mode cycling/);
+  assert.match(workflow, /--mode hiking/);
+  assert.match(workflow, /--sync-types hiking/);
   assert.match(workflow, /Sync manual GPX cycling data/);
   assert.match(workflow, /Backfill missing historical cycling tracks/);
   assert.match(workflow, /\.activity-last-known-good\/running/);
   assert.match(workflow, /\.activity-last-known-good\/cycling/);
+  assert.match(workflow, /\.activity-last-known-good\/hiking/);
+  assert.match(
+    workflow,
+    /if \[ -f public\/data\/hiking\/metadata\.json \]; then[\s\S]*HIKING_PREVIOUS_SNAPSHOT/
+  );
+  assert.match(
+    workflow,
+    /if \[\[ -n "\$\{HIKING_PREVIOUS_SNAPSHOT:-\}" \]\]; then[\s\S]*--previous-json/
+  );
   assert.match(workflow, /source_sha=\$\(git rev-parse HEAD\)/);
   assert.match(workflow, /actions\/workflows\/ci\.yml\/dispatches/);
   assert.match(workflow, /steps\.push\.outputs\.changed == 'true'/);
@@ -307,7 +318,7 @@ test('running sync dispatches exact-SHA CI without owning Pages publication', as
   assert.doesNotMatch(workflow, /Over 10km Runs/);
 });
 
-test('daily data publication validates both modes and makes one atomic source commit', async () => {
+test('daily data publication validates all modes and makes one atomic source commit', async () => {
   const workflow = await readFile(
     '.github/workflows/run_data_sync.yml',
     'utf8'
@@ -323,6 +334,9 @@ test('daily data publication validates both modes and makes one atomic source co
     workflow.indexOf('--mode running') < workflow.indexOf('--mode cycling')
   );
   assert.ok(
+    workflow.indexOf('--mode cycling') < workflow.indexOf('--mode hiking')
+  );
+  assert.ok(
     workflow.indexOf('generate-activity-artifacts.mjs verify') <
       workflow.indexOf('git commit')
   );
@@ -332,7 +346,15 @@ test('daily data publication validates both modes and makes one atomic source co
   );
   assert.equal(
     (workflow.match(/activity_snapshot\.py validate/g) ?? []).length,
-    2
+    3
+  );
+  assert.match(
+    workflow,
+    /git add public\/data\/running public\/data\/cycling public\/data\/hiking[\s\\\n]+assets\/running assets\/cycling assets\/hiking/
+  );
+  assert.match(
+    workflow,
+    /\$\{\{ runner\.temp \}\}\/hiking-activity-snapshot\.json/
   );
 });
 

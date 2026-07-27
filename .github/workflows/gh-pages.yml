@@ -139,7 +139,7 @@ jobs:
             --sha "$EXPECTED_SOURCE_SHA" \
             --branch master
 
-      - name: Verify committed dual-mode artifacts
+      - name: Verify committed artifacts for all activity modes
         run: |
           node scripts/generate-activity-artifacts.mjs verify \
             --data-output public/data \
