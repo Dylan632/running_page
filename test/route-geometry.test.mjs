@@ -163,6 +163,12 @@ test('fits an annual overview to a clear primary activity cluster', async () => 
     [120.23, 31.52],
     [120.24, 31.5],
   ].map(shortRouteAt);
+  primaryRoutes[0] = {
+    coordinates: [
+      [120.2, 31.5],
+      [117, 30],
+    ],
+  };
   const distantRoutes = [
     [118.78, 32.04],
     [118.8, 32.06],
@@ -181,6 +187,26 @@ test('fits an annual overview to a clear primary activity cluster', async () => 
   );
 });
 
+test('focuses a clear primary cluster even in a sparse annual view', async () => {
+  const { fitPrimaryRouteGeometries, fitRouteGeometries } =
+    await vite.ssrLoadModule('/src/modules/routeGeometry/index.ts');
+  const geometries = [
+    [120.2, 31.5],
+    [120.21, 31.51],
+    [120.22, 31.49],
+    [120.23, 31.52],
+    [120.24, 31.5],
+    [120.25, 31.51],
+    [118.8, 32.06],
+  ].map(shortRouteAt);
+
+  const fullView = fitRouteGeometries(geometries);
+  const primaryView = fitPrimaryRouteGeometries(geometries);
+
+  assert.ok(primaryView.longitude > 120.2 && primaryView.longitude < 120.3);
+  assert.ok(primaryView.zoom > fullView.zoom + 2);
+});
+
 test('keeps the full annual view when no activity cluster clearly leads', async () => {
   const { fitPrimaryRouteGeometries, fitRouteGeometries } =
     await vite.ssrLoadModule('/src/modules/routeGeometry/index.ts');
@@ -194,6 +220,24 @@ test('keeps the full annual view when no activity cluster clearly leads', async 
     [118.82, 32.08],
     [118.84, 32.1],
   ].map(shortRouteAt);
+
+  assert.deepEqual(
+    fitPrimaryRouteGeometries(geometries),
+    fitRouteGeometries(geometries)
+  );
+});
+
+test('does not merge a chain of neighboring starts into one activity area', async () => {
+  const { fitPrimaryRouteGeometries, fitRouteGeometries } =
+    await vite.ssrLoadModule('/src/modules/routeGeometry/index.ts');
+  const neighboringChain = Array.from({ length: 8 }, (_, index) =>
+    shortRouteAt([120, 30 + index * 0.2])
+  );
+  const geometries = [
+    ...neighboringChain,
+    shortRouteAt([118.78, 32.04]),
+    shortRouteAt([118.8, 32.06]),
+  ];
 
   assert.deepEqual(
     fitPrimaryRouteGeometries(geometries),
@@ -238,11 +282,11 @@ test('2025 annual views focus the primary Wuxi cluster for both modes', async ()
       `${mode}: default longitude should focus Wuxi`
     );
     assert.ok(
-      primaryView.latitude > 31.2 && primaryView.latitude < 31.7,
+      primaryView.latitude > 31.4 && primaryView.latitude < 31.7,
       `${mode}: default latitude should focus Wuxi`
     );
     assert.ok(
-      primaryView.zoom > fullView.zoom,
+      primaryView.zoom > fullView.zoom + (mode === 'cycling' ? 1.5 : 2),
       `${mode}: primary view should be tighter than the all-route view`
     );
   }
