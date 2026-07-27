@@ -317,24 +317,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       CANONICAL_ORIGIN: ${{ vars.VERCEL_CANONICAL_ORIGIN }}
       BROWSER_BIN: google-chrome
 
     steps:
       - name: Fail closed when monitoring configuration is incomplete
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          for required_name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
-            if [ -z "${!required_name:-}" ]; then
-              echo "::error::$required_name is required as a GitHub Actions secret."
-              exit 1
-            fi
-          done
           if [[ ! "$CANONICAL_ORIGIN" =~ ^https://[^/]+$ ]]; then
             echo "::error::VERCEL_CANONICAL_ORIGIN is required as an https origin repository variable."
             exit 1
@@ -350,14 +340,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '24'
-
-      - name: Capture current READY production status
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          node scripts/capture-vercel-production.mjs \
-            --origin "$CANONICAL_ORIGIN" \
-            --output "$RUNNER_TEMP/production-health/production-state.json"
 
       - name: Monitor routes, data freshness, cache, and frontend errors
         shell: bash

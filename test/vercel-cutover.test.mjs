@@ -253,19 +253,30 @@ test('the same workflow runs a scheduled production health monitor', async () =>
     '.github/workflows/vercel-production.yml',
     'utf8'
   );
+  const monitorJobStart = workflow.indexOf('  monitor-production:\n');
+  const monitorJobEnd = workflow.indexOf(
+    '\n  publish-legacy-redirect:',
+    monitorJobStart
+  );
+  const monitorJob = workflow.slice(monitorJobStart, monitorJobEnd);
 
   assert.match(workflow, /^\s{2}schedule:\s*$/m);
   assert.match(workflow, /cron: '\d+ \*\/6 \* \* \*'/);
-  assert.match(workflow, /^\s{2}monitor-production:\s*$/m);
-  assert.match(workflow, /github\.event_name == 'schedule'/);
-  assert.match(workflow, /BROWSER_BIN: google-chrome/);
-  assert.match(workflow, /--max-data-age-hours 30/);
-  assert.doesNotMatch(workflow, /--max-data-age-hours 168/);
+  assert.ok(monitorJobStart >= 0 && monitorJobEnd > monitorJobStart);
+  assert.match(monitorJob, /github\.event_name == 'schedule'/);
+  assert.match(monitorJob, /BROWSER_BIN: google-chrome/);
+  assert.match(monitorJob, /--max-data-age-hours 30/);
+  assert.doesNotMatch(monitorJob, /--max-data-age-hours 168/);
+  assert.doesNotMatch(
+    monitorJob,
+    /secrets\.(?:VERCEL_TOKEN|VERCEL_ORG_ID|VERCEL_PROJECT_ID)/
+  );
+  assert.doesNotMatch(monitorJob, /capture-vercel-production\.mjs/);
   assert.match(
-    workflow,
+    monitorJob,
     /Monitor routes, data freshness, cache, and frontend errors[\s\S]*?shell: bash[\s\S]*?set -euo pipefail[\s\S]*?monitor-deployment\.mjs/
   );
-  assert.match(workflow, /production-health-/);
+  assert.match(monitorJob, /production-health-/);
 });
 
 test('browser diagnostics require the final mode marker and surface application failures', () => {
