@@ -217,6 +217,19 @@ const openActivityPage = async (page, mode) => {
   await waitForAnimationFrames(page);
 };
 
+const waitForCityHeatmap = (page, expectedTitle) =>
+  page.waitForFunction(
+    (title) =>
+      new URL(window.location.href).searchParams.get('year') === 'Total' &&
+      window.location.hash === '' &&
+      (
+        document.querySelector('#map-container span[class*="runTitle"]')
+          ?.textContent ?? ''
+      ).trim() === title,
+    expectedTitle,
+    { timeout: 10_000 }
+  );
+
 const auditViewport = (page) =>
   page.evaluate((minimumTouchTarget) => {
     const root = document.documentElement;
@@ -936,13 +949,51 @@ test(
 );
 
 test(
-  'location and time filters focus the latest matching routed activity',
+  'location filters show their route heatmap while time filters focus the latest routed activity',
   { timeout: 60_000 },
   async () => {
     const session = await createBrowserPage(1280);
     try {
       await openActivityPage(session.page, 'running');
       await session.page.getByRole('button', { name: '地点' }).click();
+
+      const wuxiFilter = /^无锡市 \d+ km$/;
+      await session.page.getByRole('button', { name: wuxiFilter }).click();
+      await waitForCityHeatmap(session.page, '无锡市 City Running Heatmap');
+      assert.equal(
+        await session.page
+          .locator('tbody button[type="button"][aria-pressed="true"]')
+          .count(),
+        0,
+        'The city heatmap selected a single table activity'
+      );
+      const cityActivities = session.page.locator(
+        'tbody button[type="button"][aria-pressed="false"]'
+      );
+      await cityActivities.first().waitFor({ state: 'visible' });
+      assert.ok(
+        (await cityActivities.count()) > 1,
+        'The city heatmap did not keep all matching activities available'
+      );
+      assert.ok(
+        (await session.page
+          .locator('tbody tr')
+          .filter({ hasText: '2024-' })
+          .count()) > 0,
+        'The city heatmap omitted its 2024 activities'
+      );
+      assert.ok(
+        (await session.page
+          .locator('tbody tr')
+          .filter({ hasText: '2025-' })
+          .count()) > 0,
+        'The city heatmap omitted its 2025 activities'
+      );
+      assert.equal(
+        await session.page.getByLabel('使用列表选择一条路线').count(),
+        0,
+        'The city heatmap displayed the unfiltered Total poster'
+      );
 
       const selectLatestMatch = async (filterName) => {
         const previousHash = new URL(session.page.url()).hash;
@@ -982,30 +1033,6 @@ test(
         );
       };
 
-      const wuxiFilter = /^无锡市 \d+ km$/;
-      await selectLatestMatch(wuxiFilter);
-      const wuxiHash = new URL(session.page.url()).hash;
-      await session.page.getByRole('button', { name: wuxiFilter }).click();
-      await session.page.waitForFunction(
-        (expectedHash) =>
-          window.location.hash === expectedHash &&
-          document.querySelectorAll(
-            'tbody button[type="button"][aria-pressed="true"]'
-          ).length === 1,
-        wuxiHash
-      );
-      assert.equal(
-        new URL(session.page.url()).hash,
-        wuxiHash,
-        'Selecting the active city again cleared its latest route'
-      );
-      assert.equal(
-        await session.page
-          .locator('tbody button[type="button"][aria-pressed="true"]')
-          .count(),
-        1,
-        'Selecting the active city again cleared the selected activity'
-      );
       await selectLatestMatch(/^清晨跑步 \d+ Runs$/);
       await selectLatestMatch(/^午后跑步 \d+ Runs$/);
 
@@ -1050,27 +1077,20 @@ test(
       await session.page
         .getByRole('button', { name: /^无锡市 \d+ km$/ })
         .dispatchEvent('click');
-      await session.page.waitForFunction(
-        () =>
-          new URL(window.location.href).searchParams.get('year') === '2025' &&
-          window.location.hash.startsWith('#run_'),
-        undefined,
-        { timeout: 10_000 }
-      );
-      const expectedHash = new URL(session.page.url()).hash;
-
       releaseYearRequest();
+      await waitForCityHeatmap(session.page, '无锡市 City Running Heatmap');
+
       await session.page.waitForTimeout(500);
 
       assert.equal(
         new URL(session.page.url()).searchParams.get('year'),
-        '2025',
+        'Total',
         'The stale year request replaced the newer location filter'
       );
       assert.equal(
         new URL(session.page.url()).hash,
-        expectedHash,
-        'The stale year request cleared the newer location selection'
+        '',
+        'The stale year request selected a route over the location heatmap'
       );
       session.assertNoRuntimeErrors();
     } finally {

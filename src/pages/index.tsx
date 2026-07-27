@@ -202,8 +202,8 @@ const Index = () => {
 
   const selectedRunIdRef = useRef<ActivityId | null>(null);
   const selectedRunDateRef = useRef<string | null>(null);
-  const activeFilterItem =
-    currentFilter.func === filterYearRuns ? year : currentFilter.item;
+  const isYearOverview = currentFilter.func === filterYearRuns;
+  const activeFilterItem = isYearOverview ? year : currentFilter.item;
 
   useEffect(() => {
     navigationRequestIdRef.current += 1;
@@ -261,12 +261,11 @@ const Index = () => {
 
   // for auto zoom
   const bounds = useMemo(() => {
-    const isYearOverview = currentFilter.func === filterYearRuns;
     if (!isYearOverview) return getBoundsForGeoData(geoData);
     return year === 'Total'
       ? getTotalOverviewBoundsForRuns(mode, runs)
       : getPrimaryBoundsForGeoData(geoData);
-  }, [currentFilter.func, geoData, mode, runs, year]);
+  }, [geoData, isYearOverview, mode, runs, year]);
 
   const [viewState, setViewState] = useState<IViewState>(() => ({
     ...bounds,
@@ -430,9 +429,11 @@ const Index = () => {
 
   const changeCity = useCallback(
     (city: string) => {
-      void changeToLatestMatchingActivity(city, 'City', filterCityRuns);
+      pendingFilterTargetRef.current = null;
+      changeByItem(city, 'City', filterCityRuns);
+      void selectYear('Total');
     },
-    [changeToLatestMatchingActivity]
+    [changeByItem, selectYear]
   );
 
   const changeTitle = useCallback(
@@ -727,7 +728,7 @@ const Index = () => {
             animationTrigger={animationTrigger}
           />
         </Suspense>
-        {year === 'Total' ? (
+        {year === 'Total' && isYearOverview ? (
           <SVGStat runs={runs} locateActivity={locateActivity} />
         ) : (
           <RunTable
