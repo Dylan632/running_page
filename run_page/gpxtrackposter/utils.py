@@ -150,3 +150,26 @@ def get_normalized_sport_type(sport_type):
         return "cycling"
     else:
         return sport_type
+
+
+def get_activity_copy(activity_mode):
+    if activity_mode == "cycling":
+        return {
+            "gerund": "Cycling",
+            "plural": "Rides",
+            "athlete": "Cyclist",
+            "milestones": "Milestones",
+        }
+    if activity_mode == "hiking":
+        return {
+            "gerund": "Hiking",
+            "plural": "Hikes",
+            "athlete": "Hiker",
+            "milestones": "Milestones",
+        }
+    return {
+        "gerund": "Running",
+        "plural": "Runs",
+        "athlete": "Runner",
+        "milestones": "Races",
+    }

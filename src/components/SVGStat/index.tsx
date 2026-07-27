@@ -159,7 +159,7 @@ const SVGStat = ({ runs, locateActivity }: SVGStatProps) => {
       ),
     [profile.poster.gridMinimumDistanceKm, runs]
   );
-  const activityLabel = mode === 'cycling' ? '骑行' : '跑步';
+  const activityLabel = profile.copy.chineseVerb;
   const calendarTitle = `全部年份${activityLabel}日历海报`;
   const routesTitle = `长距离${activityLabel}路线海报`;
 

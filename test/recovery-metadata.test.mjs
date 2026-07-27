@@ -77,6 +77,7 @@ test('each activity route exposes one absolute canonical URL', async () => {
 
   const running = createSiteMetadata(getActivityProfile('running'));
   const cycling = createSiteMetadata(getActivityProfile('cycling'));
+  const hiking = createSiteMetadata(getActivityProfile('hiking'));
 
   assert.equal(
     running.canonicalUrl,
@@ -86,5 +87,13 @@ test('each activity route exposes one absolute canonical URL', async () => {
     cycling.canonicalUrl,
     'https://running-page-zeta-lake.vercel.app/cycling'
   );
-  assert.notEqual(running.canonicalUrl, cycling.canonicalUrl);
+  assert.equal(
+    hiking.canonicalUrl,
+    'https://running-page-zeta-lake.vercel.app/hiking'
+  );
+  assert.equal(
+    new Set([running.canonicalUrl, cycling.canonicalUrl, hiking.canonicalUrl])
+      .size,
+    3
+  );
 });

@@ -1,6 +1,6 @@
 import profileSource from './activity-profiles.json';
 
-export type ActivityMode = 'running' | 'cycling';
+export type ActivityMode = 'running' | 'cycling' | 'hiking';
 
 export interface ActivityProfile {
   mode: ActivityMode;
@@ -64,15 +64,17 @@ const createProfile = (raw: RawProfile): ActivityProfile => ({
 const profiles: Record<ActivityMode, ActivityProfile> = {
   running: createProfile(profileSource.profiles.running),
   cycling: createProfile(profileSource.profiles.cycling),
+  hiking: createProfile(profileSource.profiles.hiking),
 };
 
 export const ACTIVITY_MODES = Object.freeze([
   profiles.running,
   profiles.cycling,
+  profiles.hiking,
 ]);
 
 export const isActivityMode = (value: unknown): value is ActivityMode =>
-  value === 'running' || value === 'cycling';
+  value === 'running' || value === 'cycling' || value === 'hiking';
 
 export const getActivityProfile = (mode: ActivityMode): ActivityProfile =>
   profiles[mode];

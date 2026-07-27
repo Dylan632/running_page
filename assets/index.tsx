@@ -15,7 +15,7 @@ export type PosterComponent = LazyExoticComponent<
 export type PosterComponentMap = Record<string, PosterComponent>;
 
 const allPosterAssets = import.meta.glob<false, string, PosterLoader>(
-  ['./running/*.svg', './cycling/*.svg'],
+  ['./running/*.svg', './cycling/*.svg', './hiking/*.svg'],
   {
     import: 'ReactComponent',
   }
@@ -57,11 +57,13 @@ const groupPosters = <T,>(source: Record<string, T>, mode: ActivityMode) => ({
 const posterAssets = {
   running: groupPosters(allPosterAssets, 'running'),
   cycling: groupPosters(allPosterAssets, 'cycling'),
+  hiking: groupPosters(allPosterAssets, 'hiking'),
 };
 
 const posterComponents = {
   running: groupPosters(allPosterComponents, 'running'),
   cycling: groupPosters(allPosterComponents, 'cycling'),
+  hiking: groupPosters(allPosterComponents, 'hiking'),
 };
 
 export const getPosterAssets = (mode: ActivityMode) => posterAssets[mode];

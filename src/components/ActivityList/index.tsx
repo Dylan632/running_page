@@ -170,6 +170,10 @@ const getSportTypeOptions = (activityData: Activity[]) => {
     sportTypeSet.delete('Walk');
     sportTypeSet.add('walking');
   }
+  if (sportTypeSet.has('Hiking')) {
+    sportTypeSet.delete('Hiking');
+    sportTypeSet.add('hiking');
+  }
   if (sportTypeSet.has('Ride')) {
     sportTypeSet.delete('Ride');
     sportTypeSet.add('cycling');
@@ -240,6 +244,9 @@ const matchesSportType = (activity: Activity, sportTypeArg: string) => {
   }
   if (sportTypeArg === 'cycling') {
     return activity.type === 'cycling' || activity.type === 'Ride';
+  }
+  if (sportTypeArg === 'hiking') {
+    return activity.type === 'Hiking';
   }
   return activity.type === sportTypeArg;
 };
@@ -788,7 +795,7 @@ const ActivityList: React.FC = () => {
               value={type}
               disabled={interval === 'life' && type !== 'all'}
             >
-              {type}
+              {type === 'hiking' ? 'Hiking' : type}
             </option>
           ))}
         </select>

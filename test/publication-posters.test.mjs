@@ -45,7 +45,7 @@ test('runtime and publication consume one shared activity profile source', async
     '/src/modules/activity/profiles.ts'
   );
 
-  for (const mode of ['running', 'cycling']) {
+  for (const mode of ['running', 'cycling', 'hiking']) {
     const runtime = getActivityProfile(mode);
     const shared = rawProfiles.profiles[mode];
 
@@ -155,6 +155,127 @@ test('publication rejects missing, invalid, or non-UTC publication timestamps', 
   }
 });
 
+test('hiking publication includes only Hiking activities strictly over 1 km', async () => {
+  const fixtureDir = await mkdtemp(join(tmpdir(), 'publication-hiking-'));
+  const inputPath = join(fixtureDir, 'activities.json');
+  const outputPath = join(fixtureDir, 'data');
+
+  try {
+    await writeFile(
+      inputPath,
+      JSON.stringify([
+        activity({
+          run_id: 1,
+          name: 'Exactly one kilometre',
+          type: 'Hiking',
+          subtype: 'Hiking',
+          distance: 1_000,
+        }),
+        activity({
+          run_id: 2,
+          name: 'Published hike',
+          type: 'Hiking',
+          subtype: 'Hiking',
+          distance: 1_001,
+        }),
+        activity({
+          run_id: 3,
+          name: 'Long walk',
+          type: 'Walk',
+          subtype: 'Walking',
+          distance: 5_000,
+        }),
+      ])
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        'scripts/publish-activity-data.mjs',
+        '--mode',
+        'hiking',
+        '--input',
+        inputPath,
+        '--output',
+        outputPath,
+        '--published-at',
+        '2026-07-27T04:00:00.000Z',
+      ],
+      { cwd: process.cwd(), encoding: 'utf8' }
+    );
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+
+    const metadata = JSON.parse(
+      await readFile(join(outputPath, 'hiking', 'metadata.json'), 'utf8')
+    );
+    assert.deepEqual(
+      metadata.map(({ run_id, type, distance }) => ({
+        run_id,
+        type,
+        distance,
+      })),
+      [{ run_id: '2', type: 'Hiking', distance: 1_001 }]
+    );
+  } finally {
+    await rm(fixtureDir, { recursive: true, force: true });
+  }
+});
+
+test('running publication excludes indoor VirtualRun activities', async () => {
+  const fixtureDir = await mkdtemp(join(tmpdir(), 'publication-running-'));
+  const inputPath = join(fixtureDir, 'activities.json');
+  const outputPath = join(fixtureDir, 'data');
+
+  try {
+    await writeFile(
+      inputPath,
+      JSON.stringify([
+        activity({
+          run_id: 1,
+          name: 'Outdoor run',
+          type: 'Run',
+          subtype: 'Run',
+          distance: 5_000,
+        }),
+        activity({
+          run_id: 2,
+          name: 'Indoor virtual run',
+          type: 'VirtualRun',
+          subtype: 'indoor',
+          distance: 5_000,
+        }),
+      ])
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        'scripts/publish-activity-data.mjs',
+        '--mode',
+        'running',
+        '--input',
+        inputPath,
+        '--output',
+        outputPath,
+        '--published-at',
+        '2026-07-27T04:00:00.000Z',
+      ],
+      { cwd: process.cwd(), encoding: 'utf8' }
+    );
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+
+    const metadata = JSON.parse(
+      await readFile(join(outputPath, 'running', 'metadata.json'), 'utf8')
+    );
+    assert.deepEqual(
+      metadata.map(({ run_id, type }) => ({ run_id, type })),
+      [{ run_id: '1', type: 'Run' }]
+    );
+  } finally {
+    await rm(fixtureDir, { recursive: true, force: true });
+  }
+});
+
 test('publication preserves activity ids beyond the JavaScript safe integer range', async () => {
   const fixtureDir = await mkdtemp(join(tmpdir(), 'publication-large-id-'));
   const inputPath = join(fixtureDir, 'activities.json');
@@ -212,6 +333,7 @@ test('poster assets are selected by mode and remain lazy', async () => {
 
   const running = getPosterAssets('running');
   const cycling = getPosterAssets('cycling');
+  const hiking = getPosterAssets('hiking');
 
   assert.ok(running.totalStat['./running/github.svg']);
   assert.equal(
@@ -220,6 +342,10 @@ test('poster assets are selected by mode and remain lazy', async () => {
   );
   assert.equal(
     Object.keys(cycling.all).every((path) => path.startsWith('./cycling/')),
+    true
+  );
+  assert.equal(
+    Object.keys(hiking.all).every((path) => path.startsWith('./hiking/')),
     true
   );
   assert.equal(
@@ -250,6 +376,51 @@ test('poster generators emit stable semantic roles and solid legend squares', as
   assert.match(github, /svg-color-inactive-cell/);
   assert.match(github, /svg-color-active-cell/);
   assert.match(github, /svg-special-fill/);
+});
+
+test('poster generation normalizes exact Keep Hiking activities to hiking', () => {
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      [
+        'import ast',
+        "source = open('run_page/gpxtrackposter/utils.py', encoding='utf-8').read()",
+        'tree = ast.parse(source)',
+        "function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'get_normalized_sport_type')",
+        'namespace = {}',
+        "exec(compile(ast.Module(body=[function], type_ignores=[]), '<sport-normalizer>', 'exec'), namespace)",
+        "get_normalized_sport_type = namespace['get_normalized_sport_type']",
+        "assert get_normalized_sport_type('Hiking') == 'hiking'",
+        "assert get_normalized_sport_type('Walk') == 'walking'",
+      ].join('\n'),
+    ],
+    { cwd: process.cwd(), encoding: 'utf8' }
+  );
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+});
+
+test('poster copy uses Hiking, Hikes, and Hiker without running fallbacks', () => {
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      [
+        'import ast',
+        "source = open('run_page/gpxtrackposter/utils.py', encoding='utf-8').read()",
+        'tree = ast.parse(source)',
+        "function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'get_activity_copy')",
+        'namespace = {}',
+        "exec(compile(ast.Module(body=[function], type_ignores=[]), '<activity-copy>', 'exec'), namespace)",
+        "copy = namespace['get_activity_copy']('hiking')",
+        "assert copy == {'gerund': 'Hiking', 'plural': 'Hikes', 'athlete': 'Hiker', 'milestones': 'Milestones'}",
+      ].join('\n'),
+    ],
+    { cwd: process.cwd(), encoding: 'utf8' }
+  );
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
 });
 
 test('artifact verification rejects a tampered committed data snapshot', async () => {

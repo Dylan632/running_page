@@ -12,7 +12,7 @@ const Layout = ({ children }: React.PropsWithChildren) => {
         <html lang="zh-CN" />
         <title>{siteTitle}</title>
         <meta name="description" content={description} />
-        <meta name="keywords" content="跑步,骑行,运动记录" />
+        <meta name="keywords" content="跑步,骑行,徒步,运动记录" />
         <link rel="canonical" href={canonicalUrl} />
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:title" content={siteTitle} />

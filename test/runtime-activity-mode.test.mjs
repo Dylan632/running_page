@@ -100,6 +100,22 @@ before(async () => {
         streak: 1,
       },
     ],
+    hiking: [
+      {
+        run_id: '9',
+        name: 'Morning hike',
+        distance: 6_000,
+        moving_time: '01:30:00',
+        type: 'Hiking',
+        subtype: 'mountaineering',
+        start_date_local: '2026-07-25 06:00:00',
+        location_country: 'China',
+        average_heartrate: 120,
+        elevation_gain: 240,
+        average_speed: 1.11,
+        streak: 1,
+      },
+    ],
   };
   const responses = new Map();
   for (const [mode, metadata] of Object.entries(activities)) {
@@ -156,15 +172,25 @@ test('activity filtering and metrics use the requested runtime mode', async () =
   );
   const { formatPace } = await vite.ssrLoadModule('/src/utils/utils.ts');
   const ride = { type: 'Ride', distance: 25_000 };
+  const hike = { type: 'Hiking', distance: 6_000 };
+  const walk = { type: 'Walk', distance: 6_000 };
 
   assert.equal(isSelectedActivity(ride, 'cycling', 20_000), true);
   assert.equal(isSelectedActivity(ride, 'running', 0), false);
   assert.equal(isSelectedActivity(ride, 'cycling', 25_000), false);
+  assert.equal(isSelectedActivity(hike, 'hiking', 1_000), true);
+  assert.equal(isSelectedActivity(hike, 'running', 0), false);
+  assert.equal(isSelectedActivity(walk, 'hiking', 1_000), false);
+  assert.equal(
+    isSelectedActivity({ type: 'Hiking', distance: 1_000 }, 'hiking', 1_000),
+    false
+  );
   assert.equal(formatPace(5, 'cycling'), '18.0 km/h');
   assert.equal(formatPace(5, 'running'), `3'20"`);
+  assert.equal(formatPace(1.11, 'hiking'), `15'00"`);
 });
 
-test('summary home control returns to the active activity route', async () => {
+test('hiking summary keeps its route and exposes a canonical Hiking filter', async () => {
   const { MemoryRouter, Route, Routes } = await import('react-router-dom');
   const { ActivityModeProvider } = await vite.ssrLoadModule(
     '/src/modules/activity/ActivityModeProvider.tsx'
@@ -176,7 +202,7 @@ test('summary home control returns to the active activity route', async () => {
     renderToStaticMarkup(
       React.createElement(
         MemoryRouter,
-        { initialEntries: ['/cycling/summary'] },
+        { initialEntries: ['/hiking/summary'] },
         React.createElement(
           Routes,
           null,
@@ -196,8 +222,9 @@ test('summary home control returns to the active activity route', async () => {
       )
     );
 
-  const html = await renderWhenReady(renderSummary, (markup) =>
-    markup.includes('Home')
+  const html = await renderWhenReady(
+    renderSummary,
+    (markup) => markup.includes('Home') && markup.includes('Hiking')
   );
   const dom = new JSDOM(html);
 
@@ -206,13 +233,23 @@ test('summary home control returns to the active activity route', async () => {
       (link) => link.textContent?.trim() === 'Home'
     );
     assert.ok(homeControl);
-    assert.equal(homeControl.getAttribute('href'), '/cycling');
+    assert.equal(homeControl.getAttribute('href'), '/hiking');
     const comboboxes = [...dom.window.document.querySelectorAll('select')];
     assert.equal(comboboxes.length, 2);
     assert.deepEqual(
       comboboxes.map((select) => select.getAttribute('aria-label')),
       ['运动类型筛选', '时间范围筛选']
     );
+    const sportOptions = [...comboboxes[0].querySelectorAll('option')].map(
+      (option) => ({
+        label: option.textContent?.trim(),
+        value: option.getAttribute('value'),
+      })
+    );
+    assert.deepEqual(sportOptions, [
+      { label: 'all', value: 'all' },
+      { label: 'Hiking', value: 'hiking' },
+    ]);
   } finally {
     dom.window.close();
   }
@@ -229,10 +266,86 @@ test('location statistics use the active cycling profile copy', async () => {
   const { default: PeriodStat } = await vite.ssrLoadModule(
     '/src/components/LocationStat/PeriodStat.tsx'
   );
+  const renderLocationStats = () =>
+    renderToStaticMarkup(
+      React.createElement(
+        MemoryRouter,
+        { initialEntries: ['/cycling'] },
+        React.createElement(
+          Routes,
+          null,
+          React.createElement(Route, {
+            path: '/:activityMode',
+            element: React.createElement(
+              ActivityModeProvider,
+              null,
+              React.createElement(
+                Suspense,
+                { fallback: React.createElement('p', null, 'loading') },
+                React.createElement(
+                  React.Fragment,
+                  null,
+                  React.createElement(LocationSummary),
+                  React.createElement(PeriodStat, { onClick: () => {} })
+                )
+              )
+            ),
+          })
+        )
+      )
+    );
+  const html = await renderWhenReady(renderLocationStats, (markup) =>
+    markup.includes('Rides')
+  );
+  const dom = new JSDOM(html);
+
+  try {
+    assert.match(dom.window.document.body.textContent ?? '', /年里我骑过/);
+    assert.match(dom.window.document.body.textContent ?? '', /1 Rides/);
+    assert.doesNotMatch(
+      dom.window.document.body.textContent ?? '',
+      /年里我跑过/
+    );
+  } finally {
+    dom.window.close();
+  }
+});
+
+test('location statistics use Hiking copy without running or cycling fallbacks', async () => {
+  const { MemoryRouter, Route, Routes } = await import('react-router-dom');
+  const { ActivityModeProvider } = await vite.ssrLoadModule(
+    '/src/modules/activity/ActivityModeProvider.tsx'
+  );
+  const { default: LocationSummary } = await vite.ssrLoadModule(
+    '/src/components/LocationStat/LocationSummary.tsx'
+  );
+  const { default: PeriodStat } = await vite.ssrLoadModule(
+    '/src/components/LocationStat/PeriodStat.tsx'
+  );
+  const { titleForRun, titleForShow } = await vite.ssrLoadModule(
+    '/src/utils/utils.ts'
+  );
+  const { geoJsonForRuns } = await vite.ssrLoadModule('/src/utils/geoUtils.ts');
+  const { HIKING_COLOR } = await vite.ssrLoadModule('/src/utils/const.ts');
+  const hike = {
+    run_id: 'hike-copy',
+    name: '',
+    distance: 6_000,
+    moving_time: '01:30:00',
+    type: 'Hiking',
+    subtype: 'mountaineering',
+    start_date_local: '2026-07-25 06:00:00',
+    location_country: 'China',
+    summary_polyline: '??',
+    average_heartrate: 120,
+    elevation_gain: 240,
+    average_speed: 1.11,
+    streak: 1,
+  };
   const html = renderToStaticMarkup(
     React.createElement(
       MemoryRouter,
-      { initialEntries: ['/cycling'] },
+      { initialEntries: ['/hiking'] },
       React.createElement(
         Routes,
         null,
@@ -255,11 +368,15 @@ test('location statistics use the active cycling profile copy', async () => {
   const dom = new JSDOM(html);
 
   try {
-    assert.match(dom.window.document.body.textContent ?? '', /年里我骑过/);
-    assert.match(dom.window.document.body.textContent ?? '', /1 Rides/);
-    assert.doesNotMatch(
-      dom.window.document.body.textContent ?? '',
-      /年里我跑过/
+    const copy = dom.window.document.body.textContent ?? '';
+    assert.match(copy, /年里我徒步过/);
+    assert.match(copy, /1 Hikes/);
+    assert.doesNotMatch(copy, /年里我(?:跑过|骑过)/);
+    assert.equal(titleForRun(hike), '徒步');
+    assert.match(titleForShow(hike), /^Hike 2026-07-25\s+6\.00 km/);
+    assert.equal(
+      geoJsonForRuns([hike]).features[0].properties.color,
+      HIKING_COLOR
     );
   } finally {
     dom.window.close();
@@ -282,7 +399,7 @@ test('summary page uses the shared layout and active profile metadata', async ()
         null,
         React.createElement(
           MemoryRouter,
-          { initialEntries: ['/running/summary'] },
+          { initialEntries: ['/hiking/summary'] },
           React.createElement(
             Routes,
             null,
@@ -310,7 +427,7 @@ test('summary page uses the shared layout and active profile metadata', async ()
 
   try {
     assert.ok(dom.window.document.querySelector('nav.running-header'));
-    assert.match(html, /<title>Dylan 的跑步记录<\/title>/);
+    assert.match(html, /<title>Dylan 的徒步记录<\/title>/);
   } finally {
     dom.window.close();
   }

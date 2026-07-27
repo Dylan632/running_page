@@ -25,6 +25,7 @@ export const CANONICAL_ORIGIN = 'https://running-page-zeta-lake.vercel.app';
 const ACTIVITY_LINK_LABELS: Record<ActivityProfile['mode'], string> = {
   running: 'Running',
   cycling: 'Cycling',
+  hiking: 'Hiking',
 };
 
 export const createSiteMetadata = (

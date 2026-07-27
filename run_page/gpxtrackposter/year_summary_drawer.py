@@ -6,6 +6,7 @@ from collections import defaultdict
 import svgwrite
 
 from .tracks_drawer import TracksDrawer
+from .utils import get_activity_copy
 from .xy import XY
 
 
@@ -37,6 +38,7 @@ class YearSummaryDrawer(TracksDrawer):
         track_color = self.poster.colors.get("track", "#4DD2FF")
         special_color = self.poster.colors.get("special", "#FFFF00")
         dim_color = "#555555"
+        activity_copy = get_activity_copy(self.poster.activity_mode)
 
         # Filter tracks for the specified year
         year_tracks = [
@@ -51,11 +53,11 @@ class YearSummaryDrawer(TracksDrawer):
         left_width = size.x * 0.40
         right_section_start = offset.x + left_width
 
-        # Draw "Running for X Days" header - align with top of dots (offset.y + 8)
+        # Draw the activity history header - align with top of dots (offset.y + 8)
         first_run_date = self._get_first_run_date()
         if first_run_date:
             days_ago = (datetime.datetime.now() - first_run_date).days
-            header_text = f"Running for {days_ago} Days"
+            header_text = f"{activity_copy['gerund']} for {days_ago} Days"
         else:
             header_text = f"Year {self.year}"
 
@@ -71,7 +73,7 @@ class YearSummaryDrawer(TracksDrawer):
         # Draw race categories
         dr.add(
             dr.text(
-                "Races",
+                activity_copy["milestones"],
                 insert=(left_margin, offset.y + 34),
                 fill=dim_color,
                 style="font-size:6px; font-family:Arial;",
@@ -144,7 +146,7 @@ class YearSummaryDrawer(TracksDrawer):
         # Stats with separate value and unit for better layout
         stat_items = [
             ("Distance", f"{int(stats['total_distance'])}", self.poster.u()),
-            ("Runs", f"{stats['total_runs']}", ""),
+            (activity_copy["plural"], f"{stats['total_runs']}", ""),
             ("Avg Pace", stats["avg_pace"], ""),
             ("Streak", f"{stats['streak']}", "d"),
             ("Time", f"{total_hours}", "h"),
@@ -189,19 +191,21 @@ class YearSummaryDrawer(TracksDrawer):
                     )
                 )
 
-        # Draw Runner name and footer at bottom
+        # Draw athlete name and footer at bottom
         # Calculate positions to align with bottom rows of dots
         # Dots: y_start = offset.y + 8, height = size.y - 16, rows = 31
         dots_y_start = offset.y + 8
         dots_height = size.y - 16
         dots_spacing_y = dots_height / 31
 
-        # Runner aligns with ~4th row from bottom
+        # Athlete label aligns with ~4th row from bottom
         runner_row_center = dots_y_start + 27.5 * dots_spacing_y
-        runner_name = self.poster.athlete if self.poster.athlete else "Runner"
+        runner_name = (
+            self.poster.athlete if self.poster.athlete else activity_copy["athlete"]
+        )
         dr.add(
             dr.text(
-                "Runner",
+                activity_copy["athlete"],
                 insert=(left_margin, runner_row_center - 4),
                 fill=dim_color,
                 style="font-size:5px; font-family:Arial;",

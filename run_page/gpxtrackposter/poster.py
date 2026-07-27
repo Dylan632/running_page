@@ -8,7 +8,7 @@ from datetime import datetime
 import pytz
 import svgwrite
 
-from .utils import format_float
+from .utils import format_float, get_activity_copy
 from .value_range import ValueRange
 from .xy import XY
 from .year_range import YearRange
@@ -181,10 +181,7 @@ class Poster:
         d.add(self.semantic(title, "title", "poster-title"))
 
     def __activity_label(self):
-        title = self.title or ""
-        if "Cycling" in title or "Rides" in title:
-            return "Cyclist"
-        return self.trans("Runner")
+        return get_activity_copy(self.activity_mode)["athlete"]
 
     def __draw_footer(self, d):
         text_color = self.colors["text"]

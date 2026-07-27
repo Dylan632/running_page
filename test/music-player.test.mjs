@@ -204,8 +204,8 @@ test('places the music control after About and before the theme toggle', async (
   }
 });
 
-test('shows running and cycling as an explicit page switch', async () => {
-  const html = await renderHeaderMarkup('/cycling?year=2026&view=map');
+test('shows Running, Cycling, and Hiking as an explicit page switch', async () => {
+  const html = await renderHeaderMarkup('/hiking?year=2026&view=map');
   const dom = new JSDOM(html);
 
   try {
@@ -219,6 +219,9 @@ test('shows running and cycling as an explicit page switch', async () => {
     const cyclingLink = links.find(
       (link) => link.textContent?.trim() === 'Cycling'
     );
+    const hikingLink = links.find(
+      (link) => link.textContent?.trim() === 'Hiking'
+    );
 
     assert.equal(
       brand?.getAttribute('href'),
@@ -226,7 +229,7 @@ test('shows running and cycling as an explicit page switch', async () => {
       'the avatar and name should no longer switch activity pages'
     );
     assert.ok(activitySwitch);
-    assert.equal(links.length, 2);
+    assert.equal(links.length, 3);
     assert.equal(
       runningLink?.getAttribute('href'),
       '/running?year=2026&view=map'
@@ -235,8 +238,13 @@ test('shows running and cycling as an explicit page switch', async () => {
       cyclingLink?.getAttribute('href'),
       '/cycling?year=2026&view=map'
     );
+    assert.equal(
+      hikingLink?.getAttribute('href'),
+      '/hiking?year=2026&view=map'
+    );
     assert.equal(runningLink?.getAttribute('aria-current'), null);
-    assert.equal(cyclingLink?.getAttribute('aria-current'), 'page');
+    assert.equal(cyclingLink?.getAttribute('aria-current'), null);
+    assert.equal(hikingLink?.getAttribute('aria-current'), 'page');
   } finally {
     dom.window.close();
   }
