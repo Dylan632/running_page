@@ -1110,6 +1110,20 @@ test(
         scrollState.left > 0 && scrollState.top > 0,
         `Total poster dialog did not pan with the keyboard: ${JSON.stringify(scrollState)}`
       );
+      await session.page.keyboard.press('Tab');
+      assert.equal(
+        await closeButton.evaluate(
+          (element) => document.activeElement === element
+        ),
+        true,
+        'The poster dialog focus trap did not return to the close button'
+      );
+      await session.page.keyboard.press('Shift+Tab');
+      assert.equal(
+        await dialog.evaluate((element) => document.activeElement === element),
+        true,
+        'The poster dialog focus trap did not cycle in reverse'
+      );
 
       await session.page.keyboard.press('Escape');
       await dialog.waitFor({ state: 'detached' });

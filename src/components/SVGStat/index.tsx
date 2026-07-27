@@ -60,10 +60,31 @@ const TotalPosterDialog = ({
         return;
       }
 
-      if (event.key !== 'Tab') return;
       const dialog = dialogRef.current;
       const closeButton = closeButtonRef.current;
       if (!dialog || !closeButton) return;
+
+      if (document.activeElement === dialog) {
+        const arrowStep = 80;
+        const pageStep = Math.max(dialog.clientHeight * 0.8, arrowStep);
+        const scrollDelta: Partial<Record<string, [number, number]>> = {
+          ArrowDown: [0, arrowStep],
+          ArrowLeft: [-arrowStep, 0],
+          ArrowRight: [arrowStep, 0],
+          ArrowUp: [0, -arrowStep],
+          PageDown: [0, pageStep],
+          PageUp: [0, -pageStep],
+        };
+        const delta = scrollDelta[event.key];
+        if (delta) {
+          event.preventDefault();
+          dialog.scrollLeft += delta[0];
+          dialog.scrollTop += delta[1];
+          return;
+        }
+      }
+
+      if (event.key !== 'Tab') return;
       event.preventDefault();
       if (document.activeElement === closeButton) {
         dialog.focus();
