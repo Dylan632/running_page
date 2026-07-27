@@ -4,6 +4,7 @@ import type { RPGeometry } from '@/static/run_countries';
 import worldGeoJsonUrl from '@/static/world.zh.json?url';
 import { getMapThemeFromCurrentTheme } from '@/hooks/useTheme';
 import {
+  fitPrimaryRouteGeometries,
   fitRouteGeometries,
   normalizeRouteGeometries,
   type Coordinate,
@@ -119,6 +120,15 @@ export const getBoundsForGeoData = (
   geoData: FeatureCollection<LineString>
 ): IViewState =>
   fitRouteGeometries(
+    geoData.features.map(({ geometry }) => ({
+      coordinates: geometry.coordinates as Coordinate[],
+    }))
+  );
+
+export const getPrimaryBoundsForGeoData = (
+  geoData: FeatureCollection<LineString>
+): IViewState =>
+  fitPrimaryRouteGeometries(
     geoData.features.map(({ geometry }) => ({
       coordinates: geometry.coordinates as Coordinate[],
     }))

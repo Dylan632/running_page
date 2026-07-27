@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { after, before, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 import { createServer } from 'vite';
@@ -143,6 +144,116 @@ test('fits the map view to all GeoJSON features', async () => {
   assert.ok(view.longitude > -100 && view.longitude < -95);
   assert.ok(view.latitude > 37 && view.latitude < 41);
   assert.ok(view.zoom < 5, 'both coasts must remain visible');
+});
+
+test('fits an annual overview to a clear primary activity cluster', async () => {
+  const { fitPrimaryRouteGeometries, fitRouteGeometries } =
+    await vite.ssrLoadModule('/src/modules/routeGeometry/index.ts');
+  const primaryRoutes = [
+    [120.2, 31.5],
+    [120.21, 31.51],
+    [120.22, 31.49],
+    [120.23, 31.52],
+    [120.24, 31.5],
+  ].map(([longitude, latitude]) => ({
+    coordinates: [
+      [longitude, latitude],
+      [longitude + 0.01, latitude + 0.01],
+    ],
+  }));
+  const distantRoutes = [
+    [118.78, 32.04],
+    [118.8, 32.06],
+    [118.82, 32.08],
+  ].map(([longitude, latitude]) => ({
+    coordinates: [
+      [longitude, latitude],
+      [longitude + 0.01, latitude + 0.01],
+    ],
+  }));
+  const geometries = [...primaryRoutes, ...distantRoutes];
+
+  const fullView = fitRouteGeometries(geometries);
+  const primaryView = fitPrimaryRouteGeometries(geometries);
+
+  assert.ok(primaryView.longitude > 120.2 && primaryView.longitude < 120.3);
+  assert.ok(primaryView.latitude > 31.4 && primaryView.latitude < 31.6);
+  assert.ok(
+    primaryView.zoom > fullView.zoom + 2,
+    'the distant minority must not force a regional overview'
+  );
+});
+
+test('keeps the full annual view when no activity cluster clearly leads', async () => {
+  const { fitPrimaryRouteGeometries, fitRouteGeometries } =
+    await vite.ssrLoadModule('/src/modules/routeGeometry/index.ts');
+  const geometries = [
+    [120.2, 31.5],
+    [120.21, 31.51],
+    [120.22, 31.49],
+    [120.23, 31.52],
+    [118.78, 32.04],
+    [118.8, 32.06],
+    [118.82, 32.08],
+    [118.84, 32.1],
+  ].map(([longitude, latitude]) => ({
+    coordinates: [
+      [longitude, latitude],
+      [longitude + 0.01, latitude + 0.01],
+    ],
+  }));
+
+  assert.deepEqual(
+    fitPrimaryRouteGeometries(geometries),
+    fitRouteGeometries(geometries)
+  );
+});
+
+test('2025 annual views focus the primary Wuxi cluster for both modes', async () => {
+  const { createActivityDataRepository } = await vite.ssrLoadModule(
+    '/src/modules/activity/activityData.ts'
+  );
+  const { geoJsonForRuns, getBoundsForGeoData, getPrimaryBoundsForGeoData } =
+    await vite.ssrLoadModule('/src/utils/geoUtils.ts');
+  const fetcher = async (input) => {
+    const { pathname } = new URL(String(input), 'https://fixture.test');
+    try {
+      const body = await readFile(
+        new URL(`../public${pathname}`, import.meta.url)
+      );
+      return new Response(body, { status: 200 });
+    } catch {
+      return new Response('', { status: 404 });
+    }
+  };
+  const repository = createActivityDataRepository({
+    baseUrl: '/data',
+    fetcher,
+  });
+
+  for (const mode of ['running', 'cycling']) {
+    const loadedActivities = await repository.loadActivities(mode, ['2025']);
+    const activities = loadedActivities.filter((item) =>
+      item.start_date_local.startsWith('2025')
+    );
+    const geoData = geoJsonForRuns(activities);
+    const fullView = getBoundsForGeoData(geoData);
+    const primaryView = getPrimaryBoundsForGeoData(geoData);
+
+    assert.ok(activities.length > 0, `${mode}: missing 2025 activities`);
+    assert.ok(
+      primaryView.longitude > 120.1 && primaryView.longitude < 120.4,
+      `${mode}: default longitude should focus Wuxi`
+    );
+    assert.ok(
+      primaryView.latitude > 31.2 && primaryView.latitude < 31.7,
+      `${mode}: default latitude should focus Wuxi`
+    );
+    assert.ok(
+      primaryView.zoom > fullView.zoom,
+      `${mode}: primary view should be tighter than the all-route view`
+    );
+  }
 });
 
 test('theme changes recolor routes without replacing normalized coordinates', async () => {
