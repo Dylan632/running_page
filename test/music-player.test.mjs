@@ -214,10 +214,10 @@ test('shows running and cycling as an explicit page switch', async () => {
     const activitySwitch = header?.querySelector('nav[aria-label="运动类型"]');
     const links = [...(activitySwitch?.querySelectorAll('a') ?? [])];
     const runningLink = links.find(
-      (link) => link.textContent?.trim() === '跑步'
+      (link) => link.textContent?.trim() === 'Running'
     );
     const cyclingLink = links.find(
-      (link) => link.textContent?.trim() === '骑行'
+      (link) => link.textContent?.trim() === 'Cycling'
     );
 
     assert.equal(

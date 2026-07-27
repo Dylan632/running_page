@@ -127,6 +127,7 @@ const Header = () => {
               return (
                 <NavLink
                   key={activity.mode}
+                  lang="en"
                   className={({ isActive, isPending }) =>
                     `${styles.activityLink} ${
                       isActive || isPending ? styles.activityLinkActive : ''
@@ -141,12 +142,13 @@ const Header = () => {
             })}
           </nav>
         </div>
-        <div className="flex w-full items-center justify-end gap-3 text-right md:w-auto">
+        <div className="flex w-full flex-wrap items-center justify-center gap-3 text-center md:w-auto md:justify-end md:text-right">
           <Link
             to={`/${mode}/summary`}
+            lang="en"
             className="running-header-link inline-flex min-h-11 min-w-11 items-center justify-center text-lg lg:text-base"
           >
-            趋势
+            Trends
           </Link>
           {navLinks.map((n) => (
             <a

@@ -22,7 +22,7 @@ const LocationStat = ({
   return (
     <div className="w-full pb-16 lg:w-full lg:pr-16">
       <section className="pb-0">
-        <p className="leading-relaxed">
+        <p className="kami-sidebar-intro running-sidebar-hero leading-relaxed">
           {firstMessage}.
           <br />
           {secondMessage}.

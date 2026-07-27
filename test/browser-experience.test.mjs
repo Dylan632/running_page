@@ -632,7 +632,7 @@ test(
 
       const cyclingLink = session.page
         .locator('nav[aria-label="运动类型"] a')
-        .filter({ hasText: '骑行' });
+        .filter({ hasText: 'Cycling' });
       await cyclingLink.click();
       actions += 1;
       await session.page
@@ -713,7 +713,7 @@ test(
 
       const cyclingLink = session.page
         .locator('nav[aria-label="运动类型"] a')
-        .filter({ hasText: '骑行' });
+        .filter({ hasText: 'Cycling' });
 
       const runningUrlBeforeModifiedClick = session.page.url();
       const modifiedClickMarkedPending = await cyclingLink.evaluate((link) => {
@@ -764,10 +764,10 @@ test(
             const cycling = [...document.querySelectorAll('a')].find(
               (link) =>
                 link.closest('nav[aria-label="运动类型"]') &&
-                link.textContent?.includes('骑行')
+                link.textContent?.includes('Cycling')
             );
             const summary = [...document.querySelectorAll('a')].find(
-              (link) => link.textContent?.trim() === '趋势'
+              (link) => link.textContent?.trim() === 'Trends'
             );
             if (!(cycling instanceof HTMLAnchorElement) || !summary) {
               throw new Error('Mode switch or summary link is missing');
@@ -918,7 +918,7 @@ test(
 
       const cyclingLink = session.page
         .locator('nav[aria-label="运动类型"] a')
-        .filter({ hasText: '骑行' });
+        .filter({ hasText: 'Cycling' });
       await cyclingLink.focus();
       await session.page.keyboard.press('Enter');
       await session.page.waitForURL((url) => url.pathname === '/cycling');
@@ -955,7 +955,7 @@ test(
     const session = await createBrowserPage(1280);
     try {
       await openActivityPage(session.page, 'running');
-      await session.page.getByRole('button', { name: '地点' }).click();
+      await session.page.getByRole('button', { name: 'Location' }).click();
 
       const wuxiFilter = /^无锡市 \d+ km$/;
       await session.page.getByRole('button', { name: wuxiFilter }).click();
@@ -1073,7 +1073,7 @@ test(
         .click();
       await yearRequestStarted;
 
-      await session.page.getByRole('button', { name: '地点' }).click();
+      await session.page.getByRole('button', { name: 'Location' }).click();
       await session.page
         .getByRole('button', { name: /^无锡市 \d+ km$/ })
         .dispatchEvent('click');
@@ -1125,7 +1125,7 @@ test(
 
     try {
       await openActivityPage(session.page, 'running');
-      await session.page.getByRole('button', { name: '地点' }).click();
+      await session.page.getByRole('button', { name: 'Location' }).click();
       await session.page
         .getByRole('button', { name: /^清晨跑步 \d+ Runs$/ })
         .click();
@@ -1210,7 +1210,7 @@ test(
           ).trim().length > 0
       );
 
-      await session.page.getByRole('button', { name: '地点' }).click();
+      await session.page.getByRole('button', { name: 'Location' }).click();
       await session.page
         .getByRole('button', { name: /^清晨跑步 \d+ Runs$/ })
         .click();
@@ -1343,6 +1343,179 @@ test(
         'Mobile summary should remain a single column'
       );
 
+      session.assertNoRuntimeErrors();
+    } finally {
+      await session.context.close();
+    }
+  }
+);
+
+test(
+  'trends navigation is English, Home is centered, and content uses document scrolling',
+  { timeout: 60_000 },
+  async () => {
+    const session = await createBrowserPage(1280);
+    try {
+      const response = await session.page.goto(`${origin}/running/summary`, {
+        waitUntil: 'domcontentloaded',
+      });
+      assert.equal(response?.ok(), true, 'Failed to load /running/summary');
+
+      await session.page.getByLabel('运动类型筛选').waitFor();
+      const firstCard = session.page.locator('article:visible').first();
+      await firstCard.waitFor();
+      await waitForAnimationFrames(session.page);
+
+      const navigation = await session.page.evaluate(() => {
+        const home = document.querySelector('main a[href="/running"]');
+        const cycling = document.querySelector('a[href="/cycling/summary"]');
+        const modeNav = cycling?.closest('nav');
+        const running = modeNav?.querySelector('a[href="/running/summary"]');
+        const trends = [
+          ...document.querySelectorAll('a[href="/running/summary"]'),
+        ].find((link) => !modeNav?.contains(link));
+
+        if (!home || !running || !cycling || !trends) {
+          throw new Error('Trends navigation is incomplete');
+        }
+
+        const range = document.createRange();
+        range.selectNodeContents(home);
+        const text = range.getBoundingClientRect();
+        const control = home.getBoundingClientRect();
+
+        return {
+          homeCenterDeltaX: Math.abs(
+            control.left + control.width / 2 - (text.left + text.width / 2)
+          ),
+          homeCenterDeltaY: Math.abs(
+            control.top + control.height / 2 - (text.top + text.height / 2)
+          ),
+          labels: [
+            trends.textContent?.trim(),
+            home.textContent?.trim(),
+            running.textContent?.trim(),
+            cycling.textContent?.trim(),
+          ],
+          languageTags: [trends, home, running, cycling].map(
+            (element) => element.closest('[lang]')?.getAttribute('lang') ?? null
+          ),
+        };
+      });
+
+      await session.page.locator('.recharts-wrapper').first().waitFor();
+      const chartRendering = await session.page.evaluate(() => ({
+        cardCount: document.querySelectorAll('main article').length,
+        renderedChartCount: document.querySelectorAll('main .recharts-wrapper')
+          .length,
+      }));
+
+      await session.page.evaluate(() => {
+        document.scrollingElement?.scrollTo(0, 0);
+        document
+          .querySelectorAll('main *')
+          .forEach((element) => element.scrollTo?.(0, 0));
+      });
+      await firstCard.hover();
+      await session.page.mouse.wheel(0, 600);
+      await session.page.waitForTimeout(200);
+
+      const scrolling = await session.page.evaluate(() => {
+        const main = document.querySelector('main');
+        const holder = main?.querySelector('.rc-virtual-list-holder');
+        return {
+          customScrollbarCount:
+            main?.querySelectorAll('.rc-virtual-list-scrollbar-vertical')
+              .length ?? 0,
+          documentClientHeight: document.documentElement.clientHeight,
+          documentScrollHeight: document.documentElement.scrollHeight,
+          documentTop: document.scrollingElement?.scrollTop ?? 0,
+          nestedOffsets: [...(main?.querySelectorAll('*') ?? [])]
+            .filter((element) => element.scrollTop > 0)
+            .map((element) => element.scrollTop),
+          nestedOverflow: holder
+            ? holder.scrollHeight > holder.clientHeight + 1
+            : false,
+        };
+      });
+
+      assert.deepEqual(navigation.labels, [
+        'Trends',
+        'Home',
+        'Running',
+        'Cycling',
+      ]);
+      assert.deepEqual(navigation.languageTags, ['en', 'en', 'en', 'en']);
+      assert.ok(
+        navigation.homeCenterDeltaX <= 1,
+        `Home is horizontally off-center by ${navigation.homeCenterDeltaX}px`
+      );
+      assert.ok(
+        navigation.homeCenterDeltaY <= 1,
+        `Home is vertically off-center by ${navigation.homeCenterDeltaY}px`
+      );
+      assert.ok(
+        scrolling.documentScrollHeight > scrolling.documentClientHeight,
+        'Summary content does not extend the document'
+      );
+      assert.ok(scrolling.documentTop > 0, 'The document did not scroll');
+      assert.equal(scrolling.nestedOverflow, false);
+      assert.equal(scrolling.customScrollbarCount, 0);
+      assert.deepEqual(scrolling.nestedOffsets, []);
+      assert.ok(
+        chartRendering.renderedChartCount < chartRendering.cardCount,
+        `Rendered all ${chartRendering.cardCount} charts before they approached the viewport`
+      );
+      session.assertNoRuntimeErrors();
+    } finally {
+      await session.context.close();
+    }
+  }
+);
+
+test(
+  'Year and Location use English labels and matching introduction colors',
+  { timeout: 60_000 },
+  async () => {
+    const session = await createBrowserPage(1280);
+    try {
+      await openActivityPage(session.page, 'running');
+
+      const yearButton = session.page.getByRole('button', { name: 'Year' });
+      const locationButton = session.page.getByRole('button', {
+        name: 'Location',
+      });
+      await yearButton.waitFor();
+      await locationButton.waitFor();
+      assert.equal(
+        await yearButton.evaluate(
+          (element) => element.closest('[lang]')?.getAttribute('lang') ?? null
+        ),
+        'en'
+      );
+      assert.equal(
+        await locationButton.evaluate(
+          (element) => element.closest('[lang]')?.getAttribute('lang') ?? null
+        ),
+        'en'
+      );
+
+      const yearIntro = session.page.locator('.kami-sidebar-intro').first();
+      await yearIntro.waitFor();
+      const yearColor = await yearIntro.evaluate(
+        (element) => getComputedStyle(element).color
+      );
+
+      await locationButton.click();
+      const locationIntro = session.page
+        .locator('.kami-sidebar-intro')
+        .filter({ hasText: 'Yesterday you said tomorrow.' });
+      await locationIntro.waitFor();
+      const locationColor = await locationIntro.evaluate(
+        (element) => getComputedStyle(element).color
+      );
+
+      assert.equal(locationColor, yearColor);
       session.assertNoRuntimeErrors();
     } finally {
       await session.context.close();

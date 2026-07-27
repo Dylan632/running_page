@@ -7,28 +7,9 @@
   color: var(--color-primary);
 }
 
-/* Default scrollbar color variables for this component. You can override these in a higher-level CSS or :root. */
-:root {
-  --color-scrollbar-thumb: var(--color-primary, rgba(0, 0, 0, 0.4));
-  --color-scrollbar-thumb-hover: var(--color-primary, rgba(0, 0, 0, 0.6));
-}
-
-/* rc-virtual-list renders its scrollbar elements with classnames we can target globally. */
-:global(.rc-virtual-list-scrollbar) {
-  background: transparent;
-}
-
-:global(.rc-virtual-list-scrollbar-thumb) {
-  background: var(--color-scrollbar-thumb) !important;
-  border-radius: 4px;
-}
-
-:global(.rc-virtual-list-scrollbar-thumb:hover) {
-  background: var(--color-scrollbar-thumb-hover) !important;
-}
-
 .filterContainer {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
   margin-bottom: 20px;
@@ -56,7 +37,7 @@
   gap: 20px; */
   /* position: relative; */
   width: 100%;
-  height: 100%;
+  height: auto;
   /* overflow: auto;
   will-change: transform; */
 }
@@ -158,14 +139,20 @@
 }
 
 .smallHomeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 90px;
+  min-height: 44px;
+  box-sizing: border-box;
   padding: 4px 12px;
   background-color: var(--color-primary);
   color: var(--color-background);
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  margin-right: 20px;
+  text-align: center;
+  text-decoration: none;
 }
 
 .smallHomeButton:hover {
@@ -229,7 +216,7 @@
   outline-offset: 3px;
 }
 
-/* Inner wrapper to center the virtual list rows and constrain width */
+/* Inner wrapper to center list rows and constrain width */
 .summaryInner {
   display: flex;
   justify-content: center;
@@ -238,25 +225,16 @@
   padding: 0 10px;
 }
 
-/* Prevent content from sitting flush against the custom scrollbar. The inner wrapper (direct child) gets right padding. */
 .summaryInner > div {
-  padding-right: 16px;
-  box-sizing: content-box;
+  box-sizing: border-box;
 }
 
-/* Row container used by VirtualList rows */
+/* Row container used by list rows */
 .rowContainer {
   display: flex;
   padding: 10px 0;
   justify-content: flex-start;
-  padding-right: 12px;
   box-sizing: border-box;
-}
-
-/* rc-virtual-list view and body panes: ensure there's a little inner spacing so content doesn't overlap scrollbar */
-:global(.rc-virtual-list-holder-inner),
-:global(.rc-virtual-list-holder) {
-  padding-right: 4px;
 }
 
 .lifeContainer > svg,

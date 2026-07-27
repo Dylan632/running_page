@@ -670,19 +670,21 @@ const Index = () => {
           <div className="mb-4 flex gap-2" role="group" aria-label="统计视图">
             <button
               type="button"
+              lang="en"
               className="min-h-11 rounded-full border px-4 py-2"
               aria-pressed={sidebarPanel === 'years'}
               onClick={() => setSidebarPanel('years')}
             >
-              年份
+              Year
             </button>
             <button
               type="button"
+              lang="en"
               className="min-h-11 rounded-full border px-4 py-2"
               aria-pressed={sidebarPanel === 'location'}
               onClick={() => setSidebarPanel('location')}
             >
-              地点
+              Location
             </button>
           </div>
         )}

@@ -22,6 +22,10 @@ interface ISiteMetadataResult {
 
 const PROFILE_URL = 'https://github.com/Dylan632';
 export const CANONICAL_ORIGIN = 'https://running-page-zeta-lake.vercel.app';
+const ACTIVITY_LINK_LABELS: Record<ActivityProfile['mode'], string> = {
+  running: 'Running',
+  cycling: 'Cycling',
+};
 
 export const createSiteMetadata = (
   profile: ActivityProfile
@@ -31,7 +35,7 @@ export const createSiteMetadata = (
   canonicalUrl: `${CANONICAL_ORIGIN}${profile.route}`,
   activityLinks: ACTIVITY_MODES.map((activity) => ({
     mode: activity.mode,
-    name: activity.label,
+    name: ACTIVITY_LINK_LABELS[activity.mode],
   })),
   profileUrl: PROFILE_URL,
   logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQTtc69JxHNcmN1ETpMUX4dozAgAN6iPjWalQ&usqp=CAU',

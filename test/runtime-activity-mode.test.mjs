@@ -197,13 +197,13 @@ test('summary home control returns to the active activity route', async () => {
     );
 
   const html = await renderWhenReady(renderSummary, (markup) =>
-    markup.includes('首页')
+    markup.includes('Home')
   );
   const dom = new JSDOM(html);
 
   try {
     const homeControl = [...dom.window.document.querySelectorAll('a')].find(
-      (link) => link.textContent?.trim() === '首页'
+      (link) => link.textContent?.trim() === 'Home'
     );
     assert.ok(homeControl);
     assert.equal(homeControl.getAttribute('href'), '/cycling');

@@ -107,8 +107,12 @@ test('activity switch stays on the same origin and preserves route context', asy
       'nav[aria-label="运动类型"]'
     );
     const links = [...(switchNav?.querySelectorAll('a') ?? [])];
-    const running = links.find((link) => link.textContent?.trim() === '跑步');
-    const cycling = links.find((link) => link.textContent?.trim() === '骑行');
+    const running = links.find(
+      (link) => link.textContent?.trim() === 'Running'
+    );
+    const cycling = links.find(
+      (link) => link.textContent?.trim() === 'Cycling'
+    );
 
     assert.ok(switchNav);
     assert.equal(

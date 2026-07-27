@@ -123,7 +123,7 @@ const MONTHLY_TITLE = IS_CHINESE ? 'Month' : 'Monthly';
 const WEEKLY_TITLE = IS_CHINESE ? 'Week' : 'Weekly';
 const DAILY_TITLE = IS_CHINESE ? 'Day' : 'Daily';
 const LOCATION_TITLE = IS_CHINESE ? 'Location' : 'Location';
-export const HOME_PAGE_TITLE = IS_CHINESE ? '首页' : 'Home';
+export const HOME_PAGE_TITLE = 'Home';
 
 export const LOADING_TEXT = IS_CHINESE ? '加载中...' : 'Loading...';
 export const NO_ROUTE_DATA = IS_CHINESE ? '暂无路线数据' : 'No route data';

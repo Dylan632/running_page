@@ -8,7 +8,6 @@ import React, {
   useMemo,
   useSyncExternalStore,
 } from 'react';
-import VirtualList from 'rc-virtual-list';
 import { Link } from 'react-router-dom';
 import styles from './style.module.css';
 import {
@@ -28,19 +27,6 @@ import YearPosterLauncher from './YearPosterLauncher';
 // Layout constants (avoid magic numbers)
 const ITEM_WIDTH = 280;
 const ITEM_GAP = 20;
-
-const VIRTUAL_LIST_STYLES = {
-  horizontalScrollBar: {},
-  horizontalScrollBarThumb: {
-    background:
-      'var(--color-primary, var(--color-scrollbar-thumb, rgba(0,0,0,0.4)))',
-  },
-  verticalScrollBar: {},
-  verticalScrollBarThumb: {
-    background:
-      'var(--color-primary, var(--color-scrollbar-thumb, rgba(0,0,0,0.4)))',
-  },
-};
 
 interface SnapshotStore<T> {
   getSnapshot: () => T;
@@ -67,9 +53,6 @@ function createSnapshotStore<T>(initialSnapshot: T): SnapshotStore<T> {
     },
   };
 }
-
-const getInitialListHeight = () =>
-  typeof window === 'undefined' ? 500 : Math.max(100, window.innerHeight - 40);
 
 const loadRoutePreview = () => import('@/components/RoutePreview');
 const RoutePreview = lazy(loadRoutePreview);
@@ -393,89 +376,28 @@ const toDisplaySummary = (
   };
 };
 
-function useActivityListMeasurements(itemWidth: number, gap: number) {
+function useActivityListColumns(itemWidth: number, gap: number) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const filterRef = useRef<HTMLDivElement | null>(null);
-  const sampleRef = useRef<HTMLDivElement | null>(null);
   const containerResizeObserverRef = useRef<ResizeObserver | null>(null);
-  const filterResizeObserverRef = useRef<ResizeObserver | null>(null);
-  const sampleResizeObserverRef = useRef<ResizeObserver | null>(null);
   const layoutFrameRef = useRef<number | null>(null);
 
   const itemsPerRowStore = useMemo(() => createSnapshotStore(0), []);
-  const rowHeightStore = useMemo(() => createSnapshotStore(360), []);
-  const listHeightStore = useMemo(
-    () => createSnapshotStore(getInitialListHeight()),
-    []
-  );
-
   const itemsPerRow = useSyncExternalStore(
     itemsPerRowStore.subscribe,
     itemsPerRowStore.getSnapshot,
     itemsPerRowStore.getServerSnapshot
-  );
-  const rowHeight = useSyncExternalStore(
-    rowHeightStore.subscribe,
-    rowHeightStore.getSnapshot,
-    rowHeightStore.getServerSnapshot
-  );
-  const listHeight = useSyncExternalStore(
-    listHeightStore.subscribe,
-    listHeightStore.getSnapshot,
-    listHeightStore.getServerSnapshot
   );
 
   const updateItemsPerRow = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
     const containerWidth = container.clientWidth;
-    const count = Math.floor((containerWidth + gap) / (itemWidth + gap));
+    const count = Math.max(
+      1,
+      Math.floor((containerWidth + gap) / (itemWidth + gap))
+    );
     itemsPerRowStore.setSnapshot(count);
   }, [gap, itemWidth, itemsPerRowStore]);
-
-  const updateListHeight = useCallback(() => {
-    const filterH = filterRef.current?.clientHeight || 0;
-    const containerEl = containerRef.current;
-    let topOffset = 0;
-    if (containerEl) {
-      const rect = containerEl.getBoundingClientRect();
-      topOffset = Math.max(0, rect.top);
-    }
-
-    const base = topOffset || filterH || 0;
-    let bottomPadding = 16;
-    if (containerEl?.parentElement) {
-      try {
-        const parentRect = containerEl.parentElement.getBoundingClientRect();
-        const containerRect = containerEl.getBoundingClientRect();
-        const distanceToParentBottom = Math.max(
-          0,
-          parentRect.bottom - containerRect.bottom
-        );
-        bottomPadding = Math.min(
-          48,
-          Math.max(8, Math.round(distanceToParentBottom / 4))
-        );
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    listHeightStore.setSnapshot(
-      Math.max(100, window.innerHeight - base - bottomPadding)
-    );
-  }, [listHeightStore]);
-
-  const updateRowHeight = useCallback(() => {
-    const height = sampleRef.current?.offsetHeight ?? 0;
-    if (height) rowHeightStore.setSnapshot(height);
-  }, [rowHeightStore]);
-
-  const updateMeasurements = useCallback(() => {
-    updateItemsPerRow();
-    updateListHeight();
-    updateRowHeight();
-  }, [updateItemsPerRow, updateListHeight, updateRowHeight]);
 
   const scheduleMeasurementUpdate = useCallback(() => {
     if (layoutFrameRef.current !== null) {
@@ -484,23 +406,13 @@ function useActivityListMeasurements(itemWidth: number, gap: number) {
 
     layoutFrameRef.current = requestAnimationFrame(() => {
       layoutFrameRef.current = null;
-      updateMeasurements();
+      updateItemsPerRow();
     });
-  }, [updateMeasurements]);
+  }, [updateItemsPerRow]);
 
   const disconnectContainerObserver = useCallback(() => {
     containerResizeObserverRef.current?.disconnect();
     containerResizeObserverRef.current = null;
-  }, []);
-
-  const disconnectFilterObserver = useCallback(() => {
-    filterResizeObserverRef.current?.disconnect();
-    filterResizeObserverRef.current = null;
-  }, []);
-
-  const disconnectSampleObserver = useCallback(() => {
-    sampleResizeObserverRef.current?.disconnect();
-    sampleResizeObserverRef.current = null;
   }, []);
 
   const setSummaryContainerRef = useCallback(
@@ -521,36 +433,6 @@ function useActivityListMeasurements(itemWidth: number, gap: number) {
     [disconnectContainerObserver, itemsPerRowStore, scheduleMeasurementUpdate]
   );
 
-  const setFilterContainerRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      disconnectFilterObserver();
-      filterRef.current = node;
-
-      if (!node) return;
-
-      const observer = new ResizeObserver(scheduleMeasurementUpdate);
-      observer.observe(node);
-      filterResizeObserverRef.current = observer;
-      scheduleMeasurementUpdate();
-    },
-    [disconnectFilterObserver, scheduleMeasurementUpdate]
-  );
-
-  const setSampleCardRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      disconnectSampleObserver();
-      sampleRef.current = node;
-
-      if (!node) return;
-
-      const observer = new ResizeObserver(scheduleMeasurementUpdate);
-      observer.observe(node);
-      sampleResizeObserverRef.current = observer;
-      scheduleMeasurementUpdate();
-    },
-    [disconnectSampleObserver, scheduleMeasurementUpdate]
-  );
-
   useEffect(() => {
     scheduleMeasurementUpdate();
     window.addEventListener('resize', scheduleMeasurementUpdate);
@@ -562,28 +444,15 @@ function useActivityListMeasurements(itemWidth: number, gap: number) {
   useEffect(
     () => () => {
       disconnectContainerObserver();
-      disconnectFilterObserver();
-      disconnectSampleObserver();
       if (layoutFrameRef.current !== null) {
         cancelAnimationFrame(layoutFrameRef.current);
         layoutFrameRef.current = null;
       }
     },
-    [
-      disconnectContainerObserver,
-      disconnectFilterObserver,
-      disconnectSampleObserver,
-    ]
+    [disconnectContainerObserver]
   );
 
-  return {
-    itemsPerRow,
-    listHeight,
-    rowHeight,
-    setFilterContainerRef,
-    setSampleCardRef,
-    setSummaryContainerRef,
-  };
+  return { itemsPerRow, setSummaryContainerRef };
 }
 
 const ActivityCardInner: React.FC<ActivityCardProps> = ({
@@ -595,7 +464,42 @@ const ActivityCardInner: React.FC<ActivityCardProps> = ({
 }) => {
   const { mode } = useActivityMode();
   const [isFlipped, setIsFlipped] = useState(false);
+  const [shouldRenderChart, setShouldRenderChart] = useState(false);
+  const chartObserverRef = useRef<IntersectionObserver | null>(null);
   const showChart = ['month', 'week', 'year'].includes(interval);
+  const setChartContainerRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      chartObserverRef.current?.disconnect();
+      chartObserverRef.current = null;
+
+      if (!node || !showChart || shouldRenderChart) return;
+      if (typeof IntersectionObserver === 'undefined') {
+        setShouldRenderChart(true);
+        return;
+      }
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (!entries.some((entry) => entry.isIntersecting)) return;
+          setShouldRenderChart(true);
+          observer.disconnect();
+          chartObserverRef.current = null;
+        },
+        { rootMargin: '600px 0px' }
+      );
+      observer.observe(node);
+      chartObserverRef.current = observer;
+    },
+    [shouldRenderChart, showChart]
+  );
+
+  useEffect(
+    () => () => {
+      chartObserverRef.current?.disconnect();
+    },
+    []
+  );
+
   const handleCardClick = useCallback(() => {
     if (interval === 'day' && activities.length > 0) {
       setIsFlipped((current) => !current);
@@ -681,21 +585,23 @@ const ActivityCardInner: React.FC<ActivityCardProps> = ({
             </>
           )}
           {showChart && (
-            <div className={styles.chart}>
-              <Suspense fallback={null}>
-                <ActivityChart
-                  data={data}
-                  yAxisMax={yAxisMax}
-                  yAxisTicks={yAxisTicks}
-                />
-              </Suspense>
+            <div ref={setChartContainerRef} className={styles.chart}>
+              {shouldRenderChart && (
+                <Suspense fallback={null}>
+                  <ActivityChart
+                    data={data}
+                    yAxisMax={yAxisMax}
+                    yAxisTicks={yAxisTicks}
+                  />
+                </Suspense>
+              )}
             </div>
           )}
         </div>
       </div>
 
       {/* Back side - Route preview */}
-      {interval === 'day' && activities.length > 0 && (
+      {interval === 'day' && activities.length > 0 && isFlipped && (
         <div className={styles.cardBack}>
           <div className={styles.routeContainer}>
             <Suspense
@@ -842,44 +748,10 @@ const ActivityList: React.FC = () => {
     [activityData, interval, sportType]
   );
 
-  const {
-    itemsPerRow,
-    listHeight,
-    rowHeight,
-    setFilterContainerRef,
-    setSampleCardRef,
-    setSummaryContainerRef,
-  } = useActivityListMeasurements(ITEM_WIDTH, ITEM_GAP);
-
-  // ref to the VirtualList DOM node so we can control scroll position
-  const virtualListRef = useRef<HTMLDivElement | null>(null);
-
-  // when the interval changes, scroll the virtual list to top to improve UX
-  useEffect(() => {
-    // attempt to find the virtual list DOM node and reset scrollTop
-    const resetScroll = () => {
-      // prefer an explicit ref if available
-      const el =
-        virtualListRef.current || document.querySelector('.rc-virtual-list');
-      if (el) {
-        try {
-          el.scrollTop = 0;
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    };
-
-    // Defer to next frame so the list has time to re-render with new data
-    const id = requestAnimationFrame(() => requestAnimationFrame(resetScroll));
-    // also fallback to a short timeout
-    const t = setTimeout(resetScroll, 50);
-
-    return () => {
-      cancelAnimationFrame(id);
-      clearTimeout(t);
-    };
-  }, [interval, sportType]);
+  const { itemsPerRow, setSummaryContainerRef } = useActivityListColumns(
+    ITEM_WIDTH,
+    ITEM_GAP
+  );
 
   const calcGroup: RowGroup[] = useMemo(() => {
     if (itemsPerRow < 1) return [];
@@ -892,17 +764,17 @@ const ActivityList: React.FC = () => {
     return arr;
   }, [dataList, itemsPerRow]);
 
-  // compute a row width so we can center the VirtualList and keep cards left-aligned inside
+  // Compute a row width so the list stays centered while cards remain left-aligned.
   const rowWidth =
     itemsPerRow < 1
       ? '100%'
       : `${itemsPerRow * ITEM_WIDTH + Math.max(0, itemsPerRow - 1) * ITEM_GAP}px`;
 
-  const loading = itemsPerRow < 1 || !rowHeight;
+  const loading = itemsPerRow < 1;
   return (
     <div className={styles.activityList}>
-      <div className={styles.filterContainer} ref={setFilterContainerRef}>
-        <Link className={styles.smallHomeButton} to={profile.route}>
+      <div className={styles.filterContainer}>
+        <Link className={styles.smallHomeButton} lang="en" to={profile.route}>
           {HOME_PAGE_TITLE}
         </Link>
         <select
@@ -963,38 +835,12 @@ const ActivityList: React.FC = () => {
 
       {interval !== 'life' && (
         <div className={styles.summaryContainer} ref={setSummaryContainerRef}>
-          {/* hidden sample card for measuring row height */}
-          <div
-            style={{
-              position: 'absolute',
-              visibility: 'hidden',
-              pointerEvents: 'none',
-              height: 'auto',
-            }}
-            ref={setSampleCardRef}
-          >
-            {dataList[0] && (
-              <ActivityCard
-                key={dataList[0].period}
-                period={dataList[0].period}
-                summary={toDisplaySummary(dataList[0].summary, mode)}
-                dailyDistances={dataList[0].summary.dailyDistances}
-                interval={interval}
-                activities={
-                  interval === 'day'
-                    ? dataList[0].summary.activities
-                    : undefined
-                }
-              />
-            )}
-          </div>
           <div className={styles.summaryInner}>
             <div style={{ width: rowWidth }}>
               {loading ? (
-                // Use full viewport height (or viewport minus filter height if available) to avoid flicker
                 <div
                   style={{
-                    height: listHeight,
+                    minHeight: 240,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1010,42 +856,33 @@ const ActivityList: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <VirtualList
-                  key={`${sportType}-${interval}-${itemsPerRow}`}
-                  data={calcGroup}
-                  height={listHeight}
-                  itemHeight={rowHeight}
-                  itemKey={(row: RowGroup) => row[0]?.period ?? ''}
-                  styles={VIRTUAL_LIST_STYLES}
-                >
-                  {(row: RowGroup) => (
-                    <div
-                      ref={virtualListRef}
-                      className={styles.rowContainer}
-                      style={{ gap: `${ITEM_GAP}px` }}
-                    >
-                      {row.map(
-                        (cardData: {
-                          period: string;
-                          summary: ActivitySummary;
-                        }) => (
-                          <ActivityCard
-                            key={cardData.period}
-                            period={cardData.period}
-                            summary={toDisplaySummary(cardData.summary, mode)}
-                            dailyDistances={cardData.summary.dailyDistances}
-                            interval={interval}
-                            activities={
-                              interval === 'day'
-                                ? cardData.summary.activities
-                                : undefined
-                            }
-                          />
-                        )
-                      )}
-                    </div>
-                  )}
-                </VirtualList>
+                calcGroup.map((row) => (
+                  <div
+                    key={row[0]?.period ?? ''}
+                    className={styles.rowContainer}
+                    style={{ gap: `${ITEM_GAP}px` }}
+                  >
+                    {row.map(
+                      (cardData: {
+                        period: string;
+                        summary: ActivitySummary;
+                      }) => (
+                        <ActivityCard
+                          key={cardData.period}
+                          period={cardData.period}
+                          summary={toDisplaySummary(cardData.summary, mode)}
+                          dailyDistances={cardData.summary.dailyDistances}
+                          interval={interval}
+                          activities={
+                            interval === 'day'
+                              ? cardData.summary.activities
+                              : undefined
+                          }
+                        />
+                      )
+                    )}
+                  </div>
+                ))
               )}
             </div>
           </div>
