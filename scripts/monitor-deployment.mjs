@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -247,10 +248,38 @@ const inspectActivityData = async ({
 const sleep = (milliseconds) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-const isAllowedBrowserNoise = (message) =>
-  /(?:^WebGL: software fallback is deprecated$|Automatic fallback to software WebGL has been deprecated|GPU process exited|ANGLE Display::initialize error|GL Driver Message)/i.test(
-    message
+export const disposeBrowserProbe = async ({ child, profileDirectory }) => {
+  if (child.exitCode === null && child.signalCode === null) {
+    const exit = once(child, 'exit');
+    child.kill('SIGKILL');
+    await exit;
+  }
+  await rm(profileDirectory, {
+    recursive: true,
+    force: true,
+    maxRetries: 3,
+    retryDelay: 100,
+  });
+};
+
+const isAllowedBrowserNoise = (message) => {
+  if (
+    /(?:^WebGL: software fallback is deprecated$|Automatic fallback to software WebGL has been deprecated|GPU process exited|ANGLE Display::initialize error|GL Driver Message)/i.test(
+      message
+    )
+  ) {
+    return true;
+  }
+
+  return (
+    /https:\/\/tiles\.basemaps\.cartocdn\.com\/fonts\/[^\s'"\]]+\.pbf/i.test(
+      message
+    ) &&
+    /(?:blocked by CORS policy|No 'Access-Control-Allow-Origin' header|Failed to load resource:\s*net::ERR_FAILED)/i.test(
+      message
+    )
   );
+};
 
 export const validateBrowserProbe = ({
   origin,
@@ -491,7 +520,8 @@ const runBrowserProbe = async ({
         event.method === 'Log.entryAdded' &&
         event.params.entry.level === 'error'
       ) {
-        consoleErrors.push(event.params.entry.text);
+        const { text, url } = event.params.entry;
+        consoleErrors.push(url ? `${text} [source: ${url}]` : text);
       } else if (event.method === 'Network.requestWillBeSent') {
         requests.set(event.params.requestId, event.params.request.url);
       } else if (event.method === 'Network.loadingFailed') {
@@ -596,8 +626,7 @@ const runBrowserProbe = async ({
       }${details ? `; Chrome: ${details}` : ''}`
     );
   } finally {
-    child.kill('SIGKILL');
-    await rm(profileDirectory, { recursive: true, force: true });
+    await disposeBrowserProbe({ child, profileDirectory });
   }
 };
 

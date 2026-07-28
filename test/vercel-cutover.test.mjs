@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { EventEmitter } from 'node:events';
+import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { setTimeout } from 'node:timers';
 import {
   buildSameOriginBypassHeaders,
+  disposeBrowserProbe,
   validateBrowserProbe,
 } from '../scripts/monitor-deployment.mjs';
 
@@ -310,6 +313,15 @@ test('browser diagnostics require the final mode marker and surface application 
       consoleErrors: ['WebGL: software fallback is deprecated'],
     })
   );
+  assert.doesNotThrow(() =>
+    validateBrowserProbe({
+      ...healthy,
+      consoleErrors: [
+        "Access to fetch at 'https://tiles.basemaps.cartocdn.com/fonts/HanWangHeiLight%20Regular/0-255.pbf' from origin 'https://records.example' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+        'Failed to load resource: net::ERR_FAILED [source: https://tiles.basemaps.cartocdn.com/fonts/HanWangHeiLight%20Regular/0-255.pbf]',
+      ],
+    })
+  );
   assert.throws(
     () =>
       validateBrowserProbe({
@@ -323,6 +335,16 @@ test('browser diagnostics require the final mode marker and surface application 
       validateBrowserProbe({
         ...healthy,
         consoleErrors: ['Unable to render the activity archive'],
+      }),
+    /console\.error/
+  );
+  assert.throws(
+    () =>
+      validateBrowserProbe({
+        ...healthy,
+        consoleErrors: [
+          'Failed to load resource: net::ERR_FAILED [source: https://records.example/assets/app.js]',
+        ],
       }),
     /console\.error/
   );
@@ -363,6 +385,29 @@ test('browser diagnostics require the final mode marker and surface application 
       }),
     /mode-ready/
   );
+});
+
+test('browser probe cleanup waits for Chrome to exit before removing its profile', async () => {
+  const profileDirectory = await mkdtemp(
+    join(tmpdir(), 'cycling-page-cleanup-test-')
+  );
+  const child = new EventEmitter();
+  child.exitCode = null;
+  child.signalCode = null;
+  let exited = false;
+  child.kill = (signal) => {
+    setTimeout(() => {
+      child.signalCode = signal;
+      exited = true;
+      child.emit('exit', null, signal);
+    }, 10);
+    return true;
+  };
+
+  await disposeBrowserProbe({ child, profileDirectory });
+
+  assert.equal(exited, true);
+  await assert.rejects(access(profileDirectory));
 });
 
 test('browser protection bypass headers are limited to the deployment origin', () => {
