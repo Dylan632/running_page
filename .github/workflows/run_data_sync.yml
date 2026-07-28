@@ -18,6 +18,7 @@ on:
       - run_page/keep_http.py
       - run_page/keep_sync.py
       - run_page/gen_svg.py
+      - run_page/generator/**
       - run_page/gpxtrackposter/**
       - requirements.txt
 

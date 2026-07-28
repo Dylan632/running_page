@@ -78,6 +78,7 @@ test('all activity syncs are serialized, last-known-good guarded, and surface pu
   assert.match(workflow, /\.activity-last-known-good\/hiking/);
   assert.match(workflow, /--sync-types hiking/);
   assert.match(workflow, /--mode hiking/);
+  assert.match(workflow, /^\s{6}- run_page\/generator\/\*\*$/m);
   assert.match(
     workflow,
     /if \[ -f public\/data\/hiking\/metadata\.json \]; then/

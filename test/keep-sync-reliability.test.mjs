@@ -117,6 +117,8 @@ matches = namespace["matches_sync_data_type"]
 assert matches({"dataType": "mountaineering"}, "hiking")
 assert not matches({"dataType": "indoorWalking"}, "hiking")
 assert not matches({"dataType": "outdoorWalking"}, "hiking")
+assert matches({"dataType": "outdoorRunning"}, "running")
+assert not matches({"dataType": "indoorRunning"}, "running")
 assert matches({}, "hiking")
 assert ast.literal_eval(strava_mapping.value)["indoorWalking"] == "Walk"
   `);

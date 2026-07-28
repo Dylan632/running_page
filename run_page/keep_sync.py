@@ -29,7 +29,7 @@ import xml.etree.ElementTree as ET
 
 KEEP_SPORT_TYPES = ["running", "hiking", "cycling"]
 KEEP_SYNC_DATA_TYPES = {
-    "running": {"outdoorRunning", "indoorRunning"},
+    "running": {"outdoorRunning"},
     "hiking": {"mountaineering"},
     "cycling": {"outdoorCycling"},
 }
