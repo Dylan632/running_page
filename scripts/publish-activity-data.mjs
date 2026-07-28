@@ -141,6 +141,7 @@ const loadProfile = async (args) => {
 
   const profileMinimum = Number(profile.publication?.minDistanceMeters);
   const minimumRouteRatio = Number(profile.publication?.minimumRouteRatio);
+  const excludeSubtypes = profile.publication?.excludeSubtypes;
   if (!Number.isFinite(profileMinimum) || profileMinimum < 0) {
     throw new Error(`Profile ${args.mode} has an invalid minDistanceMeters`);
   }
@@ -151,6 +152,14 @@ const loadProfile = async (args) => {
   ) {
     throw new Error(`Profile ${args.mode} has an invalid minimumRouteRatio`);
   }
+  if (
+    !Array.isArray(excludeSubtypes) ||
+    !excludeSubtypes.every(
+      (subtype) => typeof subtype === 'string' && subtype.trim().length > 0
+    )
+  ) {
+    throw new Error(`Profile ${args.mode} has invalid excludeSubtypes`);
+  }
 
   return {
     activityTypes: new Set(profile.activityTypes),
@@ -158,6 +167,9 @@ const loadProfile = async (args) => {
       ...(profile.publication?.excludeRunIds ?? []).map(String),
       ...args.excludeRunIds,
     ]),
+    excludeSubtypes: new Set(
+      excludeSubtypes.map((subtype) => subtype.trim().toLowerCase())
+    ),
     minDistance: args.minDistance ?? profileMinimum,
     minimumRouteRatio,
     schemaVersion: Number(source.schemaVersion) || 1,
@@ -184,6 +196,15 @@ const validateAndNormalize = (raw, args, profile) => {
 
     if (!profile.activityTypes.has(activity.type)) continue;
     if (profile.excludeRunIds.has(runId)) continue;
+    if (
+      profile.excludeSubtypes.has(
+        String(activity.subtype ?? '')
+          .trim()
+          .toLowerCase()
+      )
+    ) {
+      continue;
+    }
 
     const distance = Number(activity.distance ?? 0);
     if (!Number.isFinite(distance) || distance <= profile.minDistance) continue;

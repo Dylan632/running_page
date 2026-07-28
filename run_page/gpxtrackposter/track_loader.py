@@ -154,6 +154,7 @@ class TrackLoader:
         is_grid=False,
         activity_types=None,
         exclude_run_ids=None,
+        exclude_subtypes=None,
     ):
         """Load poster tracks from the exact validated publication snapshot."""
         with open(json_file, "r", encoding="utf-8") as source:
@@ -163,6 +164,9 @@ class TrackLoader:
 
         accepted_types = set(activity_types or [])
         excluded_ids = {str(run_id) for run_id in (exclude_run_ids or [])}
+        excluded_subtypes = {
+            str(subtype).strip().lower() for subtype in (exclude_subtypes or [])
+        }
         tracks = []
         for record in activities:
             if not isinstance(record, dict):
@@ -170,6 +174,8 @@ class TrackLoader:
             if accepted_types and record.get("type") not in accepted_types:
                 continue
             if str(record.get("run_id")) in excluded_ids:
+                continue
+            if str(record.get("subtype") or "").strip().lower() in excluded_subtypes:
                 continue
             summary_polyline = record.get("summary_polyline") or ""
             if is_grid and not summary_polyline:

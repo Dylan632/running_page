@@ -204,6 +204,13 @@ def main():
         default=[],
         help="Activity id excluded from --from-json; repeat as needed.",
     )
+    args_parser.add_argument(
+        "--exclude-subtype",
+        dest="exclude_subtypes",
+        action="append",
+        default=[],
+        help="Activity subtype excluded from --from-json; repeat as needed.",
+    )
 
     args_parser.add_argument(
         "--github-style",
@@ -262,6 +269,7 @@ def main():
             args.type == "grid",
             activity_types=args.activity_types,
             exclude_run_ids=args.exclude_run_ids,
+            exclude_subtypes=args.exclude_subtypes,
         )
     elif args.from_db:
         # for svg from db here if you want gpx please do not use --from-db

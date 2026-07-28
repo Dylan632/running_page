@@ -341,12 +341,17 @@ class Generator:
         last_outdoor_coords = None
         last_outdoor_location = None
         indoor_count = 0
+        routed_indoor_count = 0
         for a, is_indoor, coords in classified:
             if not is_indoor:
                 if coords is not None:
                     last_outdoor_coords = coords
                     last_outdoor_location = a.get("location_country")
             else:
+                # Keep the classification even when there is no earlier outdoor
+                # route available to synthesize geometry from.
+                a["subtype"] = "indoor"
+                indoor_count += 1
                 if last_outdoor_coords is not None:
                     target_m = a.get("distance", 0)
                     route = _build_route_for_distance(last_outdoor_coords, target_m)
@@ -354,14 +359,12 @@ class Generator:
                         a["summary_polyline"] = polyline_codec.encode(route)
                     if not a.get("location_country") and last_outdoor_location:
                         a["location_country"] = last_outdoor_location
-                    # Normalize subtype to "indoor" for frontend/SVG
-                    a["subtype"] = "indoor"
-                    indoor_count += 1
+                    routed_indoor_count += 1
 
         if indoor_count > 0:
             print(
-                f"\n  Fixed {indoor_count} indoor activities "
-                f"with route from nearest outdoor activity"
+                f"\n  Normalized {indoor_count} indoor activities; "
+                f"added reference routes to {routed_indoor_count}"
             )
 
         return activity_list

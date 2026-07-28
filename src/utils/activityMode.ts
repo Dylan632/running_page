@@ -7,6 +7,7 @@ export type { ActivityMode };
 
 interface ActivityFilterCandidate {
   distance?: number | null;
+  subtype?: string | null;
   type: string;
 }
 

@@ -5,6 +5,7 @@ export const createActivityPublicationPolicy = (
   const activityTypes = profile?.activityTypes;
   const minimumDistance = Number(profile?.publication?.minDistanceMeters);
   const excludeRunIds = profile?.publication?.excludeRunIds;
+  const excludeSubtypes = profile?.publication?.excludeSubtypes;
 
   if (
     !profile ||
@@ -17,7 +18,11 @@ export const createActivityPublicationPolicy = (
     ) ||
     !Number.isFinite(minimumDistance) ||
     minimumDistance < 0 ||
-    !Array.isArray(excludeRunIds)
+    !Array.isArray(excludeRunIds) ||
+    !Array.isArray(excludeSubtypes) ||
+    !excludeSubtypes.every(
+      (subtype) => typeof subtype === 'string' && subtype.trim().length > 0
+    )
   ) {
     throw new Error(`Invalid activity profile: ${mode}`);
   }
@@ -27,6 +32,9 @@ export const createActivityPublicationPolicy = (
     activityTypes: new Set(activityTypes),
     minDistanceMeters: minimumDistance,
     excludeRunIds: new Set(excludeRunIds.map(String)),
+    excludeSubtypes: new Set(
+      excludeSubtypes.map((subtype) => subtype.trim().toLowerCase())
+    ),
   };
 };
 
@@ -35,7 +43,13 @@ export const assertPublishedActivitiesMatchPolicy = ({
   expectedCount,
   policy,
 }) => {
-  const { mode, activityTypes, minDistanceMeters, excludeRunIds } = policy;
+  const {
+    mode,
+    activityTypes,
+    minDistanceMeters,
+    excludeRunIds,
+    excludeSubtypes,
+  } = policy;
   if (
     !Array.isArray(activities) ||
     (expectedCount !== undefined && activities.length !== expectedCount)
@@ -53,6 +67,9 @@ export const assertPublishedActivitiesMatchPolicy = ({
         ? String(activity.run_id)
         : '';
     const distance = Number(activity?.distance);
+    const subtype = String(activity?.subtype ?? '')
+      .trim()
+      .toLowerCase();
     if (
       !runId ||
       runIds.has(runId) ||
@@ -61,7 +78,8 @@ export const assertPublishedActivitiesMatchPolicy = ({
       activity?.distance === null ||
       !Number.isFinite(distance) ||
       distance <= minDistanceMeters ||
-      excludeRunIds.has(runId)
+      excludeRunIds.has(runId) ||
+      excludeSubtypes.has(subtype)
     ) {
       throw new Error(
         `${mode} metadata violates publication policy at activity ${runId || '(missing id)'}`

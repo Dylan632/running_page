@@ -19,6 +19,7 @@ export interface ActivityProfile {
   publication: {
     minDistanceMeters: number;
     excludeRunIds: ReadonlySet<string>;
+    excludeSubtypes: ReadonlySet<string>;
     minimumRouteRatio: number;
   };
   poster: {
@@ -51,6 +52,11 @@ const createProfile = (raw: RawProfile): ActivityProfile => ({
   publication: {
     ...raw.publication,
     excludeRunIds: new Set(raw.publication.excludeRunIds),
+    excludeSubtypes: new Set(
+      raw.publication.excludeSubtypes.map((subtype) =>
+        subtype.trim().toLowerCase()
+      )
+    ),
   },
   poster: {
     ...raw.poster,
@@ -80,6 +86,16 @@ export const getActivityProfile = (mode: ActivityMode): ActivityProfile =>
   profiles[mode];
 
 export const isActivityForMode = (
-  activity: { type: string },
+  activity: { type: string; subtype?: string | null },
   mode: ActivityMode
-): boolean => profiles[mode].activityTypes.has(activity.type);
+): boolean => {
+  const profile = profiles[mode];
+  return (
+    profile.activityTypes.has(activity.type) &&
+    !profile.publication.excludeSubtypes.has(
+      String(activity.subtype ?? '')
+        .trim()
+        .toLowerCase()
+    )
+  );
+};

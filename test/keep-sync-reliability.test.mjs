@@ -123,3 +123,52 @@ assert ast.literal_eval(strava_mapping.value)["indoorWalking"] == "Walk"
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
+
+test('indoor detection normalizes subtype even without an outdoor reference route', () => {
+  const result = runPython(`
+import ast
+from types import SimpleNamespace
+
+source = open("run_page/generator/__init__.py", encoding="utf-8").read()
+tree = ast.parse(source)
+generator = next(
+    node
+    for node in tree.body
+    if isinstance(node, ast.ClassDef) and node.name == "Generator"
+)
+function = next(
+    node
+    for node in generator.body
+    if isinstance(node, ast.FunctionDef) and node.name == "_fix_indoor_locations"
+)
+function.decorator_list = []
+namespace = {
+    "polyline_codec": SimpleNamespace(
+        decode=lambda _polyline: [],
+        encode=lambda _route: "",
+    ),
+    "_build_route_for_distance": lambda _route, _distance: [],
+}
+exec(
+    compile(
+        ast.Module(body=[function], type_ignores=[]),
+        "<indoor-classification>",
+        "exec",
+    ),
+    namespace,
+)
+
+activity = {
+    "run_id": 1,
+    "type": "Run",
+    "subtype": "Run",
+    "distance": 5_000,
+    "summary_polyline": "",
+    "location_country": "",
+}
+normalized = namespace["_fix_indoor_locations"]([activity])
+assert normalized[0]["subtype"] == "indoor"
+  `);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+});

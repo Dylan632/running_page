@@ -144,6 +144,53 @@ test('profile export supplies filter policy without duplicating it in workflow Y
   }
 });
 
+test('running poster plans exclude indoor subtypes from every generated asset', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'running-artifacts-plan-'));
+  const input = join(fixture, 'activities.json');
+
+  try {
+    await writeFile(
+      input,
+      JSON.stringify([
+        {
+          run_id: 1,
+          type: 'Run',
+          subtype: 'Run',
+          distance: 5_000,
+          start_date_local: '2026-07-25 08:00:00',
+        },
+      ])
+    );
+
+    const result = runArtifacts([
+      'plan',
+      '--mode',
+      'running',
+      '--input',
+      input,
+      '--published-at',
+      '2026-07-28T00:00:00Z',
+    ]);
+
+    assert.equal(result.status, 0, result.stderr);
+    const plan = JSON.parse(result.stdout);
+    for (const { command } of plan.posters) {
+      for (const subtype of [
+        'indoor',
+        'treadmill',
+        'virtualrun',
+        'virtual_run',
+      ]) {
+        const subtypeIndex = command.indexOf(subtype);
+        assert.ok(subtypeIndex > 0);
+        assert.equal(command[subtypeIndex - 1], '--exclude-subtype');
+      }
+    }
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
 test('generation publishes a complete mode only after data and posters validate', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'activity-artifacts-generate-'));
   const input = join(fixture, 'activities.json');

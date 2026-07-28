@@ -51,6 +51,10 @@ test('runtime and publication consume one shared activity profile source', async
     const shared = rawProfiles.profiles[mode];
 
     assert.deepEqual([...runtime.activityTypes], shared.activityTypes);
+    assert.deepEqual(
+      [...runtime.publication.excludeSubtypes],
+      shared.publication.excludeSubtypes
+    );
     assert.equal(
       runtime.poster.specialDistance,
       shared.poster.specialDistancesKm[0]
@@ -222,7 +226,7 @@ test('hiking publication includes only Hiking activities strictly over 1 km', as
   }
 });
 
-test('running publication excludes indoor VirtualRun activities', async () => {
+test('running publication excludes every indoor running activity', async () => {
   const fixtureDir = await mkdtemp(join(tmpdir(), 'publication-running-'));
   const inputPath = join(fixtureDir, 'activities.json');
   const outputPath = join(fixtureDir, 'data');
@@ -243,6 +247,27 @@ test('running publication excludes indoor VirtualRun activities', async () => {
           name: 'Indoor virtual run',
           type: 'VirtualRun',
           subtype: 'indoor',
+          distance: 5_000,
+        }),
+        activity({
+          run_id: 3,
+          name: 'Indoor run',
+          type: 'Run',
+          subtype: 'indoor',
+          distance: 5_000,
+        }),
+        activity({
+          run_id: 4,
+          name: 'Treadmill run',
+          type: 'Run',
+          subtype: 'treadmill',
+          distance: 5_000,
+        }),
+        activity({
+          run_id: 5,
+          name: 'Alternate virtual run',
+          type: 'Run',
+          subtype: 'virtual_run',
           distance: 5_000,
         }),
       ])

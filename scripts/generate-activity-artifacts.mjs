@@ -112,6 +112,7 @@ const requireProfile = (profiles, mode) => {
   if (
     !Array.isArray(profile.activityTypes) ||
     !Array.isArray(profile.publication?.excludeRunIds) ||
+    !Array.isArray(profile.publication?.excludeSubtypes) ||
     !Array.isArray(profile.poster?.specialDistancesKm) ||
     profile.poster.specialDistancesKm.length !== 2 ||
     !profile.poster.outputNamespace
@@ -136,6 +137,11 @@ const getYears = async (inputPath, profile) => {
 
   const acceptedTypes = new Set(profile.activityTypes);
   const excludedIds = new Set(profile.publication.excludeRunIds.map(String));
+  const excludedSubtypes = new Set(
+    profile.publication.excludeSubtypes.map((subtype) =>
+      subtype.trim().toLowerCase()
+    )
+  );
   const minimumDistance = Number(profile.publication.minDistanceMeters);
   const years = new Set();
 
@@ -144,6 +150,11 @@ const getYears = async (inputPath, profile) => {
       !activity ||
       !acceptedTypes.has(activity.type) ||
       excludedIds.has(String(activity.run_id)) ||
+      excludedSubtypes.has(
+        String(activity.subtype ?? '')
+          .trim()
+          .toLowerCase()
+      ) ||
       Number(activity.distance ?? 0) <= minimumDistance
     ) {
       continue;
@@ -173,6 +184,9 @@ const posterBaseCommand = (args, profile) => {
     ),
     ...profile.publication.excludeRunIds.flatMap((runId) =>
       option('--exclude-run-id', runId)
+    ),
+    ...profile.publication.excludeSubtypes.flatMap((subtype) =>
+      option('--exclude-subtype', subtype)
     ),
     ...option('--athlete', args.athlete),
     ...option('--sport-type', profile.poster.sportType),
@@ -488,6 +502,7 @@ const exportProfile = async (args, profiles) => {
     `ACTIVITY_TYPES=${profile.activityTypes.join(' ')}`,
     `ACTIVITY_MIN_DISTANCE_METERS=${profile.publication.minDistanceMeters}`,
     `ACTIVITY_EXCLUDE_RUN_IDS=${profile.publication.excludeRunIds.join(' ')}`,
+    `ACTIVITY_EXCLUDE_SUBTYPES=${profile.publication.excludeSubtypes.join(' ')}`,
     `ACTIVITY_POSTER_NAMESPACE=${profile.poster.outputNamespace}`,
   ];
   await appendFile(args.githubEnv, `${lines.join('\n')}\n`, 'utf8');
