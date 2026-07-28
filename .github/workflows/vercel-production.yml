@@ -345,6 +345,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/production-health"
           node scripts/monitor-deployment.mjs \
             --origin "$CANONICAL_ORIGIN" \
             --max-data-age-hours 30 \

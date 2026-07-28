@@ -478,6 +478,10 @@ before(async () => {
 
   await build({
     logLevel: 'silent',
+    define: {
+      'import.meta.env.VITE_ACTIVITY_DATA_REQUEST_TIMEOUT_MS':
+        JSON.stringify('15000'),
+    },
   });
   vite = await preview({
     logLevel: 'silent',

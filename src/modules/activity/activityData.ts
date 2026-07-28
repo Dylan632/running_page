@@ -40,6 +40,15 @@ interface ActivityDataRepositoryOptions {
 const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, '');
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const YEAR_PATTERN = /^\d{4}$/;
+const DEFAULT_REQUEST_TIMEOUT_MS = 1_800;
+
+const configuredRequestTimeoutMs = Number(
+  import.meta.env.VITE_ACTIVITY_DATA_REQUEST_TIMEOUT_MS
+);
+const requestTimeoutMs =
+  Number.isFinite(configuredRequestTimeoutMs) && configuredRequestTimeoutMs > 0
+    ? configuredRequestTimeoutMs
+    : DEFAULT_REQUEST_TIMEOUT_MS;
 
 const dataIntegrityError = (message: string) =>
   new Error(`Activity data integrity check failed: ${message}`);
@@ -356,4 +365,5 @@ const dataBaseUrl = `${import.meta.env.BASE_URL}data`.replace(/\/+/g, '/');
 
 export const activityDataRepository = createActivityDataRepository({
   baseUrl: dataBaseUrl,
+  requestTimeoutMs,
 });

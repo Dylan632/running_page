@@ -259,10 +259,9 @@ test('production workflow deploys only the current exact SHA after successful CI
 });
 
 test('the same workflow runs a scheduled production health monitor', async () => {
-  const workflow = await readFile(
-    '.github/workflows/vercel-production.yml',
-    'utf8'
-  );
+  const workflow = (
+    await readFile('.github/workflows/vercel-production.yml', 'utf8')
+  ).replaceAll('\r\n', '\n');
   const monitorJobStart = workflow.indexOf('  monitor-production:\n');
   const monitorJobEnd = workflow.indexOf(
     '\n  publish-legacy-redirect:',
@@ -285,6 +284,10 @@ test('the same workflow runs a scheduled production health monitor', async () =>
   assert.match(
     monitorJob,
     /Monitor routes, data freshness, cache, and frontend errors[\s\S]*?shell: bash[\s\S]*?set -euo pipefail[\s\S]*?monitor-deployment\.mjs/
+  );
+  assert.match(
+    monitorJob,
+    /mkdir -p "\$RUNNER_TEMP\/production-health"[\s\S]*?tee "\$RUNNER_TEMP\/production-health\/monitor\.log"/
   );
   assert.match(monitorJob, /production-health-/);
 });
