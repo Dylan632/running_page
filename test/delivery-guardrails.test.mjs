@@ -16,8 +16,12 @@ test('the public package checks are complete and non-mutating', () => {
     /^node scripts\/check-resource-budgets\.mjs\b/
   );
   assert.equal(
+    scripts['artifacts:verify'],
+    'node scripts/generate-activity-artifacts.mjs verify'
+  );
+  assert.equal(
     scripts.ci,
-    'pnpm test && pnpm typecheck && pnpm lint:check && pnpm format:check && pnpm build && pnpm resource:check'
+    'pnpm test && pnpm typecheck && pnpm lint:check && pnpm format:check && pnpm build && pnpm artifacts:verify && pnpm resource:check'
   );
 });
 

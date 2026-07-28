@@ -45,7 +45,7 @@
     "format:check": "prettier --check \"src/main.tsx\" \"src/**/*.{css,module.css,json,ts,tsx}\" \"*.{yaml,json,ts}\" \".github/workflows/*.{yml,yaml}\" \"assets/index.tsx\" \"scripts/**/*.mjs\" \"test/**/*.mjs\" \"eslint.config.mjs\"",
     "format": "prettier --write \"src/main.tsx\" \"src/**/*.{css,module.css,json,ts,tsx}\" \"*.{yaml,json,ts}\" \".github/workflows/*.{yml,yaml}\" \"assets/index.tsx\" \"scripts/**/*.mjs\" \"test/**/*.mjs\" \"eslint.config.mjs\"",
     "resource:check": "node scripts/check-resource-budgets.mjs",
-    "ci": "pnpm test && pnpm typecheck && pnpm lint:check && pnpm format:check && pnpm build && pnpm resource:check"
+    "ci": "pnpm test && pnpm typecheck && pnpm lint:check && pnpm format:check && pnpm build && pnpm artifacts:verify && pnpm resource:check"
   },
   "engineStrict": true,
   "browserslist": "defaults, not ie 11",

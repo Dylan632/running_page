@@ -8,7 +8,7 @@ import axe from 'axe-core';
 import { chromium } from 'playwright-core';
 import { build, preview } from 'vite';
 
-const MODES = ['running', 'cycling'];
+const MODES = ['running', 'cycling', 'hiking'];
 const MOBILE_WIDTHS = [375, 390, 768];
 const VIEWPORT_HEIGHT = 900;
 const MIN_TOUCH_TARGET_PX = 44;
@@ -358,7 +358,7 @@ const ownActivityDataRequests = (requestUrls) =>
     .filter(
       (url) =>
         url.origin === origin &&
-        /^\/data\/(?:running|cycling)\//.test(url.pathname)
+        /^\/data\/(?:running|cycling|hiking)\//.test(url.pathname)
     );
 
 const captureVisualSample = async (page) => {
@@ -1375,11 +1375,12 @@ test(
         const cycling = document.querySelector('a[href="/cycling/summary"]');
         const modeNav = cycling?.closest('nav');
         const running = modeNav?.querySelector('a[href="/running/summary"]');
+        const hiking = modeNav?.querySelector('a[href="/hiking/summary"]');
         const trends = [
           ...document.querySelectorAll('a[href="/running/summary"]'),
         ].find((link) => !modeNav?.contains(link));
 
-        if (!home || !running || !cycling || !trends) {
+        if (!home || !running || !cycling || !hiking || !trends) {
           throw new Error('Trends navigation is incomplete');
         }
 
@@ -1400,8 +1401,9 @@ test(
             home.textContent?.trim(),
             running.textContent?.trim(),
             cycling.textContent?.trim(),
+            hiking.textContent?.trim(),
           ],
-          languageTags: [trends, home, running, cycling].map(
+          languageTags: [trends, home, running, cycling, hiking].map(
             (element) => element.closest('[lang]')?.getAttribute('lang') ?? null
           ),
         };
@@ -1448,8 +1450,9 @@ test(
         'Home',
         'Running',
         'Cycling',
+        'Hiking',
       ]);
-      assert.deepEqual(navigation.languageTags, ['en', 'en', 'en', 'en']);
+      assert.deepEqual(navigation.languageTags, ['en', 'en', 'en', 'en', 'en']);
       assert.ok(
         navigation.homeCenterDeltaX <= 1,
         `Home is horizontally off-center by ${navigation.homeCenterDeltaX}px`
