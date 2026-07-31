@@ -422,7 +422,7 @@ test('daily data publication validates all modes and makes one atomic source com
   );
   assert.match(workflow, /for attempt in 1 2 3/);
   assert.match(workflow, /git fetch origin master/);
-  assert.match(workflow, /git rebase origin\/master/);
+  assert.match(workflow, /git rebase --autostash origin\/master/);
   assert.ok(
     workflow.indexOf('git push') < workflow.indexOf('git fetch origin master')
   );
