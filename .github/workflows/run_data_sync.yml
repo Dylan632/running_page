@@ -276,7 +276,11 @@ jobs:
           else
             git commit -m 'publish validated activity artifacts'
             for attempt in 1 2 3; do
-              if git push; then
+              set +e
+              git push
+              push_status=$?
+              set -e
+              if (( push_status == 0 )); then
                 break
               fi
               if (( attempt == 3 )); then
