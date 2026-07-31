@@ -420,6 +420,12 @@ test('daily data publication validates all modes and makes one atomic source com
     workflow,
     /\$\{\{ runner\.temp \}\}\/hiking-activity-snapshot\.json/
   );
+  assert.match(workflow, /for attempt in 1 2 3/);
+  assert.match(workflow, /git fetch origin master/);
+  assert.match(workflow, /git rebase origin\/master/);
+  assert.ok(
+    workflow.indexOf('git push') < workflow.indexOf('git fetch origin master')
+  );
 });
 
 test('application build is pure and artifact generation is an explicit command', async () => {
