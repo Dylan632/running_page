@@ -1417,14 +1417,31 @@ test(
       }));
 
       await session.page.evaluate(() => {
-        document.scrollingElement?.scrollTo(0, 0);
+        const scrollingElement = document.scrollingElement;
+        if (!scrollingElement) {
+          throw new Error('Document scrolling element is missing');
+        }
+        scrollingElement.scrollTo({ top: 0, left: 0, behavior: 'auto' });
         document
           .querySelectorAll('main *')
           .forEach((element) => element.scrollTo?.(0, 0));
+
+        const maxScrollTop =
+          scrollingElement.scrollHeight - scrollingElement.clientHeight;
+        if (maxScrollTop <= 0) {
+          throw new Error('Summary content does not extend the document');
+        }
+        scrollingElement.scrollTo({
+          top: Math.min(600, maxScrollTop),
+          left: 0,
+          behavior: 'auto',
+        });
       });
-      await firstCard.hover();
-      await session.page.mouse.wheel(0, 600);
-      await session.page.waitForTimeout(200);
+      await session.page.waitForFunction(
+        () => (document.scrollingElement?.scrollTop ?? 0) > 0,
+        null,
+        { timeout: 2_000 }
+      );
 
       const scrolling = await session.page.evaluate(() => {
         const main = document.querySelector('main');

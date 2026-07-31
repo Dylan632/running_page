@@ -359,6 +359,17 @@ test('activity sync publishes Hiking with the other modes and dispatches exact-S
   assert.match(workflow, /source_sha=\$\(git rev-parse HEAD\)/);
   assert.match(workflow, /actions\/workflows\/ci\.yml\/dispatches/);
   assert.match(workflow, /steps\.push\.outputs\.changed == 'true'/);
+  assert.match(workflow, /Wait for exact-SHA CI and dispatch Vercel production/);
+  assert.match(workflow, /actions\/workflows\/ci\.yml\/runs/);
+  assert.match(workflow, /actions\/workflows\/vercel-production\.yml\/dispatches/);
+  assert.ok(
+    workflow.indexOf('actions/workflows/ci.yml/dispatches') <
+      workflow.indexOf('actions/workflows/ci.yml/runs')
+  );
+  assert.ok(
+    workflow.indexOf('actions/workflows/ci.yml/runs') <
+      workflow.indexOf('actions/workflows/vercel-production.yml/dispatches')
+  );
   assert.doesNotMatch(workflow, /#ffa400/i);
   assert.doesNotMatch(workflow, /#ff0000/i);
   assert.doesNotMatch(workflow, /Dylan's Running Records/);

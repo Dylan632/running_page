@@ -295,6 +295,79 @@ jobs:
             "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" \
             --data '{"ref": "master"}'
 
+      - name: Wait for exact-SHA CI and dispatch Vercel production
+        if: steps.push.outputs.changed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.push.outputs.source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          api_root="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY"
+          ci_run_id=""
+
+          for attempt in {1..30}; do
+            runs_json="$(
+              curl --fail-with-body --retry 3 \
+                --header "Accept: application/vnd.github+json" \
+                --header "Authorization: Bearer $GITHUB_TOKEN" \
+                --header "X-GitHub-Api-Version: 2022-11-28" \
+                "$api_root/actions/workflows/ci.yml/runs?branch=master&head_sha=$SOURCE_SHA&event=workflow_dispatch&per_page=20"
+            )"
+            ci_run_id="$(
+              jq -r --arg sha "$SOURCE_SHA" '
+                [.workflow_runs[]
+                  | select(
+                      .name == "CI"
+                      and .head_sha == $sha
+                      and .event == "workflow_dispatch"
+                    )]
+                | sort_by(.created_at)
+                | last
+                | .id // empty
+              ' <<<"$runs_json"
+            )"
+            if [[ -n "$ci_run_id" ]]; then break; fi
+            sleep 5
+          done
+          if [[ -z "$ci_run_id" ]]; then
+            echo "::error::No CI run was created for exact SHA $SOURCE_SHA."
+            exit 1
+          fi
+
+          for attempt in {1..36}; do
+            run_json="$(
+              curl --fail-with-body --retry 3 \
+                --header "Accept: application/vnd.github+json" \
+                --header "Authorization: Bearer $GITHUB_TOKEN" \
+                --header "X-GitHub-Api-Version: 2022-11-28" \
+                "$api_root/actions/runs/$ci_run_id"
+            )"
+            status="$(jq -r '.status' <<<"$run_json")"
+            conclusion="$(jq -r '.conclusion // empty' <<<"$run_json")"
+            if [[ "$status" == "completed" ]]; then
+              if [[ "$conclusion" != "success" ]]; then
+                echo "::error::CI run $ci_run_id failed for exact SHA $SOURCE_SHA."
+                exit 1
+              fi
+              break
+            fi
+            if (( attempt == 36 )); then
+              echo "::error::CI run $ci_run_id did not finish in time."
+              exit 1
+            fi
+            sleep 10
+          done
+
+          curl --fail-with-body --retry 3 \
+            --request POST \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "$api_root/actions/workflows/vercel-production.yml/dispatches" \
+            --data "$(jq -nc --arg sha "$SOURCE_SHA" \
+              '{ref: "master", inputs: {source_sha: $sha}}')"
+
       - name: Upload validation evidence
         uses: actions/upload-artifact@v4
         with:
