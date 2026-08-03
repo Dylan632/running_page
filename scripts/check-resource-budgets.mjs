@@ -94,7 +94,7 @@ const checkCriticalRoute = async ({
     );
   }
   process.stdout.write(
-    `${routeKey}: ${compressedBytes}/${budget} critical gzip bytes\\n`
+    `${routeKey}: ${compressedBytes}/${budget} critical gzip bytes\n`
   );
 };
 
@@ -104,7 +104,7 @@ const checkActivityData = async ({ budget, dataDirectory, mode }) => {
     resolveInside(modeDirectory, 'manifest.json')
   );
   const latestYear = String(manifest.latestYear ?? '');
-  if (!/^\\d{4}$/.test(latestYear)) {
+  if (!/^\d{4}$/.test(latestYear)) {
     throw new Error(`${mode} manifest has no valid latestYear`);
   }
 
@@ -121,7 +121,7 @@ const checkActivityData = async ({ budget, dataDirectory, mode }) => {
     );
   }
   process.stdout.write(
-    `${mode}: ${totalBytes}/${budget} initial activity gzip bytes\\n`
+    `${mode}: ${totalBytes}/${budget} initial activity gzip bytes\n`
   );
 };
 
@@ -148,7 +148,7 @@ const check = async (args) => {
     throw new Error('RunMap must remain a dynamic import of the activity page');
   }
   process.stdout.write(
-    'Mapbox remains dynamic and outside the critical path\\n'
+    'Mapbox remains dynamic and outside the critical path\n'
   );
 
   await Promise.all([
@@ -178,7 +178,7 @@ try {
   await check(parseArgs(process.argv.slice(2)));
 } catch (error) {
   process.stderr.write(
-    `${error instanceof Error ? error.message : String(error)}\\n`
+    `${error instanceof Error ? error.message : String(error)}\n`
   );
   process.exitCode = 1;
 }
