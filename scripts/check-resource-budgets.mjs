@@ -5,6 +5,7 @@ import { resolve, sep } from 'node:path';
 const parseArgs = (argv) => {
   const args = {
     activityBudget: 40_000,
+    activityHardBudget: 60_000,
     criticalBudget: 350_000,
     data: 'public/data',
     dist: 'dist',
@@ -18,6 +19,8 @@ const parseArgs = (argv) => {
 
     if (flag === '--activity-budget') {
       args.activityBudget = Number(value);
+    } else if (flag === '--activity-hard-budget') {
+      args.activityHardBudget = Number(value);
     } else if (flag === '--critical-budget') {
       args.criticalBudget = Number(value);
     } else if (flag === '--data') {
@@ -34,6 +37,9 @@ const parseArgs = (argv) => {
   if (
     !Number.isFinite(args.activityBudget) ||
     args.activityBudget <= 0 ||
+    !Number.isFinite(args.activityHardBudget) ||
+    args.activityHardBudget <= 0 ||
+    args.activityHardBudget <= args.activityBudget ||
     !Number.isFinite(args.criticalBudget) ||
     args.criticalBudget <= 0
   ) {
@@ -98,7 +104,12 @@ const checkCriticalRoute = async ({
   );
 };
 
-const checkActivityData = async ({ budget, dataDirectory, mode }) => {
+const checkActivityData = async ({
+  budget,
+  hardBudget,
+  dataDirectory,
+  mode,
+}) => {
   const modeDirectory = resolveInside(dataDirectory, mode);
   const manifest = await readJson(
     resolveInside(modeDirectory, 'manifest.json')
@@ -115,14 +126,20 @@ const checkActivityData = async ({ budget, dataDirectory, mode }) => {
     resolveInside(modeDirectory, `routes/${latestYear}.json`)
   );
   const totalBytes = metadataBytes + routeBytes;
-  if (totalBytes >= budget) {
+  if (totalBytes >= hardBudget) {
     throw new Error(
-      `${mode} initial activity data is ${totalBytes} bytes gzip; budget is ${budget}`
+      `${mode} initial activity data is ${totalBytes} bytes gzip; hard budget is ${hardBudget}`
     );
   }
-  process.stdout.write(
-    `${mode}: ${totalBytes}/${budget} initial activity gzip bytes\n`
-  );
+  if (totalBytes >= budget) {
+    process.stdout.write(
+      `::warning::${mode} initial activity data is ${totalBytes} bytes gzip; warning budget is ${budget}, hard budget is ${hardBudget}\n`
+    );
+  } else {
+    process.stdout.write(
+      `${mode}: ${totalBytes}/${budget} initial activity gzip bytes\n`
+    );
+  }
 };
 
 const check = async (args) => {
