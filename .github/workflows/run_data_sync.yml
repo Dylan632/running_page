@@ -313,6 +313,7 @@ jobs:
     uses: ./.github/workflows/ci.yml
     with:
       source_sha: ${{ needs.sync.outputs.source_sha }}
+      mode: release
     secrets: inherit
 
   deploy:
