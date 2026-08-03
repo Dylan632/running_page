@@ -46,6 +46,7 @@ jobs:
   sync:
     name: Validate and publish all activity modes
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     outputs:
       changed: ${{ steps.push.outputs.changed }}
       source_sha: ${{ steps.push.outputs.source_sha }}
