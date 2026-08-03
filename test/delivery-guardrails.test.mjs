@@ -89,8 +89,14 @@ test('all activity syncs are serialized, last-known-good guarded, and surface pu
   assert.doesNotMatch(workflow, /git push\s*\|\|/);
   assert.match(workflow, /source_sha=\$\(git rev-parse HEAD\)/);
   assert.match(workflow, /uses: \.\/\.github\/workflows\/ci\.yml/);
-  assert.match(workflow, /source_sha: \$\{\{ needs\.sync\.outputs\.source_sha \}\}/);
-  assert.match(workflow, /uses: \.\/\.github\/workflows\/vercel-production\.yml/);
+  assert.match(
+    workflow,
+    /source_sha: \$\{\{ needs\.sync\.outputs\.source_sha \}\}/
+  );
+  assert.match(
+    workflow,
+    /uses: \.\/\.github\/workflows\/vercel-production\.yml/
+  );
   assert.match(workflow, /needs: \[sync, ci\]/);
   assert.doesNotMatch(workflow, /actions\/workflows\/ci\.yml\/dispatches/);
   assert.doesNotMatch(workflow, /^\s{2}publish_pages:\s*$/m);
