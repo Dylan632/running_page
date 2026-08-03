@@ -307,6 +307,7 @@ jobs:
             ${{ runner.temp }}/hiking-activity-snapshot.json
           retention-days: 30
 
+  # One release lane: the parent workflow attests the exact SHA for CI, Vercel, and Pages.
   ci:
     if: needs.sync.outputs.changed == 'true'
     needs: sync
