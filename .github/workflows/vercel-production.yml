@@ -322,4 +322,5 @@ jobs:
     with:
       deployment_mode: redirect
       source_sha: ${{ inputs.source_sha }}
+      ci_preverified: true
       canonical_origin: ${{ vars.VERCEL_CANONICAL_ORIGIN }}
