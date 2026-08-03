@@ -16,11 +16,6 @@ on:
         required: false
         type: string
         default: ''
-      ci_preverified:
-        description: Skip the standalone CI API lookup when the parent workflow already proved this SHA
-        required: false
-        type: boolean
-        default: false
       canonical_origin:
         description: Canonical Vercel origin (defaults to VERCEL_CANONICAL_ORIGIN)
         required: false
