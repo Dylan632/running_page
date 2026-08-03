@@ -18,7 +18,7 @@ on:
 
 jobs:
   python_lint_and_test:
-    if: github.event_name != 'workflow_call'
+    if: inputs.source_sha == ''
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 4
@@ -102,7 +102,7 @@ jobs:
           retention-days: 14
 
   release:
-    if: github.event_name == 'workflow_call'
+    if: inputs.source_sha != ''
     name: Verify and build release SHA
     runs-on: ubuntu-latest
     timeout-minutes: 30
