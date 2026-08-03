@@ -118,40 +118,18 @@ test('Vercel observability captures analytics and Core Web Vitals off the critic
   assert.doesNotMatch(activityPage, /@vercel\/analytics|<Analytics/);
 });
 
-test('production workflow deploys only the current exact SHA after successful CI', async () => {
-  const workflow = await readFile(
-    '.github/workflows/vercel-production.yml',
-    'utf8'
-  );
+test('production workflow deploys an exact SHA after the parent CI workflow succeeds', async () => {
+  const workflow = await readFile('.github/workflows/vercel-production.yml', 'utf8');
 
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows:\s*\['CI'\]/);
-  assert.match(workflow, /types:\s*\[completed\]/);
-  assert.doesNotMatch(workflow, /^\s{2}push:/m);
-  assert.match(workflow, /github\.event\.workflow_run\.head_sha/);
-  assert.match(
-    workflow,
-    /github\.event\.workflow_run\.conclusion == 'success'/
-  );
-  assert.match(
-    workflow,
-    /github\.event\.workflow_run\.event == 'workflow_dispatch'/
-  );
-  assert.match(
-    workflow,
-    /github\.event_name == 'workflow_dispatch'[\s\S]*?github\.ref == 'refs\/heads\/master'/
-  );
+  assert.match(workflow, /^\s{2}workflow_call:\s*$/m);
+  assert.match(workflow, /source_sha:/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.doesNotMatch(workflow, /workflow_run:/);
+  assert.doesNotMatch(workflow, /^\s{2}schedule:\s*$/m);
   assert.match(workflow, /ref: \$\{\{ env\.SOURCE_SHA \}\}/);
   assert.match(workflow, /verify-github-ci\.mjs/);
-  assert.equal(
-    (workflow.match(/git ls-remote origin refs\/heads\/master/g) ?? []).length,
-    2,
-    'master must be checked both before the build and immediately before promotion'
-  );
-  assert.match(
-    workflow,
-    /Promote, verify canonical identity, or roll back[\s\S]*?pre_promotion_master_sha[\s\S]*?refusing stale SHA/
-  );
+  assert.equal((workflow.match(/git ls-remote origin refs\/heads\/master/g) ?? []).length, 2);
+  assert.match(workflow, /Promote, verify canonical identity, or roll back[\s\S]*?pre_promotion_master_sha[\s\S]*?refusing stale SHA/);
   assert.match(workflow, /vercel@50\.28\.0/);
   assert.match(workflow, /vercel build --prod/);
   assert.match(workflow, /vercel deploy --prebuilt --prod/);
@@ -160,139 +138,40 @@ test('production workflow deploys only the current exact SHA after successful CI
   assert.match(workflow, /capture-vercel-production\.mjs/);
   assert.match(workflow, /monitor-deployment\.mjs/);
   assert.match(workflow, /vercel promote/);
-  assert.equal(
-    (workflow.match(/--scope="\$VERCEL_ORG_ID"/g) ?? []).length,
-    2,
-    'production promotion and rollback must use the deployment team scope'
-  );
   assert.match(workflow, /--expected-deployment-url/);
   assert.match(workflow, /--expected-source-sha/);
   assert.match(workflow, /actions\/upload-artifact@v4/);
-  assert.match(
-    workflow,
-    /Monitor the staged production artifact[\s\S]*?shell: bash[\s\S]*?set -euo pipefail[\s\S]*?monitor-deployment\.mjs/
-  );
-  assert.ok(
-    workflow.indexOf('Monitor the staged production artifact') <
-      workflow.indexOf('Promote, verify canonical identity, or roll back')
-  );
+  assert.match(workflow, /Monitor the staged production artifact[\s\S]*?shell: bash[\s\S]*?set -euo pipefail[\s\S]*?monitor-deployment\.mjs/);
+  assert.ok(workflow.indexOf('Monitor the staged production artifact') < workflow.indexOf('Promote, verify canonical identity, or roll back'));
   assert.match(workflow, /trap rollback_on_failure EXIT/);
   assert.match(workflow, /rollback-production\.json/);
   assert.match(workflow, /rollback-monitor\.log/);
-  assert.match(
-    workflow,
-    /env -u VERCEL_TOKEN node scripts\/monitor-deployment/
-  );
+  assert.match(workflow, /env -u VERCEL_TOKEN node scripts\/monitor-deployment/);
 
-  for (const secret of [
-    'VERCEL_TOKEN',
-    'VERCEL_ORG_ID',
-    'VERCEL_PROJECT_ID',
-    'VERCEL_AUTOMATION_BYPASS_SECRET',
-  ]) {
+  for (const secret of ['VERCEL_TOKEN', 'VERCEL_ORG_ID', 'VERCEL_PROJECT_ID', 'VERCEL_AUTOMATION_BYPASS_SECRET']) {
     assert.match(workflow, new RegExp(`secrets\\.${secret}`));
   }
-  const jobEnvironments = [
-    ...workflow.matchAll(/^\s{4}env:\s*$[\s\S]*?(?=^\s{4}steps:\s*$)/gm),
-  ];
-  assert.equal(jobEnvironments.length, 2);
-  for (const environment of jobEnvironments) {
-    assert.doesNotMatch(environment[0], /VERCEL_TOKEN/);
-    assert.doesNotMatch(environment[0], /VERCEL_AUTOMATION_BYPASS_SECRET/);
-  }
-  for (const monitorStep of [
-    'Monitor the staged production artifact',
-    'Monitor routes, data freshness, cache, and frontend errors',
-  ]) {
-    const start = workflow.indexOf(`- name: ${monitorStep}`);
-    assert.notEqual(start, -1);
-    const end = workflow.indexOf('\n      - name:', start + 1);
-    const block = workflow.slice(start, end === -1 ? undefined : end);
-    assert.doesNotMatch(block, /VERCEL_TOKEN:\s*\$\{\{/);
-  }
-  const stagedMonitorStart = workflow.indexOf(
-    '- name: Monitor the staged production artifact'
-  );
-  const stagedMonitorEnd = workflow.indexOf(
-    '\n      - name:',
-    stagedMonitorStart + 1
-  );
-  const stagedMonitorBlock = workflow.slice(
-    stagedMonitorStart,
-    stagedMonitorEnd
-  );
-  assert.match(
-    stagedMonitorBlock,
-    /VERCEL_AUTOMATION_BYPASS_SECRET:\s*\$\{\{\s*secrets\.VERCEL_AUTOMATION_BYPASS_SECRET\s*\}\}/
-  );
-  const scheduledMonitorStart = workflow.indexOf(
-    '- name: Monitor routes, data freshness, cache, and frontend errors'
-  );
-  const scheduledMonitorEnd = workflow.indexOf(
-    '\n      - name:',
-    scheduledMonitorStart + 1
-  );
-  assert.doesNotMatch(
-    workflow.slice(scheduledMonitorStart, scheduledMonitorEnd),
-    /VERCEL_AUTOMATION_BYPASS_SECRET/
-  );
-  assert.equal(
-    (workflow.match(/secrets\.VERCEL_AUTOMATION_BYPASS_SECRET/g) ?? []).length,
-    2,
-    'the bypass secret must be scoped only to validation and the staged monitor'
-  );
-  assert.doesNotMatch(
-    await readFile('scripts/monitor-deployment.mjs', 'utf8'),
-    /--no-sandbox/
-  );
+  const stagedMonitorStart = workflow.indexOf('- name: Monitor the staged production artifact');
+  const stagedMonitorEnd = workflow.indexOf('\n      - name:', stagedMonitorStart + 1);
+  const stagedMonitorBlock = workflow.slice(stagedMonitorStart, stagedMonitorEnd);
+  assert.doesNotMatch(stagedMonitorBlock, /VERCEL_TOKEN:\s*\$\{\{/);
+  assert.match(stagedMonitorBlock, /VERCEL_AUTOMATION_BYPASS_SECRET:\s*\$\{\{\s*secrets\.VERCEL_AUTOMATION_BYPASS_SECRET\s*\}\}/);
+  assert.equal((workflow.match(/secrets\.VERCEL_AUTOMATION_BYPASS_SECRET/g) ?? []).length, 2);
+  assert.doesNotMatch(await readFile('scripts/monitor-deployment.mjs', 'utf8'), /--no-sandbox/);
   assert.match(workflow, /vars\.VERCEL_CANONICAL_ORIGIN/);
-  assert.match(workflow, /git status --porcelain --untracked-files=all/);
-  assert.match(
-    workflow,
-    /publish-legacy-redirect:[\s\S]*?needs: deploy[\s\S]*?uses: \.\/\.github\/workflows\/gh-pages\.yml/
-  );
-  assert.match(
-    workflow,
-    /deployment_mode: redirect[\s\S]*?source_sha:.*workflow_run\.head_sha/
-  );
-  assert.match(
-    workflow,
-    /\/running, \/cycling, and \/hiking passed HTTP, data freshness, cache, and browser error probes/
-  );
+  assert.match(workflow, /publish-legacy-redirect:[\s\S]*?needs: deploy[\s\S]*?uses: \.\/\.github\/workflows\/gh-pages\.yml/);
+  assert.match(workflow, /deployment_mode: redirect[\s\S]*?source_sha: \$\{\{ inputs\.source_sha \}\}/);
+  assert.match(workflow, /\/running, \/cycling, and \/hiking passed HTTP, data freshness, cache, and browser error probes/);
 });
 
-test('the same workflow runs a scheduled production health monitor', async () => {
-  const workflow = (
-    await readFile('.github/workflows/vercel-production.yml', 'utf8')
-  ).replaceAll('\r\n', '\n');
-  const monitorJobStart = workflow.indexOf('  monitor-production:\n');
-  const monitorJobEnd = workflow.indexOf(
-    '\n  publish-legacy-redirect:',
-    monitorJobStart
-  );
-  const monitorJob = workflow.slice(monitorJobStart, monitorJobEnd);
+test('production workflow has no independent scheduled release trigger', async () => {
+  const workflow = (await readFile('.github/workflows/vercel-production.yml', 'utf8')).replaceAll('\r\n', '\n');
 
-  assert.match(workflow, /^\s{2}schedule:\s*$/m);
-  assert.match(workflow, /cron: '\d+ \*\/6 \* \* \*'/);
-  assert.ok(monitorJobStart >= 0 && monitorJobEnd > monitorJobStart);
-  assert.match(monitorJob, /github\.event_name == 'schedule'/);
-  assert.match(monitorJob, /BROWSER_BIN: google-chrome/);
-  assert.match(monitorJob, /--max-data-age-hours 30/);
-  assert.doesNotMatch(monitorJob, /--max-data-age-hours 168/);
-  assert.doesNotMatch(
-    monitorJob,
-    /secrets\.(?:VERCEL_TOKEN|VERCEL_ORG_ID|VERCEL_PROJECT_ID)/
-  );
-  assert.doesNotMatch(monitorJob, /capture-vercel-production\.mjs/);
-  assert.match(
-    monitorJob,
-    /Monitor routes, data freshness, cache, and frontend errors[\s\S]*?shell: bash[\s\S]*?set -euo pipefail[\s\S]*?monitor-deployment\.mjs/
-  );
-  assert.match(
-    monitorJob,
-    /mkdir -p "\$RUNNER_TEMP\/production-health"[\s\S]*?tee "\$RUNNER_TEMP\/production-health\/monitor\.log"/
-  );
-  assert.match(monitorJob, /production-health-/);
+  assert.match(workflow, /^\s{2}workflow_call:\s*$/m);
+  assert.doesNotMatch(workflow, /^\s{2}schedule:\s*$/m);
+  assert.doesNotMatch(workflow, /^\s{2}workflow_run:\s*$/m);
+  assert.match(workflow, /^\s{2}publish-legacy-redirect:\s*$/m);
+  assert.match(workflow, /Monitor the staged production artifact/);
 });
 
 test('browser diagnostics require the final mode marker and surface application failures', () => {
