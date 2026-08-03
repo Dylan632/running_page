@@ -7,6 +7,10 @@ on:
         description: Exact 40-character master SHA to verify for a release
         required: true
         type: string
+      mode:
+        description: Release lane selector for reusable workflow calls
+        required: true
+        type: string
   push:
     paths-ignore:
       - 'public/data/**'
@@ -18,7 +22,7 @@ on:
 
 jobs:
   python_lint_and_test:
-    if: ${{ !inputs.source_sha }}
+    if: inputs.mode != 'release'
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 4
@@ -102,7 +106,7 @@ jobs:
           retention-days: 14
 
   release:
-    if: inputs.source_sha
+    if: inputs.mode == 'release'
     name: Verify and build release SHA
     runs-on: ubuntu-latest
     timeout-minutes: 30
