@@ -1,19 +1,27 @@
 name: Deploy verified SHA to Vercel Production
 
 on:
-  schedule:
-    - cron: '17 */6 * * *'
-  workflow_run:
-    workflows: ['CI']
-    types: [completed]
-    branches: [master]
+  workflow_call:
+    inputs:
+      source_sha:
+        description: Exact 40-character master SHA to deploy
+        required: true
+        type: string
+    secrets:
+      VERCEL_TOKEN:
+        required: true
+      VERCEL_ORG_ID:
+        required: true
+      VERCEL_PROJECT_ID:
+        required: true
+      VERCEL_AUTOMATION_BYPASS_SECRET:
+        required: true
   workflow_dispatch:
     inputs:
       source_sha:
-        description: Exact 40-character master SHA with a successful CI run
+        description: Exact 40-character master SHA with successful CI
         required: true
         type: string
-
 concurrency:
   group: vercel-production
   cancel-in-progress: false
@@ -24,20 +32,13 @@ permissions:
 
 jobs:
   deploy:
-    if: >-
-      (github.event_name == 'workflow_dispatch' &&
-      github.ref == 'refs/heads/master') ||
-      ((github.event.workflow_run.event == 'push' ||
-      github.event.workflow_run.event == 'workflow_dispatch') &&
-      github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment:
       name: production
       url: ${{ steps.deploy.outputs.url }}
     env:
-      SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.source_sha }}
-      SOURCE_RUN_ID: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || '' }}
+      SOURCE_SHA: ${{ inputs.source_sha }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       CANONICAL_ORIGIN: ${{ vars.VERCEL_CANONICAL_ORIGIN }}
@@ -84,21 +85,17 @@ jobs:
             exit 1
           fi
 
-      - name: Verify successful CI belongs to the exact SHA
+      - name: Verify successful CI for manual deployments
+        if: github.event_name == 'workflow_dispatch'
         env:
           GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          verify_args=(
-            --repository "$GITHUB_REPOSITORY"
-            --sha "$SOURCE_SHA"
+          node scripts/verify-github-ci.mjs \
+            --repository "$GITHUB_REPOSITORY" \
+            --sha "$SOURCE_SHA" \
             --branch master
-          )
-          if [ -n "$SOURCE_RUN_ID" ]; then
-            verify_args+=(--run-id "$SOURCE_RUN_ID")
-          fi
-          node scripts/verify-github-ci.mjs "${verify_args[@]}"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -113,7 +110,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Re-run complete delivery checks
+      - name: Re-run complete delivery checks for manual deployments
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           set -euo pipefail
@@ -312,64 +310,9 @@ jobs:
             echo "- Legacy Pages redirect and rollback metadata were saved as an artifact."
           } >> "$GITHUB_STEP_SUMMARY"
 
-  monitor-production:
-    if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      CANONICAL_ORIGIN: ${{ vars.VERCEL_CANONICAL_ORIGIN }}
-      BROWSER_BIN: google-chrome
-
-    steps:
-      - name: Fail closed when monitoring configuration is incomplete
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ ! "$CANONICAL_ORIGIN" =~ ^https://[^/]+$ ]]; then
-            echo "::error::VERCEL_CANONICAL_ORIGIN is required as an https origin repository variable."
-            exit 1
-          fi
-
-      - name: Check out monitor scripts
-        uses: actions/checkout@v4
-        with:
-          ref: master
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-
-      - name: Monitor routes, data freshness, cache, and frontend errors
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/production-health"
-          node scripts/monitor-deployment.mjs \
-            --origin "$CANONICAL_ORIGIN" \
-            --max-data-age-hours 30 \
-            --attempts 3 \
-            --retry-delay-ms 5000 \
-            --require-cache \
-            --require-browser 2>&1 | \
-            tee "$RUNNER_TEMP/production-health/monitor.log"
-
-      - name: Upload production health evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: production-health-${{ github.run_id }}
-          path: ${{ runner.temp }}/production-health
-          if-no-files-found: warn
-          retention-days: 14
-
   publish-legacy-redirect:
     needs: deploy
-    if: >-
-      always() &&
-      needs.deploy.result == 'success' &&
-      github.event_name != 'schedule'
+    if: needs.deploy.result == 'success'
     permissions:
       actions: read
       contents: read
@@ -378,5 +321,5 @@ jobs:
     uses: ./.github/workflows/gh-pages.yml
     with:
       deployment_mode: redirect
-      source_sha: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.source_sha }}
+      source_sha: ${{ inputs.source_sha }}
       canonical_origin: ${{ vars.VERCEL_CANONICAL_ORIGIN }}
