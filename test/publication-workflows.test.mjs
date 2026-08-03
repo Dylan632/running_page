@@ -317,7 +317,7 @@ test('Pages is manual and defaults to a canonical redirect while full publicatio
   }
 });
 
-test('activity sync publishes Hiking with the other modes and dispatches exact-SHA CI', async () => {
+test('activity sync publishes Hiking and calls exact-SHA CI and Vercel workflows', async () => {
   const [workflow, config] = await Promise.all([
     readFile('.github/workflows/run_data_sync.yml', 'utf8'),
     readFile('run_page/config.py', 'utf8'),
@@ -329,16 +329,10 @@ test('activity sync publishes Hiking with the other modes and dispatches exact-S
   assert.match(workflow, /KEEP_PASSWORD/);
   assert.match(workflow, /activity_snapshot\.py validate/);
   assert.match(workflow, /python run_page\/write_taihu_manual_gpx\.py/);
-  assert.doesNotMatch(
-    config,
-    /_prepare_manual_taihu_gpx|write_taihu_manual_gpx/
-  );
+  assert.doesNotMatch(config, /_prepare_manual_taihu_gpx|write_taihu_manual_gpx/);
   assert.match(workflow, /generate-activity-artifacts\.mjs generate/);
   assert.match(workflow, /PUBLICATION_TIMESTAMP="\$\(date -u/);
-  assert.equal(
-    (workflow.match(/--published-at "\$PUBLICATION_TIMESTAMP"/g) ?? []).length,
-    3
-  );
+  assert.equal((workflow.match(/--published-at "\$PUBLICATION_TIMESTAMP"/g) ?? []).length, 3);
   assert.match(workflow, /--mode running/);
   assert.match(workflow, /--mode cycling/);
   assert.match(workflow, /--mode hiking/);
@@ -348,34 +342,15 @@ test('activity sync publishes Hiking with the other modes and dispatches exact-S
   assert.match(workflow, /\.activity-last-known-good\/running/);
   assert.match(workflow, /\.activity-last-known-good\/cycling/);
   assert.match(workflow, /\.activity-last-known-good\/hiking/);
-  assert.match(
-    workflow,
-    /if \[ -f public\/data\/hiking\/metadata\.json \]; then[\s\S]*HIKING_PREVIOUS_SNAPSHOT/
-  );
-  assert.match(
-    workflow,
-    /if \[\[ -n "\$\{HIKING_PREVIOUS_SNAPSHOT:-\}" \]\]; then[\s\S]*--previous-json/
-  );
+  assert.match(workflow, /HIKING_PREVIOUS_SNAPSHOT/);
   assert.match(workflow, /source_sha=\$\(git rev-parse HEAD\)/);
-  assert.match(workflow, /actions\/workflows\/ci\.yml\/dispatches/);
-  assert.match(workflow, /steps\.push\.outputs\.changed == 'true'/);
-  assert.match(
-    workflow,
-    /Wait for exact-SHA CI and dispatch Vercel production/
-  );
-  assert.match(workflow, /actions\/workflows\/ci\.yml\/runs/);
-  assert.match(
-    workflow,
-    /actions\/workflows\/vercel-production\.yml\/dispatches/
-  );
-  assert.ok(
-    workflow.indexOf('actions/workflows/ci.yml/dispatches') <
-      workflow.indexOf('actions/workflows/ci.yml/runs')
-  );
-  assert.ok(
-    workflow.indexOf('actions/workflows/ci.yml/runs') <
-      workflow.indexOf('actions/workflows/vercel-production.yml/dispatches')
-  );
+  assert.match(workflow, /uses: \.\/\.github\/workflows\/ci\.yml/);
+  assert.match(workflow, /source_sha: \$\{\{ needs\.sync\.outputs\.source_sha \}\}/);
+  assert.match(workflow, /uses: \.\/\.github\/workflows\/vercel-production\.yml/);
+  assert.match(workflow, /needs: \[sync, ci\]/);
+  assert.doesNotMatch(workflow, /actions\/workflows\/ci\.yml\/dispatches/);
+  assert.doesNotMatch(workflow, /actions\/workflows\/vercel-production\.yml\/dispatches/);
+  assert.doesNotMatch(workflow, /workflow_run:/);
   assert.doesNotMatch(workflow, /#ffa400/i);
   assert.doesNotMatch(workflow, /#ff0000/i);
   assert.doesNotMatch(workflow, /Dylan's Running Records/);
