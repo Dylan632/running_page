@@ -329,10 +329,16 @@ test('activity sync publishes Hiking and calls exact-SHA CI and Vercel workflows
   assert.match(workflow, /KEEP_PASSWORD/);
   assert.match(workflow, /activity_snapshot\.py validate/);
   assert.match(workflow, /python run_page\/write_taihu_manual_gpx\.py/);
-  assert.doesNotMatch(config, /_prepare_manual_taihu_gpx|write_taihu_manual_gpx/);
+  assert.doesNotMatch(
+    config,
+    /_prepare_manual_taihu_gpx|write_taihu_manual_gpx/
+  );
   assert.match(workflow, /generate-activity-artifacts\.mjs generate/);
   assert.match(workflow, /PUBLICATION_TIMESTAMP="\$\(date -u/);
-  assert.equal((workflow.match(/--published-at "\$PUBLICATION_TIMESTAMP"/g) ?? []).length, 3);
+  assert.equal(
+    (workflow.match(/--published-at "\$PUBLICATION_TIMESTAMP"/g) ?? []).length,
+    3
+  );
   assert.match(workflow, /--mode running/);
   assert.match(workflow, /--mode cycling/);
   assert.match(workflow, /--mode hiking/);
@@ -345,11 +351,20 @@ test('activity sync publishes Hiking and calls exact-SHA CI and Vercel workflows
   assert.match(workflow, /HIKING_PREVIOUS_SNAPSHOT/);
   assert.match(workflow, /source_sha=\$\(git rev-parse HEAD\)/);
   assert.match(workflow, /uses: \.\/\.github\/workflows\/ci\.yml/);
-  assert.match(workflow, /source_sha: \$\{\{ needs\.sync\.outputs\.source_sha \}\}/);
-  assert.match(workflow, /uses: \.\/\.github\/workflows\/vercel-production\.yml/);
+  assert.match(
+    workflow,
+    /source_sha: \$\{\{ needs\.sync\.outputs\.source_sha \}\}/
+  );
+  assert.match(
+    workflow,
+    /uses: \.\/\.github\/workflows\/vercel-production\.yml/
+  );
   assert.match(workflow, /needs: \[sync, ci\]/);
   assert.doesNotMatch(workflow, /actions\/workflows\/ci\.yml\/dispatches/);
-  assert.doesNotMatch(workflow, /actions\/workflows\/vercel-production\.yml\/dispatches/);
+  assert.doesNotMatch(
+    workflow,
+    /actions\/workflows\/vercel-production\.yml\/dispatches/
+  );
   assert.doesNotMatch(workflow, /workflow_run:/);
   assert.doesNotMatch(workflow, /#ffa400/i);
   assert.doesNotMatch(workflow, /#ff0000/i);
