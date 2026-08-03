@@ -6,6 +6,7 @@ const parseArgs = (argv) => {
   const args = {
     activityBudget: 40_000,
     activityHardBudget: 60_000,
+    enforceActivityBudget: false,
     criticalBudget: 350_000,
     data: 'public/data',
     dist: 'dist',
@@ -19,6 +20,7 @@ const parseArgs = (argv) => {
 
     if (flag === '--activity-budget') {
       args.activityBudget = Number(value);
+      args.enforceActivityBudget = true;
     } else if (flag === '--activity-hard-budget') {
       args.activityHardBudget = Number(value);
     } else if (flag === '--critical-budget') {
@@ -107,6 +109,7 @@ const checkCriticalRoute = async ({
 const checkActivityData = async ({
   budget,
   hardBudget,
+  enforceBudget,
   dataDirectory,
   mode,
 }) => {
@@ -126,6 +129,11 @@ const checkActivityData = async ({
     resolveInside(modeDirectory, `routes/${latestYear}.json`)
   );
   const totalBytes = metadataBytes + routeBytes;
+  if (enforceBudget && totalBytes >= budget) {
+    throw new Error(
+      `${mode} initial activity data is ${totalBytes} bytes gzip; budget is ${budget}`
+    );
+  }
   if (totalBytes >= hardBudget) {
     throw new Error(
       `${mode} initial activity data is ${totalBytes} bytes gzip; hard budget is ${hardBudget}`
@@ -184,6 +192,8 @@ const check = async (args) => {
     ...activityModes.map((mode) =>
       checkActivityData({
         budget: args.activityBudget,
+        hardBudget: args.activityHardBudget,
+        enforceBudget: args.enforceActivityBudget,
         dataDirectory,
         mode,
       })
