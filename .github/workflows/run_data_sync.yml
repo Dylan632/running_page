@@ -23,8 +23,10 @@ on:
       - requirements.txt
 
 permissions:
-  actions: read
+  actions: write
   contents: write
+  pages: write
+  id-token: write
   pages: write
   id-token: write
 
