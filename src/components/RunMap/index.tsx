@@ -13,7 +13,7 @@ import Map, {
   NavigationControl,
   MapRef,
 } from 'react-map-gl/mapbox';
-import type { MapStyleDataEvent } from 'react-map-gl/mapbox';
+import type { ErrorEvent, MapStyleDataEvent } from 'react-map-gl/mapbox';
 import useActivities from '@/hooks/useActivities';
 import {
   IS_CHINESE,
@@ -40,6 +40,7 @@ import {
 import { RouteAnimator } from '@/utils/routeAnimation';
 import RunMarker from './RunMarker';
 import RunMapButtons from './RunMapButtons';
+import RouteFallback from './RouteFallback';
 import styles from './style.module.css';
 import type { FeatureCollection } from 'geojson';
 import type { RPGeometry } from '@/static/run_countries';
@@ -50,6 +51,7 @@ import {
   setMapLightVisibility,
   shouldInstallMapboxLanguage,
 } from './mapLights';
+import { hasUsableWebGL } from './mapSupport';
 
 interface IRunMapProps {
   title: string;
@@ -67,6 +69,37 @@ type MapStyleLayer = {
   layout?: Record<string, unknown>;
 };
 
+interface MapRendererBoundaryProps {
+  children: React.ReactNode;
+  fallback: React.ReactNode;
+}
+
+interface MapRendererBoundaryState {
+  hasError: boolean;
+}
+
+class MapRendererBoundary extends React.Component<
+  MapRendererBoundaryProps,
+  MapRendererBoundaryState
+> {
+  state: MapRendererBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): MapRendererBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.warn(
+      'Map renderer failed; showing the route-only fallback instead.',
+      error
+    );
+  }
+
+  render() {
+    return this.state.hasError ? this.props.fallback : this.props.children;
+  }
+}
+
 const RunMap = ({
   title,
   viewState,
@@ -83,7 +116,22 @@ const RunMap = ({
   const [mapGeoData, setMapGeoData] =
     useState<FeatureCollection<RPGeometry> | null>(null);
   const isLoadingMapDataRef = useRef(false);
-  const [mapError, setMapError] = useState<string | null>(null);
+  const [rendererState, setRendererState] = useState(() => {
+    const webGLAvailable = hasUsableWebGL();
+    return {
+      useFallback: !webGLAvailable,
+      reason: webGLAvailable
+        ? null
+        : '当前浏览器无法启用地图渲染，已切换为轨迹模式。',
+    };
+  });
+
+  const activateRouteFallback = useCallback((reason: string) => {
+    setRendererState((current) => {
+      if (current.useFallback) return current;
+      return { useFallback: true, reason };
+    });
+  }, []);
 
   // Use the map theme hook to get the current map theme
   const currentMapTheme = useMapTheme();
@@ -103,56 +151,50 @@ const RunMap = ({
   // Always use the MAPBOX_TOKEN from const.ts (user may have set their own token)
   const mapboxAccessToken = MAPBOX_TOKEN;
 
+  const handleMapError = useCallback(
+    (event: ErrorEvent) => {
+      activateRouteFallback('地图初始化失败，已切换为轨迹模式。');
+      console.warn(
+        'Mapbox could not initialize; showing the route-only fallback.',
+        event.error
+      );
+    },
+    [activateRouteFallback]
+  );
+
   useEffect(() => {
-    if (mapRef.current) {
-      const map = mapRef.current.getMap();
+    if (!mapRef.current || rendererState.useFallback) return;
 
-      // Track tile loading errors
-      let tileErrorCount = 0;
-      const MAX_TILE_ERRORS = 10;
+    const map = mapRef.current.getMap();
+    let tileErrorCount = 0;
+    const MAX_TILE_ERRORS = 10;
 
-      const handleStyleError = (e: unknown) => {
-        console.error('❌ Map style failed to load:', e);
-        setMapError(
-          'Map tiles failed to load. Please check your internet connection.'
+    const handleStyleError = (event: unknown) => {
+      activateRouteFallback('地图资源加载失败，已切换为轨迹模式。');
+      console.warn(
+        'Map style failed to load; showing the route-only fallback.',
+        event
+      );
+    };
+
+    const handleTileError = () => {
+      tileErrorCount++;
+      if (tileErrorCount === MAX_TILE_ERRORS) {
+        activateRouteFallback('地图瓦片加载失败，已切换为轨迹模式。');
+        console.warn(
+          'Map tiles are not loading; showing the route-only fallback.'
         );
+      }
+    };
 
-        if (MAP_TILE_VENDOR === 'mapcn') {
-          console.warn('⚠️ Carto Basemaps (MapCN) failed to load.');
-          console.info('💡 Possible solutions:');
-          console.info('   1. Check your internet connection');
-          console.info(
-            '   2. If in China, Carto may be blocked.  Try fallback:'
-          );
-          console.info('      - Change MAP_TILE_VENDOR to "mapcn_openfreemap"');
-          console.info(
-            '      - Or use MAP_TILE_VENDOR = "maptiler" with free token'
-          );
-        }
-      };
+    map.on('error', handleStyleError);
+    map.on('tileerror', handleTileError);
 
-      const handleTileError = () => {
-        tileErrorCount++;
-
-        if (tileErrorCount === MAX_TILE_ERRORS) {
-          console.error(`❌ ${MAX_TILE_ERRORS}+ tile loading errors detected`);
-          console.warn('⚠️ Map tiles are not loading properly.');
-          console.info(
-            '💡 Try switching to a different provider in src/utils/const.ts'
-          );
-        }
-      };
-
-      map.on('error', handleStyleError);
-      map.on('tileerror', handleTileError);
-
-      // Cleanup
-      return () => {
-        map.off('error', handleStyleError);
-        map.off('tileerror', handleTileError);
-      };
-    }
-  }, [mapRef]);
+    return () => {
+      map.off('error', handleStyleError);
+      map.off('tileerror', handleTileError);
+    };
+  }, [activateRouteFallback, rendererState.useFallback]);
 
   // animation state (single run only)
   const [animatedPoints, setAnimatedPoints] = useState<Coordinate[]>([]);
@@ -195,43 +237,57 @@ const RunMap = ({
     }
   }, []);
 
-  const mapRefCallback = useCallback((ref: MapRef | null) => {
-    if (ref !== null) {
-      const map = ref.getMap();
-      if (map && shouldInstallMapboxLanguage(MAP_TILE_VENDOR, IS_CHINESE)) {
-        map.addControl(new MapboxLanguage({ defaultLanguage: 'zh-Hans' }));
-      }
-      // all style resources have been downloaded
-      // and the first visually complete rendering of the base style has occurred.
-      // it's odd. when use style other than mapbox, the style.load event is not triggered.Add commentMore actions
-      // so I use data event instead of style.load event and make sure we handle it only once.
-      map.on('data', (event) => {
-        if (event.dataType !== 'style' || mapRef.current) {
-          return;
+  const mapRefCallback = useCallback(
+    (ref: MapRef | null) => {
+      mapRef.current = ref;
+      if (ref === null) return;
+
+      try {
+        const map = ref.getMap();
+        if (shouldInstallMapboxLanguage(MAP_TILE_VENDOR, IS_CHINESE)) {
+          map.addControl(new MapboxLanguage({ defaultLanguage: 'zh-Hans' }));
         }
-        if (!ROAD_LABEL_DISPLAY) {
-          const layers = (map.getStyle().layers ?? []) as MapStyleLayer[];
-          const labelLayerNames = layers
-            .filter(
-              (layer) =>
-                (layer.type === 'symbol' || layer.type === 'composite') &&
-                (layer.layout?.['text-field'] !== undefined ||
-                  layer.layout?.text_field !== undefined)
-            )
-            .map((layer) => layer.id);
-          labelLayerNames.forEach((layerId) => {
-            map.removeLayer(layerId);
-          });
-        }
-        mapRef.current = ref;
+
+        // Some style vendors do not emit style.load consistently. Reapply
+        // local layer settings when the style data becomes available.
+        map.on('data', (event) => {
+          if (event.dataType !== 'style') return;
+
+          try {
+            if (!ROAD_LABEL_DISPLAY) {
+              const layers = (map.getStyle().layers ?? []) as MapStyleLayer[];
+              const labelLayerNames = layers
+                .filter(
+                  (layer) =>
+                    (layer.type === 'symbol' || layer.type === 'composite') &&
+                    (layer.layout?.['text-field'] !== undefined ||
+                      layer.layout?.text_field !== undefined)
+                )
+                .map((layer) => layer.id);
+              labelLayerNames.forEach((layerId) => {
+                if (map.getLayer(layerId)) map.removeLayer(layerId);
+              });
+            }
+            setMapLightVisibility(map, lightsRef.current);
+          } catch (error) {
+            activateRouteFallback('地图初始化失败，已切换为轨迹模式。');
+            console.warn(
+              'Map style setup failed; showing the route-only fallback.',
+              error
+            );
+          }
+        });
         setMapLightVisibility(map, lightsRef.current);
-      });
-    }
-    if (mapRef.current) {
-      const map = mapRef.current.getMap();
-      setMapLightVisibility(map, lightsRef.current);
-    }
-  }, []);
+      } catch (error) {
+        activateRouteFallback('地图初始化失败，已切换为轨迹模式。');
+        console.warn(
+          'Mapbox setup failed; showing the route-only fallback.',
+          error
+        );
+      }
+    },
+    [activateRouteFallback]
+  );
 
   const initGeoDataLength = geoData.features.length;
   const isBigMap = (viewState.zoom ?? 0) <= 3;
@@ -388,137 +444,148 @@ const RunMap = ({
     startRouteAnimation();
   }, [isSingleRun, startRouteAnimation]);
 
+  const routeFallback = (
+    <RouteFallback
+      title={title}
+      changeYear={changeYear}
+      geoData={geoData}
+      thisYear={thisYear}
+      reason={rendererState.reason ?? '地图暂时不可用，已切换为轨迹模式。'}
+    />
+  );
+
+  if (rendererState.useFallback) return routeFallback;
+
   return (
-    <Map
-      {...viewState}
-      onMove={onMove}
-      onClick={handleMapClick}
-      style={style}
-      mapStyle={mapStyle}
-      onStyleData={handleStyleData}
-      ref={mapRefCallback}
-      cooperativeGestures={isTouchDevice()}
-      mapboxAccessToken={mapboxAccessToken}
-    >
-      {mapError && (
-        <div className={styles.mapErrorNotification}>
-          <span>⚠️ {mapError}</span>
-          <button onClick={() => window.location.reload()}>Reload Page</button>
-          <a
-            href="https://github.com/yihong0618/running_page#map-tiles-customization"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Troubleshooting Guide
-          </a>
-        </div>
-      )}
-      <RunMapButtons changeYear={changeYear} thisYear={thisYear} />
-      <Source id="data" type="geojson" data={combinedGeoData}>
-        <Layer
-          id="province"
-          type="fill"
-          paint={{
-            'fill-color': PROVINCE_FILL_COLOR,
-          }}
-          filter={filterProvinces}
-        />
-        <Layer
-          id="countries"
-          type="fill"
-          paint={{
-            'fill-color': COUNTRY_FILL_COLOR,
-            // in China, fill a bit lighter while already filled provinces
-            'fill-opacity': ['case', ['==', ['get', 'name'], '中国'], 0.1, 0.5],
-          }}
-          filter={filterCountries}
-        />
-        <Layer
-          id="runs2"
-          type="line"
-          paint={{
-            'line-color': ['get', 'color'],
-            'line-width': isBigMap && lights ? 1 : 2,
-            'line-dasharray': dash,
-            'line-opacity':
-              isSingleRun || isBigMap || !lights ? 1 : LINE_OPACITY,
-            'line-blur': 1,
-          }}
-          layout={{
-            'line-join': 'round',
-            'line-cap': 'round',
-          }}
-          filter={['!=', ['get', 'indoor'], true]}
-        />
-        <Layer
-          id="runs2-indoor"
-          type="line"
-          paint={{
-            'line-color': ['get', 'color'],
-            'line-width': isBigMap && lights ? 1 : 2,
-            'line-dasharray': [4, 3],
-            'line-opacity':
-              isSingleRun || isBigMap || !lights ? 0.6 : LINE_OPACITY * 0.6,
-            'line-blur': 1,
-          }}
-          layout={{
-            'line-join': 'round',
-            'line-cap': 'round',
-          }}
-          filter={['==', ['get', 'indoor'], true]}
-        />
-      </Source>
-      {isSingleRun && animatedPoints.length > 0 && (
-        <Source
-          id="animated-run"
-          type="geojson"
-          data={{
-            type: 'FeatureCollection',
-            features: [
-              {
-                type: 'Feature',
-                properties: { color: singleRunColor },
-                geometry: {
-                  type: 'LineString',
-                  coordinates: animatedPoints,
-                },
-              },
-            ],
-          }}
+    <MapRendererBoundary fallback={routeFallback}>
+      <div className={styles.mapRenderer} data-map-renderer="mapbox">
+        <Map
+          {...viewState}
+          onMove={onMove}
+          onClick={handleMapClick}
+          style={style}
+          mapStyle={mapStyle}
+          onStyleData={handleStyleData}
+          onError={handleMapError}
+          ref={mapRefCallback}
+          cooperativeGestures={isTouchDevice()}
+          mapboxAccessToken={mapboxAccessToken}
         >
-          <Layer
-            id="animated-run"
-            type="line"
-            paint={{
-              'line-color': ['get', 'color'],
-              'line-width': isIndoorRun ? 2 : 3,
-              'line-opacity': 1,
-              'line-dasharray': isIndoorRun ? [4, 3] : [2, 0],
-            }}
-            layout={{
-              'line-join': 'round',
-              'line-cap': 'round',
-            }}
+          <RunMapButtons changeYear={changeYear} thisYear={thisYear} />
+          <Source id="data" type="geojson" data={combinedGeoData}>
+            <Layer
+              id="province"
+              type="fill"
+              paint={{
+                'fill-color': PROVINCE_FILL_COLOR,
+              }}
+              filter={filterProvinces}
+            />
+            <Layer
+              id="countries"
+              type="fill"
+              paint={{
+                'fill-color': COUNTRY_FILL_COLOR,
+                // in China, fill a bit lighter while already filled provinces
+                'fill-opacity': [
+                  'case',
+                  ['==', ['get', 'name'], '中国'],
+                  0.1,
+                  0.5,
+                ],
+              }}
+              filter={filterCountries}
+            />
+            <Layer
+              id="runs2"
+              type="line"
+              paint={{
+                'line-color': ['get', 'color'],
+                'line-width': isBigMap && lights ? 1 : 2,
+                'line-dasharray': dash,
+                'line-opacity':
+                  isSingleRun || isBigMap || !lights ? 1 : LINE_OPACITY,
+                'line-blur': 1,
+              }}
+              layout={{
+                'line-join': 'round',
+                'line-cap': 'round',
+              }}
+              filter={['!=', ['get', 'indoor'], true]}
+            />
+            <Layer
+              id="runs2-indoor"
+              type="line"
+              paint={{
+                'line-color': ['get', 'color'],
+                'line-width': isBigMap && lights ? 1 : 2,
+                'line-dasharray': [4, 3],
+                'line-opacity':
+                  isSingleRun || isBigMap || !lights ? 0.6 : LINE_OPACITY * 0.6,
+                'line-blur': 1,
+              }}
+              layout={{
+                'line-join': 'round',
+                'line-cap': 'round',
+              }}
+              filter={['==', ['get', 'indoor'], true]}
+            />
+          </Source>
+          {isSingleRun && animatedPoints.length > 0 && (
+            <Source
+              id="animated-run"
+              type="geojson"
+              data={{
+                type: 'FeatureCollection',
+                features: [
+                  {
+                    type: 'Feature',
+                    properties: { color: singleRunColor },
+                    geometry: {
+                      type: 'LineString',
+                      coordinates: animatedPoints,
+                    },
+                  },
+                ],
+              }}
+            >
+              <Layer
+                id="animated-run"
+                type="line"
+                paint={{
+                  'line-color': ['get', 'color'],
+                  'line-width': isIndoorRun ? 2 : 3,
+                  'line-opacity': 1,
+                  'line-dasharray': isIndoorRun ? [4, 3] : [2, 0],
+                }}
+                layout={{
+                  'line-join': 'round',
+                  'line-cap': 'round',
+                }}
+              />
+            </Source>
+          )}
+          {isSingleRun && (
+            <RunMarker
+              startLat={startLat}
+              startLon={startLon}
+              endLat={endLat}
+              endLon={endLon}
+            />
+          )}
+          <span className={styles.runTitle}>{title}</span>
+          <FullscreenControl style={fullscreenButton} />
+          {!PRIVACY_MODE && (
+            <LightsControl setLights={setLights} lights={lights} />
+          )}
+          <NavigationControl
+            showCompass={false}
+            position={'bottom-right'}
+            style={{ opacity: 0.3 }}
           />
-        </Source>
-      )}
-      {isSingleRun && (
-        <RunMarker
-          startLat={startLat}
-          startLon={startLon}
-          endLat={endLat}
-          endLon={endLon}
-        />
-      )}
-      <span className={styles.runTitle}>{title}</span>
-      <FullscreenControl style={fullscreenButton} />
-      {!PRIVACY_MODE && <LightsControl setLights={setLights} lights={lights} />}
-      <NavigationControl
-        showCompass={false}
-        position={'bottom-right'}
-        style={{ opacity: 0.3 }}
-      />
-    </Map>
+        </Map>
+      </div>
+    </MapRendererBoundary>
   );
 };
 

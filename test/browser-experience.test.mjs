@@ -81,7 +81,7 @@ const waitForAnimationFrames = (page) =>
       })
   );
 
-const createBrowserPage = async (width) => {
+const createBrowserPage = async (width, { forceNoWebGL = false } = {}) => {
   const isMobile = width <= 768;
   const context = await browser.newContext({
     viewport: { width, height: VIEWPORT_HEIGHT },
@@ -110,6 +110,25 @@ const createBrowserPage = async (width) => {
     },
     { fixedTime: VISUAL_FIXED_TIME }
   );
+
+  if (forceNoWebGL) {
+    await context.addInitScript(() => {
+      const nativeGetContext = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function getContext(
+        contextType,
+        ...arguments_
+      ) {
+        if (
+          contextType === 'webgl2' ||
+          contextType === 'webgl' ||
+          contextType === 'experimental-webgl'
+        ) {
+          return null;
+        }
+        return nativeGetContext.call(this, contextType, ...arguments_);
+      };
+    });
+  }
 
   // The map layout itself is under test, while the third-party tile service is
   // deliberately replaced with a valid empty style to keep CI deterministic.
@@ -208,7 +227,7 @@ const openActivityPage = async (page, mode) => {
     .locator(`[data-app-ready="${mode}"]`)
     .waitFor({ state: 'visible' });
   await page
-    .locator('#map-container canvas.mapboxgl-canvas')
+    .locator('#map-container [data-map-renderer]')
     .waitFor({ state: 'visible' });
   await page
     .locator('tbody button[type="button"][aria-pressed]')
@@ -621,6 +640,41 @@ test(
           }
         });
       }
+    }
+  }
+);
+
+test(
+  'route data remains visible when WebGL is unavailable',
+  { timeout: 60_000 },
+  async () => {
+    const session = await createBrowserPage(390, { forceNoWebGL: true });
+    try {
+      await openActivityPage(session.page, 'running');
+
+      const fallback = session.page.locator(
+        '#map-container [data-map-renderer="fallback"]'
+      );
+      await fallback.waitFor({ state: 'visible' });
+      assert.equal(
+        (await fallback.locator('svg[role="img"] polyline').count()) > 0,
+        true,
+        'the fallback renderer did not draw any route geometry'
+      );
+      assert.match(
+        (await fallback.getByRole('status').first().textContent()) ?? '',
+        /轨迹模式/
+      );
+      assert.equal(
+        await session.page
+          .locator('#map-container canvas.mapboxgl-canvas')
+          .count(),
+        0,
+        'the page attempted to mount Mapbox after WebGL preflight failed'
+      );
+      session.assertNoRuntimeErrors();
+    } finally {
+      await session.context.close();
     }
   }
 );

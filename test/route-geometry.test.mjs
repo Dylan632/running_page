@@ -136,6 +136,35 @@ test('calculates bounds from every route geometry', async () => {
   });
 });
 
+test('detects WebGL failures before the map library starts', async () => {
+  const { canCreateWebGLContext } = await vite.ssrLoadModule(
+    '/src/components/RunMap/mapSupport.ts'
+  );
+
+  assert.equal(
+    canCreateWebGLContext({ getContext: () => null }),
+    false,
+    'a browser without a WebGL context must use the route fallback'
+  );
+  assert.equal(
+    canCreateWebGLContext({
+      getContext: (type) =>
+        type === 'webgl' ? { isContextLost: () => false } : null,
+    }),
+    true,
+    'a healthy WebGL context must keep the interactive map'
+  );
+  assert.equal(
+    canCreateWebGLContext({
+      getContext: () => {
+        throw new Error('WebGL unavailable');
+      },
+    }),
+    false,
+    'a browser that throws while creating WebGL must use the route fallback'
+  );
+});
+
 test('fits the map view to all GeoJSON features', async () => {
   const { getBoundsForGeoData } = await vite.ssrLoadModule(
     '/src/utils/geoUtils.ts'

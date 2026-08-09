@@ -232,6 +232,53 @@ test('map year filters are labelled 44px toggle buttons', async () => {
   }
 });
 
+test('route fallback keeps a real SVG track and the year filter', async () => {
+  const { default: RouteFallback } = await vite.ssrLoadModule(
+    '/src/components/RunMap/RouteFallback.tsx'
+  );
+  const html = renderToStaticMarkup(
+    withActivityMode(
+      React.createElement(RouteFallback, {
+        title: 'Latest run',
+        changeYear: () => {},
+        thisYear: '2025',
+        reason: '地图暂时不可用，已切换为轨迹模式。',
+        geoData: {
+          type: 'FeatureCollection',
+          features: [
+            {
+              type: 'Feature',
+              properties: { color: '#1b365d' },
+              geometry: {
+                type: 'LineString',
+                coordinates: [
+                  [120.1, 31.2],
+                  [120.2, 31.3],
+                ],
+              },
+            },
+          ],
+        },
+      })
+    )
+  );
+  const dom = new JSDOM(html);
+
+  try {
+    assert.ok(
+      dom.window.document.querySelector('[data-map-renderer="fallback"]')
+    );
+    assert.ok(dom.window.document.querySelector('svg[role="img"] polyline'));
+    assert.ok(
+      dom.window.document.querySelector(
+        'ul[aria-label="地图年份筛选"] button[aria-pressed="true"]'
+      )
+    );
+  } finally {
+    dom.window.close();
+  }
+});
+
 test('map light and vendor controls are named 44px targets', async () => {
   const { default: LightsControl } = await vite.ssrLoadModule(
     '/src/components/RunMap/LightsControl.tsx'

@@ -235,6 +235,7 @@ test('browser diagnostics require the final mode marker and surface application 
       markerMode: 'cycling',
       currentModePath: '/cycling',
       hasFatalUi: false,
+      mapRenderer: 'mapbox',
     },
   };
   assert.doesNotThrow(() =>

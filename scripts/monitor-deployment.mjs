@@ -315,6 +315,9 @@ export const validateBrowserProbe = ({
   if (state.hasFatalUi) {
     throw new Error(`${mode} browser rendered the fatal error boundary`);
   }
+  if (!['mapbox', 'fallback'].includes(state.mapRenderer)) {
+    throw new Error(`${mode} browser did not expose a map renderer`);
+  }
 
   const actionableConsoleErrors = consoleErrors.filter(
     (message) => !isAllowedBrowserNoise(message)
@@ -418,12 +421,14 @@ const browserStateExpression = (mode) => `(() => {
   const marker = document.querySelector('[data-app-ready]');
   const current = document.querySelector('a[aria-current="page"][href]');
   const root = document.querySelector('#root');
+  const renderer = document.querySelector('#map-container [data-map-renderer]');
   return {
     href: window.location.href,
     rootHasContent: Boolean(root && root.textContent && root.textContent.trim()),
     markerMode: marker && marker.getAttribute('data-app-ready'),
     currentModePath: current && new URL(current.href, window.location.href).pathname,
-    hasFatalUi: document.body.textContent.includes('运动记录暂时无法加载')
+    hasFatalUi: document.body.textContent.includes('运动记录暂时无法加载'),
+    mapRenderer: renderer && renderer.getAttribute('data-map-renderer')
   };
 })()`;
 

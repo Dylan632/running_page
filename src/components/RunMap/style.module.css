@@ -173,53 +173,119 @@
   filter: invert(1) opacity(0.86);
 }
 
-.mapErrorNotification {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #f0e0d8;
-  color: #8b4513;
-  padding: 12px 20px;
-  border: 1px solid #d8c2b2;
-  border-radius: 1rem;
-  box-shadow: var(--kami-whisper-shadow);
-  z-index: 1000;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  font-size: 14px;
+.mapRenderer {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
 }
 
-:global([data-theme='dark']) .mapErrorNotification {
-  background: rgba(32, 24, 26, 0.94);
-  color: #f3c7b4;
-  border-color: rgba(243, 199, 180, 0.22);
-}
-
-.mapErrorNotification button,
-.mapErrorNotification a {
+.fallbackRenderer {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--kami-border);
+  border-radius: 1.15rem;
   background: var(--kami-ivory);
-  color: #8b4513;
-  border: 1px solid #d8c2b2;
-  padding: 6px 12px;
+}
+
+.fallbackRenderer {
+  isolation: isolate;
+}
+
+.fallbackSvg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.fallbackBackground {
+  fill: var(--kami-ivory);
+}
+
+.fallbackGrid {
+  stroke: var(--kami-border);
+  stroke-width: 1;
+  opacity: 0.45;
+}
+
+.fallbackRoute {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.84;
+}
+
+.fallbackRouteIndoor {
+  stroke-dasharray: 9 7;
+}
+
+.fallbackMarker {
+  fill: var(--kami-ivory);
+  stroke: var(--color-primary);
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.fallbackStatus {
+  position: absolute;
+  z-index: 2;
+  top: 16px;
+  left: 16px;
+  max-width: min(56%, 30rem);
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--kami-border);
   border-radius: 999px;
-  cursor: pointer;
-  text-decoration: none;
-  font-weight: 500;
-  transition: opacity 0.2s;
+  background: color-mix(in srgb, var(--kami-ivory) 88%, transparent);
+  box-shadow: var(--kami-whisper-shadow);
+  color: var(--color-primary);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  backdrop-filter: blur(10px);
 }
 
-:global([data-theme='dark']) .mapErrorNotification button,
-:global([data-theme='dark']) .mapErrorNotification a {
-  background: rgba(16, 27, 46, 0.86);
-  color: #f3c7b4;
-  border-color: rgba(243, 199, 180, 0.24);
+.fallbackEmpty {
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  left: 1rem;
+  margin: 0;
+  color: var(--color-primary);
+  text-align: center;
+  transform: translateY(-50%);
 }
 
-.mapErrorNotification button:hover,
-.mapErrorNotification a:hover {
-  opacity: 0.8;
+:global([data-theme='dark']) .fallbackRenderer {
+  border-color: rgba(170, 190, 220, 0.22);
+  background: rgba(12, 20, 35, 0.88);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+:global([data-theme='dark']) .fallbackBackground {
+  fill: #101b2e;
+}
+
+:global([data-theme='dark']) .fallbackGrid {
+  stroke: rgba(170, 190, 220, 0.2);
+}
+
+:global([data-theme='dark']) .fallbackStatus {
+  background: rgba(16, 27, 46, 0.84);
+  color: #eef5ff;
+}
+
+@media only screen and (max-width: 768px) {
+  .fallbackStatus {
+    top: 12px;
+    left: 12px;
+    max-width: 62%;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.7rem;
+  }
 }
 
 :global(.mapboxgl-ctrl-group) {
