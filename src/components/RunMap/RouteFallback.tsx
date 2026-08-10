@@ -141,7 +141,7 @@ const RouteFallback = ({
             height={VIEWBOX_HEIGHT}
             fill="url(#route-fallback-grid)"
           />
-          <g aria-label="路线">
+          <g role="group" aria-label="路线">
             {routes.map((route) => (
               <polyline
                 key={`${route.coordinates[0].join(',')}-${route.coordinates[
@@ -156,7 +156,7 @@ const RouteFallback = ({
             ))}
           </g>
           {routes.length === 1 && (
-            <g aria-label="起终点">
+            <g role="group" aria-label="起终点">
               {[
                 { coordinate: routes[0].coordinates[0], name: 'start' },
                 {
