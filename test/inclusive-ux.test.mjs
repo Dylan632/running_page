@@ -271,6 +271,11 @@ test('route fallback keeps a real SVG track and the year filter', async () => {
     assert.ok(dom.window.document.querySelector('svg[role="img"] polyline'));
     assert.ok(
       dom.window.document.querySelector(
+        'svg[role="img"] image[data-map-tile="true"]'
+      )
+    );
+    assert.ok(
+      dom.window.document.querySelector(
         'ul[aria-label="地图年份筛选"] button[aria-pressed="true"]'
       )
     );

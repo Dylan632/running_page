@@ -661,6 +661,13 @@ test(
         true,
         'the fallback renderer did not draw any route geometry'
       );
+      assert.equal(
+        (await fallback
+          .locator('svg[role="img"] image[data-map-tile="true"]')
+          .count()) > 0,
+        true,
+        'the fallback renderer did not mount a basemap tile layer'
+      );
       assert.match(
         (await fallback.getByRole('status').first().textContent()) ?? '',
         /轨迹模式/

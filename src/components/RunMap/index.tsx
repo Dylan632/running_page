@@ -90,7 +90,7 @@ class MapRendererBoundary extends React.Component<
 
   componentDidCatch(error: unknown) {
     console.warn(
-      'Map renderer failed; showing the route-only fallback instead.',
+      'Map renderer failed; showing the raster map and route fallback instead.',
       error
     );
   }
@@ -122,7 +122,7 @@ const RunMap = ({
       useFallback: !webGLAvailable,
       reason: webGLAvailable
         ? null
-        : '当前浏览器无法启用地图渲染，已切换为轨迹模式。',
+        : '当前浏览器无法启用交互地图，已切换为栅格地图+轨迹模式。',
     };
   });
 
@@ -153,9 +153,9 @@ const RunMap = ({
 
   const handleMapError = useCallback(
     (event: ErrorEvent) => {
-      activateRouteFallback('地图初始化失败，已切换为轨迹模式。');
+      activateRouteFallback('地图初始化失败，已切换为栅格地图+轨迹模式。');
       console.warn(
-        'Mapbox could not initialize; showing the route-only fallback.',
+        'Mapbox could not initialize; showing the raster map and route fallback.',
         event.error
       );
     },
@@ -170,9 +170,9 @@ const RunMap = ({
     const MAX_TILE_ERRORS = 10;
 
     const handleStyleError = (event: unknown) => {
-      activateRouteFallback('地图资源加载失败，已切换为轨迹模式。');
+      activateRouteFallback('地图资源加载失败，已切换为栅格地图+轨迹模式。');
       console.warn(
-        'Map style failed to load; showing the route-only fallback.',
+        'Map style failed to load; showing the raster map and route fallback.',
         event
       );
     };
@@ -180,9 +180,9 @@ const RunMap = ({
     const handleTileError = () => {
       tileErrorCount++;
       if (tileErrorCount === MAX_TILE_ERRORS) {
-        activateRouteFallback('地图瓦片加载失败，已切换为轨迹模式。');
+        activateRouteFallback('地图瓦片加载失败，已切换为栅格地图+轨迹模式。');
         console.warn(
-          'Map tiles are not loading; showing the route-only fallback.'
+          'Map tiles are not loading; showing the raster map and route fallback.'
         );
       }
     };
@@ -270,18 +270,20 @@ const RunMap = ({
             }
             setMapLightVisibility(map, lightsRef.current);
           } catch (error) {
-            activateRouteFallback('地图初始化失败，已切换为轨迹模式。');
+            activateRouteFallback(
+              '地图初始化失败，已切换为栅格地图+轨迹模式。'
+            );
             console.warn(
-              'Map style setup failed; showing the route-only fallback.',
+              'Map style setup failed; showing the raster map and route fallback.',
               error
             );
           }
         });
         setMapLightVisibility(map, lightsRef.current);
       } catch (error) {
-        activateRouteFallback('地图初始化失败，已切换为轨迹模式。');
+        activateRouteFallback('地图初始化失败，已切换为栅格地图+轨迹模式。');
         console.warn(
-          'Mapbox setup failed; showing the route-only fallback.',
+          'Mapbox setup failed; showing the raster map and route fallback.',
           error
         );
       }
@@ -450,7 +452,10 @@ const RunMap = ({
       changeYear={changeYear}
       geoData={geoData}
       thisYear={thisYear}
-      reason={rendererState.reason ?? '地图暂时不可用，已切换为轨迹模式。'}
+      reason={
+        rendererState.reason ?? '地图暂时不可用，已切换为栅格地图+轨迹模式。'
+      }
+      isDark={currentMapTheme === 'dark-matter'}
     />
   );
 
