@@ -271,7 +271,7 @@ test('route fallback keeps a real SVG track and the year filter', async () => {
     assert.ok(dom.window.document.querySelector('svg[role="img"] polyline'));
     assert.ok(
       dom.window.document.querySelector(
-        'svg[role="img"] image[data-map-tile="true"]'
+        'svg[role="img"] path[data-map-background="true"]'
       )
     );
     assert.ok(

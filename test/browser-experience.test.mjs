@@ -663,14 +663,14 @@ test(
       );
       assert.equal(
         (await fallback
-          .locator('svg[role="img"] image[data-map-tile="true"]')
+          .locator('svg[role="img"] path[data-map-background="true"]')
           .count()) > 0,
         true,
-        'the fallback renderer did not mount a basemap tile layer'
+        'the fallback renderer did not draw a local basemap'
       );
       assert.match(
         (await fallback.getByRole('status').first().textContent()) ?? '',
-        /轨迹模式/
+        /内置地图.*轨迹/
       );
       assert.equal(
         await session.page

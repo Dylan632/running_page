@@ -247,6 +247,7 @@ const RouteFallback = ({
             {mapBackground.map(({ key, path, province }) => (
               <path
                 key={key}
+                data-map-background="true"
                 d={path}
                 className={
                   province ? styles.fallbackProvince : styles.fallbackLand
