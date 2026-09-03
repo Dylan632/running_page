@@ -22,7 +22,7 @@
    - For old data: To include `Elevation Gain` for past activities, perform a full reimport.
    - To show the 'Elevation Gain' column, modify `SHOW_ELEVATION_GAIN` in `src/utils/const.ts`
    - note: `Elevation Gain` may be inaccurate. You can use Strava's "Correct Elevation" or Garmin's "Elev Corrections" feature for more precise data.
-6. 本项目现在默认使用 MapCN（免费）。如果你选择使用 Mapbox，请获取你自己的 token。请勿使用项目维护者的 token - 查看此 [issue](https://github.com/yihong0618/running_page/issues/643) 和 [issue #1055](https://github.com/yihong0618/running_page/issues/1055)
+6. 本项目现在默认使用 OpenFreeMap（免费），在中国网络环境下可达性更好。如果你选择使用 Mapbox，请获取你自己的 token。请勿使用项目维护者的 token - 查看此 [issue](https://github.com/yihong0618/running_page/issues/643) 和 [issue #1055](https://github.com/yihong0618/running_page/issues/1055)
 
 ![running_page](https://socialify.git.ci/yihong0618/running_page/image?description=1&font=Inter&forks=1&issues=1&language=1&logo=https%3A%2F%2Fraw.githubusercontent.com%2Fshaonianche%2Fgallery%2Fmaster%2Frunning_page%2Frunning_page_logo_150*150.jpg&owner=1&pulls=1&stargazers=1&theme=Light)
 
@@ -274,35 +274,35 @@ const MAPBOX_TOKEN =
 > 在使用默认的地图服务样式之外，你可以通过修改 src/utils/const.ts 文件中的以下配置项来自定义地图显示。
 
 ```typescript
-const MAP_TILE_VENDOR = 'mapcn'; // 默认（免费！）
+const MAP_TILE_VENDOR = 'mapcn_openfreemap'; // 默认（免费！）
 const MAP_TILE_STYLE = 'osm-bright';
-const MAP_TILE_ACCESS_TOKEN = ''; // MapCN 不需要 token
+const MAP_TILE_ACCESS_TOKEN = ''; // OpenFreeMap 和 MapCN 都不需要 token
 ```
 
 目前，支持的 MAP_TILE_VENDOR 选项包括：
 
-- **"mapcn"** - MapCN 地图服务（免费，无需 token）⭐ 默认推荐
+- **"mapcn_openfreemap"** - OpenFreeMap 地图服务（免费，无需 token）⭐ 默认推荐
+- **"mapcn"** - MapCN（Carto）地图服务（免费，无需 token）
 - **"mapbox"** - Mapbox 地图服务（需要 token，有费用）
 - **"maptiler"** - MapTiler 地图服务（有免费额度）
 - **"stadiamaps"** - Stadia Maps 地图服务（有免费额度）
 
-使用 MapCN（默认）
-MapCN 是免费的地图服务提供商，现在是默认选项，无需配置！
+使用 OpenFreeMap（默认）
+OpenFreeMap 是免费的地图服务提供商，现在是默认选项，无需配置！
 
-可用的 MapCN 样式：
+可用的 OpenFreeMap 样式：
 
 - **osm-bright** - 明亮的 OpenStreetMap 样式（默认）
-- **osm-liberty** - 备选明亮样式
 - **dark-matter** - 深色主题样式
 
 **无需访问令牌！** 🎉
 
 ## 版权归属
 
-当使用 MapCN (Carto Basemaps) 时，请确保遵守其版权归属要求：
+使用 OpenFreeMap 时请包含 OpenStreetMap 的版权声明；使用 MapCN (Carto Basemaps) 时还需要遵守其版权归属要求：
 
-- 地图瓦片: © [CARTO](https://carto.com/)
-- 地图数据: © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors
+- OpenFreeMap/地图数据: © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors
+- MapCN 地图瓦片: © [CARTO](https://carto.com/)
 
 本项目模板已在地图显示中包含了相应的版权声明。
 

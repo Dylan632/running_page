@@ -22,7 +22,7 @@
    - For old data: To include `Elevation Gain` for past activities, perform a full reimport.
    - To show the 'Elevation Gain' column, modify `SHOW_ELEVATION_GAIN` in `src/utils/const.ts`
    - note: `Elevation Gain` may be inaccurate. You can use Strava's "Correct Elevation" or Garmin's "Elev Corrections" feature for more precise data.
-6. This project now uses MapCN (free) by default. If you choose to use Mapbox, please get your own token.  Do not use the project maintainer's token - check this [issue](https://github.com/yihong0618/running_page/issues/643) and [issue #1055](https://github.com/yihong0618/running_page/issues/1055)
+6. This project now uses OpenFreeMap (free) by default for better reachability in China. If you choose to use Mapbox, please get your own token. Do not use the project maintainer's token - check this [issue](https://github.com/yihong0618/running_page/issues/643) and [issue #1055](https://github.com/yihong0618/running_page/issues/1055)
 
 <p align="center">
   <img width="150" src="https://raw.githubusercontent.com/shaonianche/gallery/master/running_page/running_page_logo.png" />
@@ -270,35 +270,35 @@ const MAPBOX_TOKEN =
 > In addition to using the default map tile style, you can customize the map display by modifying the following configurations in `src/utils/const.ts`:
 
 ```typescript
-const MAP_TILE_VENDOR = 'mapcn'; // Default (free!)
+const MAP_TILE_VENDOR = 'mapcn_openfreemap'; // Default (free!)
 const MAP_TILE_STYLE = 'osm-bright';
-const MAP_TILE_ACCESS_TOKEN = ''; // Not needed for MapCN
+const MAP_TILE_ACCESS_TOKEN = ''; // Not needed for OpenFreeMap or MapCN
 ```
 
 Currently supported `MAP_TILE_VENDOR` options include:
 
-- **"mapcn"** - MapCN map services (FREE, no token required) ⭐ DEFAULT & RECOMMENDED
+- **"mapcn_openfreemap"** - OpenFreeMap map services (FREE, no token required) ⭐ DEFAULT & RECOMMENDED
+- **"mapcn"** - MapCN (Carto) map services (FREE, no token required)
 - **"mapbox"** - Mapbox map services (requires token, has costs)
 - **"maptiler"** - MapTiler map services (free tier available)
 - **"stadiamaps"** - Stadia Maps services (free tier available)
 
-Using MapCN (Default)
-MapCN is a free map tile provider and is now the default. No configuration needed!
+Using OpenFreeMap (Default)
+OpenFreeMap is a free map tile provider and is now the default. No configuration needed!
 
-Available MapCN styles:
+Available OpenFreeMap styles:
 
 - **osm-bright** - Light OpenStreetMap style (default)
-- **osm-liberty** - Alternative light style
 - **dark-matter** - Dark theme style
 
 **No access token required! ** 🎉
 
 ## Attribution
 
-When using MapCN (Carto Basemaps), please ensure you comply with their attribution requirements:
+When using OpenFreeMap, please include the required OpenStreetMap attribution. When using MapCN (Carto Basemaps), also comply with their attribution requirements:
 
-- Map tiles: © [CARTO](https://carto.com/)
-- Map data: © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors
+- OpenFreeMap/Map data: © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors
+- MapCN tiles: © [CARTO](https://carto.com/)
 
 The project template already includes appropriate attribution in the map display.
 

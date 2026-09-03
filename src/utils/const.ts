@@ -215,8 +215,9 @@ export const WALKING_COLOR = HIKING_COLOR;
 export const SWIMMING_COLOR = 'rgb(255,51,51)';
 export const INDOOR_COLOR = '#8899aa';
 
-// map tiles vendor: mapcn, maptiler, mapbox, or stadiamaps
-export const MAP_TILE_VENDOR = 'mapcn';
+// map tiles vendor: mapcn_openfreemap, mapcn, maptiler, mapbox, or stadiamaps
+// OpenFreeMap is the default because it is more reachable for this China-based site.
+export const MAP_TILE_VENDOR = 'mapcn_openfreemap';
 
 // map tiles style name, see MAP_TILE_STYLES for valid combinations
 export const MAP_TILE_STYLE_LIGHT = 'osm-bright';
@@ -292,7 +293,7 @@ export const getMapTileVendorStyles = (
 
 // Configuration validation
 if (typeof window !== 'undefined') {
-  if (MAP_TILE_VENDOR === 'mapcn' && MAP_TILE_ACCESS_TOKEN !== '') {
+  if (['mapcn'].includes(MAP_TILE_VENDOR) && MAP_TILE_ACCESS_TOKEN !== '') {
     console.warn(
       'MapCN (Carto) does not require an access token.\n' +
         'You can set MAP_TILE_ACCESS_TOKEN = "" in src/utils/const.ts'
@@ -308,7 +309,7 @@ if (typeof window !== 'undefined') {
         `Please set MAP_TILE_ACCESS_TOKEN in src/utils/const.ts\n` +
         `See README.md for instructions on getting a token.\n` +
         `\n` +
-        `TIP: Use MAP_TILE_VENDOR = 'mapcn' for free (no token required)`
+        `TIP: Use MAP_TILE_VENDOR = 'mapcn_openfreemap' for free (no token required)`
     );
   }
 
@@ -322,14 +323,14 @@ if (typeof window !== 'undefined') {
   }
 
   if (
-    MAP_TILE_VENDOR === 'mapcn' &&
+    ['mapcn', 'mapcn_openfreemap'].includes(MAP_TILE_VENDOR) &&
     MAP_TILE_ACCESS_TOKEN === '' &&
     vendorStyles?.[MAP_TILE_STYLE_LIGHT]
   ) {
     console.info(
-      'Using MapCN (Carto Basemaps) - Free, no token required.\n' +
-        'Attribution: Map tiles (c) CARTO, Map data (c) OpenStreetMap contributors\n' +
-        'See docs/CARTO_TERMS.md for usage terms'
+      `${MAP_TILE_VENDOR === 'mapcn_openfreemap' ? 'Using OpenFreeMap' : 'Using MapCN (Carto Basemaps)'} - Free, no token required.\n` +
+        'Attribution: Map data (c) OpenStreetMap contributors\n' +
+        'See the provider terms before deploying publicly'
     );
   }
 }

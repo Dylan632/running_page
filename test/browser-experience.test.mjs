@@ -29,6 +29,8 @@ const EMPTY_MAP_STYLE = JSON.stringify({
   sources: {},
   layers: [],
 });
+const EMPTY_MAP_TILE =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#e8edf2"/></svg>';
 
 let browser;
 let origin;
@@ -137,6 +139,20 @@ const createBrowserPage = async (width, { forceNoWebGL = false } = {}) => {
       status: 200,
       contentType: 'application/json',
       body: EMPTY_MAP_STYLE,
+    })
+  );
+  await context.route('https://tiles.openfreemap.org/**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: EMPTY_MAP_STYLE,
+    })
+  );
+  await context.route('https://tile.openstreetmap.org/**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'image/svg+xml',
+      body: EMPTY_MAP_TILE,
     })
   );
   await context.route('https://events.mapbox.com/**', (route) =>

@@ -215,10 +215,11 @@ const RouteFallback = ({
 }: RouteFallbackProps) => {
   const routes = useMemo(() => routesFromGeoData(geoData), [geoData]);
   const bounds = useMemo(() => getRouteBounds(routes), [routes]);
-  const [rasterProvider, setRasterProvider] = useState<RasterProvider>('carto');
+  const [rasterProvider, setRasterProvider] =
+    useState<RasterProvider>('openstreetmap');
   const handleRasterTileError = useCallback(() => {
     setRasterProvider((currentProvider) =>
-      currentProvider === 'carto' ? 'openstreetmap' : currentProvider
+      currentProvider === 'openstreetmap' ? 'carto' : currentProvider
     );
   }, []);
   const rasterViewport = useMemo(

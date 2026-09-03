@@ -165,6 +165,18 @@ test('detects WebGL failures before the map library starts', async () => {
   );
 });
 
+test('uses OpenFreeMap as the default vector basemap', async () => {
+  const { MAP_TILE_ACCESS_TOKEN, MAP_TILE_STYLES, MAP_TILE_VENDOR } =
+    await vite.ssrLoadModule('/src/utils/const.ts');
+
+  assert.equal(MAP_TILE_VENDOR, 'mapcn_openfreemap');
+  assert.equal(MAP_TILE_ACCESS_TOKEN, '');
+  assert.equal(
+    MAP_TILE_STYLES[MAP_TILE_VENDOR]['osm-bright'],
+    'https://tiles.openfreemap.org/styles/bright'
+  );
+});
+
 test('fits the map view to all GeoJSON features', async () => {
   const { getBoundsForGeoData } = await vite.ssrLoadModule(
     '/src/utils/geoUtils.ts'
