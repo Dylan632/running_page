@@ -79,6 +79,8 @@ interface MapRendererBoundaryState {
   hasError: boolean;
 }
 
+const FALLBACK_MAP_REASON = '交互地图暂不可用，已显示内置地图与轨迹。';
+
 class MapRendererBoundary extends React.Component<
   MapRendererBoundaryProps,
   MapRendererBoundaryState
@@ -121,9 +123,7 @@ const RunMap = ({
     const webGLAvailable = hasUsableWebGL();
     return {
       useFallback: !webGLAvailable,
-      reason: webGLAvailable
-        ? null
-        : '当前浏览器无法启用交互地图，已切换为栅格地图+轨迹模式。',
+      reason: webGLAvailable ? null : FALLBACK_MAP_REASON,
     };
   });
 
@@ -154,7 +154,7 @@ const RunMap = ({
 
   const handleMapError = useCallback(
     (event: ErrorEvent) => {
-      activateRouteFallback('地图初始化失败，已切换为栅格地图+轨迹模式。');
+      activateRouteFallback(FALLBACK_MAP_REASON);
       console.warn(
         'Mapbox could not initialize; showing the raster map and route fallback.',
         event.error
@@ -171,7 +171,7 @@ const RunMap = ({
     const MAX_TILE_ERRORS = 10;
 
     const handleStyleError = (event: unknown) => {
-      activateRouteFallback('地图资源加载失败，已切换为栅格地图+轨迹模式。');
+      activateRouteFallback(FALLBACK_MAP_REASON);
       console.warn(
         'Map style failed to load; showing the raster map and route fallback.',
         event
@@ -181,7 +181,7 @@ const RunMap = ({
     const handleTileError = () => {
       tileErrorCount++;
       if (tileErrorCount === MAX_TILE_ERRORS) {
-        activateRouteFallback('地图瓦片加载失败，已切换为栅格地图+轨迹模式。');
+        activateRouteFallback(FALLBACK_MAP_REASON);
         console.warn(
           'Map tiles are not loading; showing the raster map and route fallback.'
         );
@@ -271,9 +271,7 @@ const RunMap = ({
             }
             setMapLightVisibility(map, lightsRef.current);
           } catch (error) {
-            activateRouteFallback(
-              '地图初始化失败，已切换为栅格地图+轨迹模式。'
-            );
+            activateRouteFallback(FALLBACK_MAP_REASON);
             console.warn(
               'Map style setup failed; showing the raster map and route fallback.',
               error
@@ -282,7 +280,7 @@ const RunMap = ({
         });
         setMapLightVisibility(map, lightsRef.current);
       } catch (error) {
-        activateRouteFallback('地图初始化失败，已切换为栅格地图+轨迹模式。');
+        activateRouteFallback(FALLBACK_MAP_REASON);
         console.warn(
           'Mapbox setup failed; showing the raster map and route fallback.',
           error
@@ -453,9 +451,7 @@ const RunMap = ({
       changeYear={changeYear}
       geoData={geoData}
       thisYear={thisYear}
-      reason={
-        rendererState.reason ?? '地图暂时不可用，已切换为栅格地图+轨迹模式。'
-      }
+      reason={rendererState.reason ?? FALLBACK_MAP_REASON}
       isDark={currentMapTheme === 'dark-matter'}
     />
   );

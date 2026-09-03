@@ -1,8 +1,9 @@
 import type { FeatureCollection } from 'geojson';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { Coordinate } from '@/modules/routeGeometry';
 import { getRouteBounds } from '@/modules/routeGeometry';
-import type { RPGeometry } from '@/static/run_countries';
+import worldGeoJson from '@/static/world.zh.json';
+import { chinaGeojson, type RPGeometry } from '@/static/run_countries';
 import { MAP_HEIGHT } from '@/utils/const';
 import RunMapButtons from './RunMapButtons';
 import styles from './style.module.css';
@@ -29,22 +30,15 @@ const MAX_POINTS_PER_ROUTE = 900;
 const TILE_SIZE = 256;
 const MIN_TILE_ZOOM = 1;
 const MAX_TILE_ZOOM = 16;
-const CARTO_SUBDOMAINS = ['a', 'b', 'c', 'd'] as const;
-
-type RasterProvider = 'carto' | 'openstreetmap';
-
-interface RasterTile {
-  key: string;
-  href: string;
-  x: number;
-  y: number;
-  size: number;
-}
-
-interface RasterViewport {
-  tiles: RasterTile[];
+interface MapViewport {
   project: (coordinate: Coordinate) => [number, number];
 }
+
+const LOCAL_WORLD_MAP = worldGeoJson as FeatureCollection<RPGeometry>;
+const LOCAL_MAP_FEATURES = [
+  ...LOCAL_WORLD_MAP.features,
+  ...chinaGeojson.features,
+];
 
 const isCoordinate = (value: readonly number[]): value is Coordinate =>
   Number.isFinite(value[0]) && Number.isFinite(value[1]);
@@ -101,25 +95,6 @@ const latitudeToWorldY = (latitude: number, zoom: number): number => {
   );
 };
 
-const tileUrl = (
-  provider: RasterProvider,
-  isDark: boolean,
-  zoom: number,
-  tileX: number,
-  tileY: number
-): string => {
-  const tileCount = 2 ** zoom;
-  const wrappedTileX = ((tileX % tileCount) + tileCount) % tileCount;
-
-  if (provider === 'openstreetmap') {
-    return `https://tile.openstreetmap.org/${zoom}/${wrappedTileX}/${tileY}.png`;
-  }
-
-  const subdomain = CARTO_SUBDOMAINS[Math.abs(tileX) % CARTO_SUBDOMAINS.length];
-  const style = isDark ? 'dark_all' : 'light_all';
-  return `https://${subdomain}.basemaps.cartocdn.com/${style}/${zoom}/${wrappedTileX}/${tileY}.png`;
-};
-
 const chooseTileZoom = (bounds: ReturnType<typeof getRouteBounds>): number => {
   if (!bounds) return MIN_TILE_ZOOM;
 
@@ -140,11 +115,7 @@ const chooseTileZoom = (bounds: ReturnType<typeof getRouteBounds>): number => {
   return MIN_TILE_ZOOM;
 };
 
-const createRasterViewport = (
-  routes: FallbackRoute[],
-  isDark: boolean,
-  provider: RasterProvider
-): RasterViewport | null => {
+const createMapViewport = (routes: FallbackRoute[]): MapViewport | null => {
   const bounds = getRouteBounds(routes);
   if (!bounds) return null;
 
@@ -162,31 +133,7 @@ const createRasterViewport = (
   const centerY = (northY + southY) / 2;
   const offsetX = VIEWBOX_WIDTH / 2 - centerX * scale;
   const offsetY = VIEWBOX_HEIGHT / 2 - centerY * scale;
-  const tileSize = TILE_SIZE * scale;
-  const tileCount = 2 ** zoom;
-  const firstTileX = Math.floor(-offsetX / tileSize) - 1;
-  const lastTileX = Math.ceil((VIEWBOX_WIDTH - offsetX) / tileSize) + 1;
-  const firstTileY = Math.max(0, Math.floor(-offsetY / tileSize) - 1);
-  const lastTileY = Math.min(
-    tileCount - 1,
-    Math.ceil((VIEWBOX_HEIGHT - offsetY) / tileSize) + 1
-  );
-  const tiles: RasterTile[] = [];
-
-  for (let tileY = firstTileY; tileY <= lastTileY; tileY += 1) {
-    for (let tileX = firstTileX; tileX <= lastTileX; tileX += 1) {
-      tiles.push({
-        key: `${provider}-${zoom}-${tileX}-${tileY}`,
-        href: tileUrl(provider, isDark, zoom, tileX, tileY),
-        x: offsetX + tileX * tileSize,
-        y: offsetY + tileY * tileSize,
-        size: tileSize,
-      });
-    }
-  }
-
   return {
-    tiles,
     project: ([longitude, latitude]) => [
       offsetX + longitudeToWorldX(longitude, zoom) * scale,
       offsetY + latitudeToWorldY(latitude, zoom) * scale,
@@ -196,7 +143,7 @@ const createRasterViewport = (
 
 const projectCoordinates = (
   coordinates: Coordinate[],
-  viewport: RasterViewport
+  viewport: MapViewport
 ): string =>
   coordinates
     .map((coordinate) => {
@@ -205,26 +152,60 @@ const projectCoordinates = (
     })
     .join(' ');
 
+const projectRing = (
+  coordinates: readonly (readonly number[])[],
+  viewport: MapViewport
+): string => {
+  const points = coordinates
+    .filter(isCoordinate)
+    .map(([longitude, latitude]) => {
+      const [x, y] = viewport.project([longitude, latitude]);
+      return `${x.toFixed(2)} ${y.toFixed(2)}`;
+    });
+
+  return points.length >= 3 ? `M ${points.join(' L ')} Z` : '';
+};
+
+const projectMapGeometry = (
+  geometry: RPGeometry,
+  viewport: MapViewport
+): string => {
+  if (geometry.type === 'Polygon') {
+    return geometry.coordinates
+      .map((ring) => projectRing(ring, viewport))
+      .filter(Boolean)
+      .join(' ');
+  }
+
+  if (geometry.type === 'MultiPolygon') {
+    return geometry.coordinates
+      .flatMap((polygon) => polygon.map((ring) => projectRing(ring, viewport)))
+      .filter(Boolean)
+      .join(' ');
+  }
+
+  return '';
+};
+
 const RouteFallback = ({
   title,
   changeYear,
   geoData,
   thisYear,
   reason,
-  isDark = false,
 }: RouteFallbackProps) => {
   const routes = useMemo(() => routesFromGeoData(geoData), [geoData]);
   const bounds = useMemo(() => getRouteBounds(routes), [routes]);
-  const [rasterProvider, setRasterProvider] = useState<RasterProvider>('carto');
-  const handleRasterTileError = useCallback(() => {
-    setRasterProvider((currentProvider) =>
-      currentProvider === 'carto' ? 'openstreetmap' : currentProvider
-    );
-  }, []);
-  const rasterViewport = useMemo(
-    () => createRasterViewport(routes, isDark, rasterProvider),
-    [isDark, rasterProvider, routes]
-  );
+  const mapViewport = useMemo(() => createMapViewport(routes), [routes]);
+  const mapBackground = useMemo(() => {
+    if (!mapViewport) return [];
+
+    return LOCAL_MAP_FEATURES.map((feature, index) => ({
+      key: `${feature.properties?.name ?? 'feature'}-${index}`,
+      path: projectMapGeometry(feature.geometry, mapViewport),
+      province: index >= LOCAL_WORLD_MAP.features.length,
+    })).filter((feature) => feature.path.length > 0);
+  }, [mapViewport]);
 
   return (
     <div
@@ -263,18 +244,14 @@ const RouteFallback = ({
             className={styles.fallbackBackground}
           />
           <g aria-hidden="true">
-            {rasterViewport?.tiles.map((tile) => (
-              <image
-                key={tile.key}
-                data-map-tile="true"
-                href={tile.href}
-                x={tile.x}
-                y={tile.y}
-                width={tile.size}
-                height={tile.size}
-                preserveAspectRatio="none"
-                className={styles.fallbackMapTile}
-                onError={handleRasterTileError}
+            {mapBackground.map(({ key, path, province }) => (
+              <path
+                key={key}
+                d={path}
+                className={
+                  province ? styles.fallbackProvince : styles.fallbackLand
+                }
+                fillRule="evenodd"
               />
             ))}
           </g>
@@ -289,7 +266,7 @@ const RouteFallback = ({
                 key={`${route.coordinates[0].join(',')}-${route.coordinates[
                   route.coordinates.length - 1
                 ].join(',')}-${route.coordinates.length}`}
-                points={projectCoordinates(route.coordinates, rasterViewport!)}
+                points={projectCoordinates(route.coordinates, mapViewport!)}
                 className={`${styles.fallbackRoute} ${
                   route.indoor ? styles.fallbackRouteIndoor : ''
                 }`}
@@ -309,7 +286,7 @@ const RouteFallback = ({
               ].map(({ coordinate: [longitude, latitude], name }) => {
                 const [point] = projectCoordinates(
                   [[longitude, latitude]],
-                  rasterViewport!
+                  mapViewport!
                 ).split(' ');
                 const [x, y] = point.split(',');
                 return (
@@ -330,7 +307,7 @@ const RouteFallback = ({
           当前没有可绘制的轨迹
         </p>
       )}
-      {routes.length > 0 && rasterViewport && (
+      {routes.length > 0 && mapViewport && (
         <p className={styles.fallbackAttribution}>
           <a
             href="https://www.openstreetmap.org/copyright"
@@ -339,18 +316,7 @@ const RouteFallback = ({
           >
             © OpenStreetMap contributors
           </a>{' '}
-          {rasterProvider === 'carto' && (
-            <>
-              ·{' '}
-              <a
-                href="https://carto.com/attributions"
-                target="_blank"
-                rel="noreferrer"
-              >
-                © CARTO
-              </a>
-            </>
-          )}
+          · 内置矢量底图
         </p>
       )}
       <span className={styles.runTitle}>{title}</span>

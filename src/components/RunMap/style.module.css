@@ -211,8 +211,18 @@
   opacity: 0.2;
 }
 
-.fallbackMapTile {
-  pointer-events: none;
+.fallbackLand {
+  fill: color-mix(in srgb, var(--color-primary) 7%, var(--kami-ivory));
+  stroke: color-mix(in srgb, var(--color-primary) 24%, transparent);
+  stroke-width: 0.9;
+  vector-effect: non-scaling-stroke;
+}
+
+.fallbackProvince {
+  fill: none;
+  stroke: color-mix(in srgb, var(--color-primary) 28%, transparent);
+  stroke-width: 0.65;
+  vector-effect: non-scaling-stroke;
 }
 
 .fallbackRoute {
@@ -300,6 +310,15 @@
 
 :global([data-theme='dark']) .fallbackGrid {
   stroke: rgba(170, 190, 220, 0.2);
+}
+
+:global([data-theme='dark']) .fallbackLand {
+  fill: rgba(74, 122, 184, 0.16);
+  stroke: rgba(180, 204, 235, 0.34);
+}
+
+:global([data-theme='dark']) .fallbackProvince {
+  stroke: rgba(180, 204, 235, 0.28);
 }
 
 :global([data-theme='dark']) .fallbackAttribution {
