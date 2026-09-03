@@ -179,6 +179,11 @@ jobs:
             --previous "$RUNNER_TEMP/vercel-cutover/previous-production.json" \
             --output "$RUNNER_TEMP/vercel-cutover/cutover-record.json"
 
+      - name: Check the staged Carto map proxy
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: node scripts/check-map-proxy.mjs "${{ steps.deploy.outputs.url }}"
+
       - name: Monitor the staged production artifact
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
