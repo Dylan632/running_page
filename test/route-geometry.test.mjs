@@ -510,3 +510,31 @@ test('language control is installed only for compatible Mapbox styles', async ()
   assert.equal(shouldInstallMapboxLanguage('maptiler', true), false);
   assert.equal(shouldInstallMapboxLanguage('mapbox', false), false);
 });
+
+test('proxies Carto resources through the deployed site origin', async () => {
+  const { getCartoProxyUrl } = await vite.ssrLoadModule(
+    '/src/components/RunMap/mapRequest.ts'
+  );
+
+  assert.equal(
+    getCartoProxyUrl(
+      'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+      'https://records.example'
+    ),
+    'https://records.example/map-proxy/style/gl/voyager-gl-style/style.json'
+  );
+  assert.equal(
+    getCartoProxyUrl(
+      'https://tiles.basemaps.cartocdn.com/vector/carto.streets/v1/tiles.json?x=1',
+      'https://records.example'
+    ),
+    'https://records.example/map-proxy/tiles/vector/carto.streets/v1/tiles.json?x=1'
+  );
+  assert.equal(
+    getCartoProxyUrl(
+      'https://example.com/style.json',
+      'https://records.example'
+    ),
+    null
+  );
+});

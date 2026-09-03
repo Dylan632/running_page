@@ -51,6 +51,7 @@ import {
   setMapLightVisibility,
   shouldInstallMapboxLanguage,
 } from './mapLights';
+import { transformCartoRequest } from './mapRequest';
 import { hasUsableWebGL } from './mapSupport';
 
 interface IRunMapProps {
@@ -472,6 +473,7 @@ const RunMap = ({
           mapStyle={mapStyle}
           onStyleData={handleStyleData}
           onError={handleMapError}
+          transformRequest={transformCartoRequest}
           ref={mapRefCallback}
           cooperativeGestures={isTouchDevice()}
           mapboxAccessToken={mapboxAccessToken}
