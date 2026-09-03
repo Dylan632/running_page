@@ -93,7 +93,7 @@ class MapRendererBoundary extends React.Component<
 
   componentDidCatch(error: unknown) {
     console.warn(
-      'Map renderer failed; showing the raster map and route fallback instead.',
+      'Map renderer failed; showing the built-in vector map and route fallback instead.',
       error
     );
   }
@@ -156,7 +156,7 @@ const RunMap = ({
     (event: ErrorEvent) => {
       activateRouteFallback(FALLBACK_MAP_REASON);
       console.warn(
-        'Mapbox could not initialize; showing the raster map and route fallback.',
+        'Mapbox could not initialize; showing the built-in vector map and route fallback.',
         event.error
       );
     },
@@ -173,7 +173,7 @@ const RunMap = ({
     const handleStyleError = (event: unknown) => {
       activateRouteFallback(FALLBACK_MAP_REASON);
       console.warn(
-        'Map style failed to load; showing the raster map and route fallback.',
+        'Map style failed to load; showing the built-in vector map and route fallback.',
         event
       );
     };
@@ -183,7 +183,7 @@ const RunMap = ({
       if (tileErrorCount === MAX_TILE_ERRORS) {
         activateRouteFallback(FALLBACK_MAP_REASON);
         console.warn(
-          'Map tiles are not loading; showing the raster map and route fallback.'
+          'Map tiles are not loading; showing the built-in vector map and route fallback.'
         );
       }
     };
@@ -273,7 +273,7 @@ const RunMap = ({
           } catch (error) {
             activateRouteFallback(FALLBACK_MAP_REASON);
             console.warn(
-              'Map style setup failed; showing the raster map and route fallback.',
+              'Map style setup failed; showing the built-in vector map and route fallback.',
               error
             );
           }
@@ -282,7 +282,7 @@ const RunMap = ({
       } catch (error) {
         activateRouteFallback(FALLBACK_MAP_REASON);
         console.warn(
-          'Mapbox setup failed; showing the raster map and route fallback.',
+          'Mapbox setup failed; showing the built-in vector map and route fallback.',
           error
         );
       }
@@ -294,7 +294,13 @@ const RunMap = ({
   const isBigMap = (viewState.zoom ?? 0) <= 3;
 
   useEffect(() => {
-    if (isBigMap && IS_CHINESE && !mapGeoData && !isLoadingMapDataRef.current) {
+    if (
+      !rendererState.useFallback &&
+      isBigMap &&
+      IS_CHINESE &&
+      !mapGeoData &&
+      !isLoadingMapDataRef.current
+    ) {
       isLoadingMapDataRef.current = true;
       geoJsonForMap()
         .then((data) => {
@@ -307,7 +313,7 @@ const RunMap = ({
           isLoadingMapDataRef.current = false;
         });
     }
-  }, [isBigMap, mapGeoData]);
+  }, [isBigMap, mapGeoData, rendererState.useFallback]);
 
   let combinedGeoData = geoData;
   if (isBigMap && IS_CHINESE && mapGeoData) {
