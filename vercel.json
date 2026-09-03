@@ -72,15 +72,5 @@
       ]
     }
   ],
-  "rewrites": [
-    {
-      "source": "/map-proxy/style/:path*",
-      "destination": "https://basemaps.cartocdn.com/:path*"
-    },
-    {
-      "source": "/map-proxy/tiles/:path*",
-      "destination": "https://tiles.basemaps.cartocdn.com/:path*"
-    },
-    { "source": "/(.*)", "destination": "/" }
-  ]
+  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
 }

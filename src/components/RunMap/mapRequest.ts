@@ -6,8 +6,9 @@ const CARTO_PROXY_ROUTES = {
 const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
 
 /**
- * Build a same-origin URL for a Carto resource while preserving its path and
- * query string. Vercel rewrites the two prefixes back to Carto at the edge.
+ * Build a same-origin URL for a Carto resource. The Vercel Function receives
+ * the encoded target and fetches it server-side, so the browser does not need
+ * direct access to Carto.
  */
 export const getCartoProxyUrl = (
   requestUrl: string,
@@ -19,9 +20,8 @@ export const getCartoProxyUrl = (
       CARTO_PROXY_ROUTES[target.hostname as keyof typeof CARTO_PROXY_ROUTES];
     if (target.protocol !== 'https:' || !proxyPath) return null;
 
-    const proxyUrl = new URL(origin);
-    proxyUrl.pathname = `${proxyPath}${target.pathname}`;
-    proxyUrl.search = target.search;
+    const proxyUrl = new URL('/api/map-proxy', origin);
+    proxyUrl.searchParams.set('url', requestUrl);
     return proxyUrl.toString();
   } catch {
     return null;

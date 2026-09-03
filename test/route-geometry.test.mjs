@@ -521,14 +521,14 @@ test('proxies Carto resources through the deployed site origin', async () => {
       'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
       'https://records.example'
     ),
-    'https://records.example/map-proxy/style/gl/voyager-gl-style/style.json'
+    'https://records.example/api/map-proxy?url=https%3A%2F%2Fbasemaps.cartocdn.com%2Fgl%2Fvoyager-gl-style%2Fstyle.json'
   );
   assert.equal(
     getCartoProxyUrl(
       'https://tiles.basemaps.cartocdn.com/vector/carto.streets/v1/tiles.json?x=1',
       'https://records.example'
     ),
-    'https://records.example/map-proxy/tiles/vector/carto.streets/v1/tiles.json?x=1'
+    'https://records.example/api/map-proxy?url=https%3A%2F%2Ftiles.basemaps.cartocdn.com%2Fvector%2Fcarto.streets%2Fv1%2Ftiles.json%3Fx%3D1'
   );
   assert.equal(
     getCartoProxyUrl(
