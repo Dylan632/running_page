@@ -253,6 +253,18 @@ test('browser diagnostics require the final mode marker and surface application 
       ],
     })
   );
+  assert.doesNotThrow(() =>
+    validateBrowserProbe({
+      ...healthy,
+      failedRequests: [
+        {
+          url: 'https://records.example/api/map-proxy',
+          errorText: 'net::ERR_ABORTED',
+          responseStatus: 200,
+        },
+      ],
+    })
+  );
   assert.throws(
     () =>
       validateBrowserProbe({

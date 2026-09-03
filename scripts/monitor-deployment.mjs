@@ -325,9 +325,16 @@ export const validateBrowserProbe = ({
   const failures = [
     ...pageErrors.map((message) => `pageerror: ${message}`),
     ...actionableConsoleErrors.map((message) => `console.error: ${message}`),
-    ...failedRequests.map(
-      ({ url, errorText }) => `request failed: ${url} (${errorText})`
-    ),
+    ...failedRequests
+      .filter(
+        ({ errorText, responseStatus }) =>
+          !(
+            errorText === 'net::ERR_ABORTED' &&
+            responseStatus >= 200 &&
+            responseStatus < 300
+          )
+      )
+      .map(({ url, errorText }) => `request failed: ${url} (${errorText})`),
   ];
   if (failures.length > 0) {
     throw new Error(
@@ -528,13 +535,20 @@ const runBrowserProbe = async ({
         const { text, url } = event.params.entry;
         consoleErrors.push(url ? `${text} [source: ${url}]` : text);
       } else if (event.method === 'Network.requestWillBeSent') {
-        requests.set(event.params.requestId, event.params.request.url);
+        requests.set(event.params.requestId, {
+          url: event.params.request.url,
+          responseStatus: null,
+        });
+      } else if (event.method === 'Network.responseReceived') {
+        const request = requests.get(event.params.requestId);
+        if (request) request.responseStatus = event.params.response.status;
       } else if (event.method === 'Network.loadingFailed') {
-        const requestUrl = requests.get(event.params.requestId);
-        if (requestUrl && new URL(requestUrl).origin === origin) {
+        const request = requests.get(event.params.requestId);
+        if (request && new URL(request.url).origin === origin) {
           failedRequests.push({
-            url: requestUrl,
+            url: request.url,
             errorText: event.params.errorText,
+            responseStatus: request.responseStatus,
           });
         }
       } else if (event.method === 'Fetch.requestPaused') {
