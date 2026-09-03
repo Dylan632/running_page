@@ -192,7 +192,7 @@ test('production workflow deploys an exact SHA after the parent CI workflow succ
   );
   assert.equal(
     (workflow.match(/secrets\.VERCEL_AUTOMATION_BYPASS_SECRET/g) ?? []).length,
-    2
+    3
   );
   assert.doesNotMatch(
     await readFile('scripts/monitor-deployment.mjs', 'utf8'),
