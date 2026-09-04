@@ -1,6 +1,10 @@
 const CARTO_PROXY_ROUTES = {
   'basemaps.cartocdn.com': '/map-proxy/style',
   'tiles.basemaps.cartocdn.com': '/map-proxy/tiles',
+  'tiles-a.basemaps.cartocdn.com': '/map-proxy/tiles',
+  'tiles-b.basemaps.cartocdn.com': '/map-proxy/tiles',
+  'tiles-c.basemaps.cartocdn.com': '/map-proxy/tiles',
+  'tiles-d.basemaps.cartocdn.com': '/map-proxy/tiles',
 } as const;
 
 const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);

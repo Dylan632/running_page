@@ -1,6 +1,10 @@
 const CARTO_HOSTNAMES = new Set([
   'basemaps.cartocdn.com',
   'tiles.basemaps.cartocdn.com',
+  'tiles-a.basemaps.cartocdn.com',
+  'tiles-b.basemaps.cartocdn.com',
+  'tiles-c.basemaps.cartocdn.com',
+  'tiles-d.basemaps.cartocdn.com',
 ]);
 
 const getTargetUrl = (value) => {

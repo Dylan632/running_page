@@ -530,6 +530,13 @@ test('proxies Carto resources through the deployed site origin', async () => {
     ),
     'https://records.example/api/map-proxy?url=https%3A%2F%2Ftiles.basemaps.cartocdn.com%2Fvector%2Fcarto.streets%2Fv1%2Ftiles.json%3Fx%3D1'
   );
+  for (const hostname of ['tiles-a', 'tiles-b', 'tiles-c', 'tiles-d']) {
+    const tileUrl = `https://${hostname}.basemaps.cartocdn.com/vectortiles/carto.streets/v1/4/6/7.mvt`;
+    assert.equal(
+      getCartoProxyUrl(tileUrl, 'https://records.example'),
+      `https://records.example/api/map-proxy?url=${encodeURIComponent(tileUrl)}`
+    );
+  }
   assert.equal(
     getCartoProxyUrl(
       'https://example.com/style.json',
