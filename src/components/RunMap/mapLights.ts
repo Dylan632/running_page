@@ -6,6 +6,7 @@ export const shouldInstallMapboxLanguage = (
 ): boolean => isChinese && mapTileVendor === 'mapbox';
 
 interface MapLightTarget {
+  isStyleLoaded?: () => boolean;
   getStyle: () => {
     layers?: Array<{ id: string }>;
   };
@@ -21,6 +22,10 @@ export const setMapLightVisibility = (
   map: MapLightTarget,
   lights: boolean
 ): void => {
+  // A Map ref is available before its remote style finishes loading. Calling
+  // getStyle() during that window throws and used to force the route fallback.
+  if (map.isStyleLoaded && !map.isStyleLoaded()) return;
+
   const visibility = lights ? 'visible' : 'none';
 
   for (const { id } of map.getStyle().layers ?? []) {

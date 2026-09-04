@@ -500,6 +500,23 @@ test('map lights only change layer visibility without replacing map style', asyn
   ]);
 });
 
+test('map lights wait for the remote style before reading its layers', async () => {
+  const { setMapLightVisibility } = await vite.ssrLoadModule(
+    '/src/components/RunMap/mapLights.ts'
+  );
+  const map = {
+    isStyleLoaded: () => false,
+    getStyle: () => {
+      throw new Error('Style is not done loading');
+    },
+    setLayoutProperty: () => {
+      throw new Error('layers must not be changed before the style is ready');
+    },
+  };
+
+  assert.doesNotThrow(() => setMapLightVisibility(map, false));
+});
+
 test('language control is installed only for compatible Mapbox styles', async () => {
   const { shouldInstallMapboxLanguage } = await vite.ssrLoadModule(
     '/src/components/RunMap/mapLights.ts'

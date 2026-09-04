@@ -278,7 +278,6 @@ const RunMap = ({
             );
           }
         });
-        setMapLightVisibility(map, lightsRef.current);
       } catch (error) {
         activateRouteFallback(FALLBACK_MAP_REASON);
         console.warn(

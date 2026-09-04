@@ -271,14 +271,7 @@ const isAllowedBrowserNoise = (message) => {
     return true;
   }
 
-  return (
-    /https:\/\/tiles\.basemaps\.cartocdn\.com\/fonts\/[^\s'"\]]+\.pbf/i.test(
-      message
-    ) &&
-    /(?:blocked by CORS policy|No 'Access-Control-Allow-Origin' header|Failed to load resource:\s*net::ERR_FAILED)/i.test(
-      message
-    )
-  );
+  return false;
 };
 
 export const validateBrowserProbe = ({
@@ -315,8 +308,8 @@ export const validateBrowserProbe = ({
   if (state.hasFatalUi) {
     throw new Error(`${mode} browser rendered the fatal error boundary`);
   }
-  if (!['mapbox', 'fallback'].includes(state.mapRenderer)) {
-    throw new Error(`${mode} browser did not expose a map renderer`);
+  if (state.mapRenderer !== 'mapbox') {
+    throw new Error(`${mode} browser did not render the interactive map`);
   }
 
   const actionableConsoleErrors = consoleErrors.filter(

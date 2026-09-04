@@ -244,14 +244,16 @@ test('browser diagnostics require the final mode marker and surface application 
       consoleErrors: ['WebGL: software fallback is deprecated'],
     })
   );
-  assert.doesNotThrow(() =>
-    validateBrowserProbe({
-      ...healthy,
-      consoleErrors: [
-        "Access to fetch at 'https://tiles.basemaps.cartocdn.com/fonts/HanWangHeiLight%20Regular/0-255.pbf' from origin 'https://records.example' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
-        'Failed to load resource: net::ERR_FAILED [source: https://tiles.basemaps.cartocdn.com/fonts/HanWangHeiLight%20Regular/0-255.pbf]',
-      ],
-    })
+  assert.throws(
+    () =>
+      validateBrowserProbe({
+        ...healthy,
+        consoleErrors: [
+          "Access to fetch at 'https://tiles.basemaps.cartocdn.com/fonts/HanWangHeiLight%20Regular/0-255.pbf' from origin 'https://records.example' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+          'Failed to load resource: net::ERR_FAILED [source: https://tiles.basemaps.cartocdn.com/fonts/HanWangHeiLight%20Regular/0-255.pbf]',
+        ],
+      }),
+    /console\.error/
   );
   assert.doesNotThrow(() =>
     validateBrowserProbe({
@@ -327,6 +329,14 @@ test('browser diagnostics require the final mode marker and surface application 
         state: { ...healthy.state, markerMode: 'running' },
       }),
     /mode-ready/
+  );
+  assert.throws(
+    () =>
+      validateBrowserProbe({
+        ...healthy,
+        state: { ...healthy.state, mapRenderer: 'fallback' },
+      }),
+    /interactive map/
   );
 });
 
