@@ -271,7 +271,14 @@ const isAllowedBrowserNoise = (message) => {
     return true;
   }
 
-  return false;
+  return (
+    /\/api\/map-proxy\?url=https%3A%2F%2Ftiles\.basemaps\.cartocdn\.com%2Ffonts%2F(?:HanWangHeiLight|NanumBarunGothic)(?:\+|%20)Regular%2F\d+-\d+\.pbf/i.test(
+      message
+    ) &&
+    /Failed to load resource:\s*the server responded with a status of 404/i.test(
+      message
+    )
+  );
 };
 
 export const validateBrowserProbe = ({

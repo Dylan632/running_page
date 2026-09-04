@@ -52,7 +52,7 @@ import {
   shouldInstallMapboxLanguage,
 } from './mapLights';
 import { transformCartoRequest } from './mapRequest';
-import { hasUsableWebGL } from './mapSupport';
+import { hasUsableWebGL, shouldFallbackForMapError } from './mapSupport';
 
 interface IRunMapProps {
   title: string;
@@ -114,6 +114,7 @@ const RunMap = ({
 }: IRunMapProps) => {
   const { countries, provinces } = useActivities();
   const mapRef = useRef<MapRef>(null);
+  const mapStyleIsLoadedRef = useRef(false);
   const [lights, setLights] = useState(PRIVACY_MODE ? false : LIGHTS_ON);
   const lightsRef = useRef(lights);
   const [mapGeoData, setMapGeoData] =
@@ -154,9 +155,14 @@ const RunMap = ({
 
   const handleMapError = useCallback(
     (event: ErrorEvent) => {
-      activateRouteFallback(FALLBACK_MAP_REASON);
+      const fallbackRequired = shouldFallbackForMapError(
+        mapStyleIsLoadedRef.current
+      );
+      if (fallbackRequired) activateRouteFallback(FALLBACK_MAP_REASON);
       console.warn(
-        'Mapbox could not initialize; showing the built-in vector map and route fallback.',
+        fallbackRequired
+          ? 'Mapbox could not initialize; showing the built-in vector map and route fallback.'
+          : 'Mapbox resource failed after the style loaded; keeping the interactive map active.',
         event.error
       );
     },
@@ -171,9 +177,14 @@ const RunMap = ({
     const MAX_TILE_ERRORS = 10;
 
     const handleStyleError = (event: unknown) => {
-      activateRouteFallback(FALLBACK_MAP_REASON);
+      const fallbackRequired = shouldFallbackForMapError(
+        mapStyleIsLoadedRef.current
+      );
+      if (fallbackRequired) activateRouteFallback(FALLBACK_MAP_REASON);
       console.warn(
-        'Map style failed to load; showing the built-in vector map and route fallback.',
+        fallbackRequired
+          ? 'Map style failed to load; showing the built-in vector map and route fallback.'
+          : 'Map resource failed after the style loaded; keeping the interactive map active.',
         event
       );
     };
@@ -231,7 +242,9 @@ const RunMap = ({
   const handleStyleData = useCallback((_event: MapStyleDataEvent) => {
     if (mapRef.current) {
       try {
-        setMapLightVisibility(mapRef.current.getMap(), lightsRef.current);
+        const map = mapRef.current.getMap();
+        if (map.isStyleLoaded()) mapStyleIsLoadedRef.current = true;
+        setMapLightVisibility(map, lightsRef.current);
       } catch (error) {
         console.warn('Error restoring map light visibility:', error);
       }
@@ -245,6 +258,13 @@ const RunMap = ({
 
       try {
         const map = ref.getMap();
+        mapStyleIsLoadedRef.current = map.isStyleLoaded();
+        map.on('styledataloading', () => {
+          mapStyleIsLoadedRef.current = false;
+        });
+        map.on('style.load', () => {
+          mapStyleIsLoadedRef.current = true;
+        });
         if (shouldInstallMapboxLanguage(MAP_TILE_VENDOR, IS_CHINESE)) {
           map.addControl(new MapboxLanguage({ defaultLanguage: 'zh-Hans' }));
         }

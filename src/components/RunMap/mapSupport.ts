@@ -35,3 +35,11 @@ export const hasUsableWebGL = (): boolean => {
     return false;
   }
 };
+
+/**
+ * A loaded style can still emit recoverable errors for optional resources,
+ * such as a missing label glyph. Those errors must not replace a working map
+ * with the static route fallback.
+ */
+export const shouldFallbackForMapError = (styleIsLoaded: boolean): boolean =>
+  !styleIsLoaded;

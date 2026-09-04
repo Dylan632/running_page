@@ -137,9 +137,8 @@ test('calculates bounds from every route geometry', async () => {
 });
 
 test('detects WebGL failures before the map library starts', async () => {
-  const { canCreateWebGLContext } = await vite.ssrLoadModule(
-    '/src/components/RunMap/mapSupport.ts'
-  );
+  const { canCreateWebGLContext, shouldFallbackForMapError } =
+    await vite.ssrLoadModule('/src/components/RunMap/mapSupport.ts');
 
   assert.equal(
     canCreateWebGLContext({ getContext: () => null }),
@@ -162,6 +161,12 @@ test('detects WebGL failures before the map library starts', async () => {
     }),
     false,
     'a browser that throws while creating WebGL must use the route fallback'
+  );
+  assert.equal(shouldFallbackForMapError(false), true);
+  assert.equal(
+    shouldFallbackForMapError(true),
+    false,
+    'optional resource errors after style load must not hide the interactive map'
   );
 });
 
