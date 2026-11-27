@@ -73,16 +73,6 @@ export const getChineseLocationInfoMessages = (
   mode: ActivityMode
 ): readonly [string, string] => {
   switch (mode) {
-    case 'cycling':
-      return [
-        '骑过了一些地方，希望随着时间推移，点亮的地方越来越多',
-        '不要停下来，不要停下继续骑行的车轮',
-      ];
-    case 'hiking':
-      return [
-        '徒步走过了一些地方，希望随着时间推移，点亮的地方越来越多',
-        '不要停下来，继续走向更远的风景',
-      ];
     case 'running':
       return [
         '跑过了一些地方，希望随着时间推移，点亮的地方越来越多',

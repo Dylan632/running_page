@@ -22,24 +22,6 @@ const PRESENTATIONS: Record<ActivityMode, ActivityPresentation> = {
     longDistanceKm: 20,
     performanceKind: 'pace',
   },
-  cycling: {
-    icon: '🚴',
-    labelZh: '骑行',
-    labelEn: 'Ride',
-    primaryColor: '#3b82f6',
-    highlightColor: '#8b5cf6',
-    longDistanceKm: 50,
-    performanceKind: 'speed',
-  },
-  hiking: {
-    icon: '🥾',
-    labelZh: '徒步',
-    labelEn: 'Hike',
-    primaryColor: '#22c55e',
-    highlightColor: '#15803d',
-    longDistanceKm: 10,
-    performanceKind: 'speed',
-  },
 };
 
 const formatPace = (speedMs: number): string => {
@@ -98,10 +80,8 @@ export const formatActivityPerformance = (
 };
 
 export const getDistanceFilterOptions = (
-  mode: ActivityMode
+  _mode: ActivityMode
 ): readonly number[] => {
-  if (mode === 'cycling') return [20, 50, 100];
-  if (mode === 'hiking') return [5, 10, 20];
   return [10, 20, 40];
 };
 
@@ -120,9 +100,6 @@ export const getActivityTypeLabel = (
   type: string,
   locale: DashboardLocale
 ): string => {
-  if (mode === 'cycling' && type === 'VirtualRide') {
-    return locale === 'zh' ? '虚拟骑行' : 'Virtual Ride';
-  }
   const presentation = getActivityPresentation(mode);
   return locale === 'zh' ? presentation.labelZh : presentation.labelEn;
 };

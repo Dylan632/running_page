@@ -74,15 +74,9 @@ test('all activity syncs are serialized, last-known-good guarded, and surface pu
   assert.match(workflow, /actions: write/);
   assert.match(workflow, /contents: write/);
   assert.match(workflow, /\.activity-last-known-good\/running/);
-  assert.match(workflow, /\.activity-last-known-good\/cycling/);
-  assert.match(workflow, /\.activity-last-known-good\/hiking/);
-  assert.match(workflow, /--sync-types hiking/);
-  assert.match(workflow, /--mode hiking/);
+  assert.match(workflow, /--sync-types running/);
+  assert.match(workflow, /--mode running/);
   assert.match(workflow, /^\s{6}- run_page\/generator\/\*\*$/m);
-  assert.match(
-    workflow,
-    /if \[ -f public\/data\/hiking\/metadata\.json \]; then/
-  );
   assert.match(workflow, /activity_snapshot\.py validate/);
   assert.match(workflow, /git diff --cached --quiet/);
   assert.match(workflow, /\n\s+git push\s*\n/);

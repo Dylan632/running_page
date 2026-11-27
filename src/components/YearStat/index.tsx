@@ -58,13 +58,8 @@ const YearStat = ({
   const averagePace = summary.averageMetersPerSecond
     ? formatPace(summary.averageMetersPerSecond, mode)
     : '0';
-  const averageSpeed = (
-    summary.averageMetersPerSecond *
-    (3600 / M_TO_DIST)
-  ).toFixed(1);
-  const averageMetricValue = mode === 'cycling' ? averageSpeed : averagePace;
-  const averageMetricDescription =
-    mode === 'cycling' ? ` ${DIST_UNIT}/h Avg Speed` : ' Avg Pace';
+  const averageMetricValue = averagePace;
+  const averageMetricDescription = ' Avg Pace';
   const yearLabel = year === 'Total' ? '全部年份' : `${year} 年`;
 
   return (

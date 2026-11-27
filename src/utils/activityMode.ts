@@ -11,12 +11,6 @@ interface ActivityFilterCandidate {
   type: string;
 }
 
-export const isCyclingActivity = (activity: ActivityFilterCandidate): boolean =>
-  isActivityForMode(activity, 'cycling');
-
-export const isHikingActivity = (activity: ActivityFilterCandidate): boolean =>
-  isActivityForMode(activity, 'hiking');
-
 export const isSelectedActivity = (
   activity: ActivityFilterCandidate,
   mode: ActivityMode,

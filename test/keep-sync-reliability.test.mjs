@@ -73,7 +73,7 @@ else:
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
 
-test('Hiking sync keeps mountaineering records and skips walking records early', () => {
+test('Running sync keeps outdoorRunning records and skips indoorRunning records early', () => {
   const result = runPython(`
 import ast
 
@@ -114,13 +114,10 @@ exec(
 )
 matches = namespace["matches_sync_data_type"]
 
-assert matches({"dataType": "mountaineering"}, "hiking")
-assert not matches({"dataType": "indoorWalking"}, "hiking")
-assert not matches({"dataType": "outdoorWalking"}, "hiking")
 assert matches({"dataType": "outdoorRunning"}, "running")
 assert not matches({"dataType": "indoorRunning"}, "running")
-assert matches({}, "hiking")
-assert ast.literal_eval(strava_mapping.value)["indoorWalking"] == "Walk"
+assert matches({}, "running")
+assert ast.literal_eval(strava_mapping.value)["outdoorRunning"] == "Run"
   `);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);

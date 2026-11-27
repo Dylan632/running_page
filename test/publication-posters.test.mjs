@@ -23,10 +23,10 @@ after(async () => {
 
 const activity = (overrides = {}) => ({
   run_id: 1,
-  name: 'Morning ride',
+  name: 'Morning run',
   distance: 24_000,
   moving_time: '1:00:00',
-  type: 'Ride',
+  type: 'Run',
   subtype: 'outdoor',
   start_date: '2026-07-25 00:00:00',
   start_date_local: '2026-07-25 08:00:00',
@@ -46,7 +46,7 @@ test('runtime and publication consume one shared activity profile source', async
     '/src/modules/activity/profiles.ts'
   );
 
-  for (const mode of ['running', 'cycling', 'hiking']) {
+  for (const mode of ['running']) {
     const runtime = getActivityProfile(mode);
     const shared = rawProfiles.profiles[mode];
 
@@ -74,7 +74,7 @@ test('publication validates a complete candidate before atomically replacing a m
   const args = [
     'scripts/publish-activity-data.mjs',
     '--mode',
-    'cycling',
+    'running',
     '--input',
     inputPath,
     '--output',
@@ -91,7 +91,7 @@ test('publication validates a complete candidate before atomically replacing a m
     });
     assert.equal(first.status, 0, first.stderr || first.stdout);
 
-    const modeDir = join(outputPath, 'cycling');
+    const modeDir = join(outputPath, 'running');
     const metadataPath = join(modeDir, 'metadata.json');
     const manifestPath = join(modeDir, 'manifest.json');
     const beforeMetadata = await readFile(metadataPath, 'utf8');
@@ -130,7 +130,7 @@ test('publication rejects missing, invalid, or non-UTC publication timestamps', 
   const baseArgs = [
     'scripts/publish-activity-data.mjs',
     '--mode',
-    'cycling',
+    'running',
     '--input',
     inputPath,
     '--output',
@@ -155,72 +155,6 @@ test('publication rejects missing, invalid, or non-UTC publication timestamps', 
       assert.notEqual(result.status, 0);
       assert.match(result.stderr, /published-at/i);
     }
-  } finally {
-    await rm(fixtureDir, { recursive: true, force: true });
-  }
-});
-
-test('hiking publication includes only Hiking activities strictly over 1 km', async () => {
-  const fixtureDir = await mkdtemp(join(tmpdir(), 'publication-hiking-'));
-  const inputPath = join(fixtureDir, 'activities.json');
-  const outputPath = join(fixtureDir, 'data');
-
-  try {
-    await writeFile(
-      inputPath,
-      JSON.stringify([
-        activity({
-          run_id: 1,
-          name: 'Exactly one kilometre',
-          type: 'Hiking',
-          subtype: 'Hiking',
-          distance: 1_000,
-        }),
-        activity({
-          run_id: 2,
-          name: 'Published hike',
-          type: 'Hiking',
-          subtype: 'Hiking',
-          distance: 1_001,
-        }),
-        activity({
-          run_id: 3,
-          name: 'Long walk',
-          type: 'Walk',
-          subtype: 'Walking',
-          distance: 5_000,
-        }),
-      ])
-    );
-
-    const result = spawnSync(
-      process.execPath,
-      [
-        'scripts/publish-activity-data.mjs',
-        '--mode',
-        'hiking',
-        '--input',
-        inputPath,
-        '--output',
-        outputPath,
-        '--published-at',
-        '2026-07-27T04:00:00.000Z',
-      ],
-      { cwd: process.cwd(), encoding: 'utf8' }
-    );
-    assert.equal(result.status, 0, result.stderr || result.stdout);
-
-    const metadata = JSON.parse(
-      await readFile(join(outputPath, 'hiking', 'metadata.json'), 'utf8')
-    );
-    assert.deepEqual(
-      metadata.map(({ run_id, type, distance }) => ({
-        run_id,
-        type,
-        distance,
-      })),
-      [{ run_id: '2', type: 'Hiking', distance: 1_001 }]
-    );
   } finally {
     await rm(fixtureDir, { recursive: true, force: true });
   }
@@ -321,7 +255,7 @@ test('publication preserves activity ids beyond the JavaScript safe integer rang
       [
         'scripts/publish-activity-data.mjs',
         '--mode',
-        'cycling',
+        'running',
         '--input',
         inputPath,
         '--output',
@@ -337,10 +271,10 @@ test('publication preserves activity ids beyond the JavaScript safe integer rang
     assert.equal(result.status, 0, result.stderr || result.stdout);
 
     const metadata = JSON.parse(
-      await readFile(join(outputPath, 'cycling', 'metadata.json'), 'utf8')
+      await readFile(join(outputPath, 'running', 'metadata.json'), 'utf8')
     );
     const routes = JSON.parse(
-      await readFile(join(outputPath, 'cycling', 'routes', '2026.json'), 'utf8')
+      await readFile(join(outputPath, 'running', 'routes', '2026.json'), 'utf8')
     );
     assert.equal(metadata[0].run_id, exactRunId);
     assert.equal(metadata[0].name, 'Literal "run_id":123, marker');
@@ -358,20 +292,10 @@ test('poster assets are selected by mode and remain lazy', async () => {
   );
 
   const running = getPosterAssets('running');
-  const cycling = getPosterAssets('cycling');
-  const hiking = getPosterAssets('hiking');
 
   assert.ok(running.totalStat['./running/github.svg']);
   assert.equal(
     Object.keys(running.all).every((path) => path.startsWith('./running/')),
-    true
-  );
-  assert.equal(
-    Object.keys(cycling.all).every((path) => path.startsWith('./cycling/')),
-    true
-  );
-  assert.equal(
-    Object.keys(hiking.all).every((path) => path.startsWith('./hiking/')),
     true
   );
   assert.equal(
@@ -460,13 +384,13 @@ test('artifact verification rejects a tampered committed data snapshot', async (
       mkdir(assetsOutput, { recursive: true }),
     ]);
     await Promise.all([
-      cp('public/data/cycling', join(dataOutput, 'cycling'), {
+      cp('public/data/running', join(dataOutput, 'running'), {
         recursive: true,
       }),
-      cp('assets/cycling', join(assetsOutput, 'cycling'), { recursive: true }),
+      cp('assets/running', join(assetsOutput, 'running'), { recursive: true }),
     ]);
 
-    const metadataPath = join(dataOutput, 'cycling', 'metadata.json');
+    const metadataPath = join(dataOutput, 'running', 'metadata.json');
     const metadata = JSON.parse(await readFile(metadataPath, 'utf8'));
     metadata[0].name = 'tampered';
     await writeFile(metadataPath, `${JSON.stringify(metadata)}\n`);
@@ -477,7 +401,7 @@ test('artifact verification rejects a tampered committed data snapshot', async (
         'scripts/generate-activity-artifacts.mjs',
         'verify',
         '--mode',
-        'cycling',
+        'running',
         '--data-output',
         dataOutput,
         '--assets-output',
@@ -487,7 +411,7 @@ test('artifact verification rejects a tampered committed data snapshot', async (
     );
 
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /invalid cycling publication metadata/i);
+    assert.match(result.stderr, /invalid running publication metadata/i);
   } finally {
     await rm(fixtureDir, { recursive: true, force: true });
   }
@@ -504,13 +428,13 @@ test('artifact verification rejects checksummed activities outside the profile p
       mkdir(assetsOutput, { recursive: true }),
     ]);
     await Promise.all([
-      cp('public/data/cycling', join(dataOutput, 'cycling'), {
+      cp('public/data/running', join(dataOutput, 'running'), {
         recursive: true,
       }),
-      cp('assets/cycling', join(assetsOutput, 'cycling'), { recursive: true }),
+      cp('assets/running', join(assetsOutput, 'running'), { recursive: true }),
     ]);
 
-    const modeDirectory = join(dataOutput, 'cycling');
+    const modeDirectory = join(dataOutput, 'running');
     const metadataPath = join(modeDirectory, 'metadata.json');
     const manifestPath = join(modeDirectory, 'manifest.json');
     const metadata = JSON.parse(await readFile(metadataPath, 'utf8'));
@@ -539,7 +463,7 @@ test('artifact verification rejects checksummed activities outside the profile p
         'scripts/generate-activity-artifacts.mjs',
         'verify',
         '--mode',
-        'cycling',
+        'running',
         '--data-output',
         dataOutput,
         '--assets-output',
@@ -551,7 +475,7 @@ test('artifact verification rejects checksummed activities outside the profile p
     assert.notEqual(result.status, 0);
     assert.match(
       result.stderr,
-      /cycling metadata violates publication policy/i
+      /running metadata violates publication policy/i
     );
   } finally {
     await rm(fixtureDir, { recursive: true, force: true });

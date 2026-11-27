@@ -34,8 +34,8 @@ const RunTable = ({
   runIndex,
   setRunIndex,
 }: IRunTableProperties) => {
-  const { mode, profile } = useActivityMode();
-  const speedOrPaceKey = mode === 'cycling' ? `Speed(${DIST_UNIT}/h)` : 'Pace';
+  const { profile } = useActivityMode();
+  const speedOrPaceKey = 'Pace';
   const [sortState, setSortState] = useState<SortState | null>(null);
 
   const sortKeys = useMemo(() => {

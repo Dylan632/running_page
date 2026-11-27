@@ -198,12 +198,10 @@ const formatTime = (seconds: number): string => {
   return `${h}h ${m}m ${s}s`;
 };
 
-const formatSpeedMetric = (speed: number, mode: ActivityMode): string => {
+const formatSpeedMetric = (speed: number, _mode: ActivityMode): string => {
   if (!Number.isFinite(speed) || speed <= 0) {
-    return mode === 'cycling' ? `0.0 ${DIST_UNIT}/h` : `0:00 min/${DIST_UNIT}`;
+    return `0:00 min/${DIST_UNIT}`;
   }
-
-  if (mode === 'cycling') return `${speed.toFixed(1)} ${DIST_UNIT}/h`;
 
   const pace = 60 / speed;
   const totalSeconds = Math.round(pace * 60);

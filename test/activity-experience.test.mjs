@@ -85,7 +85,7 @@ test('activity switch stays on the same origin and preserves route context', asy
   const html = renderToStaticMarkup(
     React.createElement(
       MemoryRouter,
-      { initialEntries: ['/cycling?year=2025&view=map#run_42'] },
+      { initialEntries: ['/running?year=2025&view=map#run_42'] },
       React.createElement(
         Routes,
         null,
@@ -100,7 +100,7 @@ test('activity switch stays on the same origin and preserves route context', asy
       )
     )
   );
-  const dom = new JSDOM(html, { url: 'https://records.example/cycling' });
+  const dom = new JSDOM(html, { url: 'https://records.example/running' });
 
   try {
     const switchNav = dom.window.document.querySelector(
@@ -110,21 +110,13 @@ test('activity switch stays on the same origin and preserves route context', asy
     const running = links.find(
       (link) => link.textContent?.trim() === 'Running'
     );
-    const cycling = links.find(
-      (link) => link.textContent?.trim() === 'Cycling'
-    );
 
     assert.ok(switchNav);
     assert.equal(
       running?.getAttribute('href'),
       '/running?year=2025&view=map#run_42'
     );
-    assert.equal(
-      cycling?.getAttribute('href'),
-      '/cycling?year=2025&view=map#run_42'
-    );
-    assert.equal(running?.hasAttribute('aria-current'), false);
-    assert.equal(cycling?.getAttribute('aria-current'), 'page');
+    assert.equal(running?.getAttribute('aria-current'), 'page');
     assert.equal(
       links.every((link) => !/^https?:\/\//.test(link.getAttribute('href'))),
       true
@@ -144,16 +136,16 @@ test('activity metrics follow the runtime route instead of a build-time mode', a
   );
   const activity = {
     run_id: 7,
-    name: 'Morning ride',
-    distance: 24_000,
-    moving_time: '01:00:00',
-    type: 'Ride',
+    name: 'Morning run',
+    distance: 5_000,
+    moving_time: '00:30:00',
+    type: 'Run',
     start_date_local: '2026-07-25 08:00:00',
     location_country: 'China',
     summary_polyline: null,
     average_heartrate: 130,
-    average_speed: 6.6667,
-    elevation_gain: 120,
+    average_speed: 2.78,
+    elevation_gain: 40,
   };
 
   const renderForMode = (mode) =>
@@ -181,23 +173,13 @@ test('activity metrics follow the runtime route instead of a build-time mode', a
       )
     );
 
-  const cycling = new JSDOM(renderForMode('cycling'));
   const running = new JSDOM(renderForMode('running'));
   try {
-    assert.match(
-      cycling.window.document.querySelector('table').textContent,
-      /Speed/
-    );
-    assert.match(
-      cycling.window.document.querySelector('tbody').textContent,
-      /24\.0/
-    );
     assert.match(
       running.window.document.querySelector('table').textContent,
       /Pace/
     );
   } finally {
-    cycling.window.close();
     running.window.close();
   }
 });
@@ -209,34 +191,34 @@ test('publication CLI creates deterministic namespaced metadata and yearly route
   const input = [
     {
       run_id: 1,
-      name: 'Morning ride',
-      distance: 24000,
-      moving_time: '1:00:00',
-      type: 'Ride',
-      subtype: 'cycling',
+      name: 'Morning run',
+      distance: 5000,
+      moving_time: '0:30:00',
+      type: 'Run',
+      subtype: 'run',
       start_date: '2025-06-01 00:00:00',
       start_date_local: '2025-06-01 08:00:00',
       location_country: 'China',
       summary_polyline: 'encoded-2025',
       average_heartrate: 130,
-      average_speed: 6.6,
-      elevation_gain: 120,
+      average_speed: 2.8,
+      elevation_gain: 40,
       streak: 1,
     },
     {
       run_id: 2,
-      name: 'Long ride',
-      distance: 52000,
-      moving_time: '2:00:00',
-      type: 'cycling',
-      subtype: 'cycling',
+      name: 'Long run',
+      distance: 12000,
+      moving_time: '1:00:00',
+      type: 'running',
+      subtype: 'run',
       start_date: '2026-07-01 00:00:00',
       start_date_local: '2026-07-01 08:00:00',
       location_country: 'China',
       summary_polyline: 'encoded-2026',
       average_heartrate: null,
-      average_speed: 7.2,
-      elevation_gain: 300,
+      average_speed: 3.2,
+      elevation_gain: 120,
       streak: 2,
     },
   ];
@@ -246,7 +228,7 @@ test('publication CLI creates deterministic namespaced metadata and yearly route
     const args = [
       'scripts/publish-activity-data.mjs',
       '--mode',
-      'cycling',
+      'running',
       '--input',
       inputPath,
       '--output',
@@ -260,10 +242,10 @@ test('publication CLI creates deterministic namespaced metadata and yearly route
     });
     assert.equal(first.status, 0, first.stderr || first.stdout);
 
-    const metadataPath = join(outputPath, 'cycling', 'metadata.json');
-    const route2025Path = join(outputPath, 'cycling', 'routes', '2025.json');
-    const route2026Path = join(outputPath, 'cycling', 'routes', '2026.json');
-    const manifestPath = join(outputPath, 'cycling', 'manifest.json');
+    const metadataPath = join(outputPath, 'running', 'metadata.json');
+    const route2025Path = join(outputPath, 'running', 'routes', '2025.json');
+    const route2026Path = join(outputPath, 'running', 'routes', '2026.json');
+    const manifestPath = join(outputPath, 'running', 'manifest.json');
     const [metadataText, route2025Text, route2026Text, manifestText] =
       await Promise.all([
         readFile(metadataPath, 'utf8'),
@@ -294,7 +276,7 @@ test('publication CLI creates deterministic namespaced metadata and yearly route
     assert.deepEqual(manifest.years, ['2026', '2025']);
     assert.equal(manifest.latestYear, '2026');
     assert.equal(manifest.activityCount, 2);
-    assert.equal(manifest.mode, 'cycling');
+    assert.equal(manifest.mode, 'running');
     assert.match(manifest.checksum, /^[a-f0-9]{64}$/);
 
     const second = spawnSync(process.execPath, args, {
@@ -351,23 +333,6 @@ test('activity repository fetches only the selected mode and caches yearly route
     return { manifestPath, metadataPath, routePath };
   };
 
-  const cyclingPaths = addModeResponses(
-    'cycling',
-    [
-      {
-        run_id: '9223370455437879701',
-        type: 'Ride',
-        start_date_local: '2026-07-25 08:00:00',
-        distance: 24000,
-      },
-    ],
-    [
-      {
-        run_id: '9223370455437879701',
-        summary_polyline: 'cycling-route',
-      },
-    ]
-  );
   const runningPaths = addModeResponses(
     'running',
     [
@@ -392,22 +357,17 @@ test('activity repository fetches only the selected mode and caches yearly route
     fetcher,
   });
 
-  const first = await repository.loadActivities('cycling', ['2026']);
-  const second = await repository.loadActivities('cycling', ['2026']);
+  const first = await repository.loadActivities('running', ['2026']);
+  const second = await repository.loadActivities('running', ['2026']);
 
-  assert.equal(first[0].summary_polyline, 'cycling-route');
-  assert.equal(first[0].run_id, '9223370455437879701');
+  assert.equal(first[0].summary_polyline, 'running-route');
+  assert.equal(first[0].run_id, '8');
   assert.deepEqual(second, first);
-  assert.deepEqual(calls, Object.values(cyclingPaths));
+  assert.deepEqual(calls, Object.values(runningPaths));
   assert.equal(
-    calls.some((url) => url.includes('/running/')),
+    calls.some((url) => url.includes('/cycling/')),
     false
   );
-
-  const running = await repository.loadActivities('running', ['2026']);
-  assert.equal(running[0].summary_polyline, 'running-route');
-  assert.equal(running[0].run_id, '8');
-  assert.deepEqual(calls.slice(3), Object.values(runningPaths));
 });
 
 test('activity repository rejects a payload that does not match its manifest checksum', async () => {
@@ -521,7 +481,7 @@ test('resource budget CLI checks route-critical chunks and initial activity data
     await Promise.all([
       mkdir(assetsDir, { recursive: true }),
       mkdir(manifestDir, { recursive: true }),
-      ...['running', 'cycling', 'hiking'].flatMap((mode) => [
+      ...['running'].flatMap((mode) => [
         mkdir(join(dataDir, mode, 'routes'), { recursive: true }),
       ]),
     ]);
@@ -534,7 +494,7 @@ test('resource budget CLI checks route-critical chunks and initial activity data
       writeFile(join(assetsDir, 'dashboard.js'), 'dashboard'),
       writeFile(join(assetsDir, 'route-map.js'), 'route map loader'),
       writeFile(join(assetsDir, 'mapbox.js'), randomBytes(400_000)),
-      ...['running', 'cycling', 'hiking'].flatMap((mode) => [
+      ...['running'].flatMap((mode) => [
         writeFile(
           join(dataDir, mode, 'manifest.json'),
           JSON.stringify({ latestYear: '2026' })
@@ -572,17 +532,6 @@ test('resource budget CLI checks route-critical chunks and initial activity data
     });
     assert.notEqual(failing.status, 0);
     assert.match(failing.stderr, /running.*30000/i);
-
-    await Promise.all([
-      writeFile(join(dataDir, 'running', 'metadata.json'), '[]'),
-      writeFile(join(dataDir, 'hiking', 'metadata.json'), randomBytes(40_000)),
-    ]);
-    const hikingFailing = spawnSync(process.execPath, args, {
-      cwd: process.cwd(),
-      encoding: 'utf8',
-    });
-    assert.notEqual(hikingFailing.status, 0);
-    assert.match(hikingFailing.stderr, /hiking.*30000/i);
   } finally {
     await rm(fixtureDir, { recursive: true, force: true });
   }

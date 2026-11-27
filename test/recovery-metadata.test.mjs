@@ -46,7 +46,7 @@ test('an empty activity snapshot renders a visible terminal state', async () => 
     '/src/components/RunTable/index.tsx'
   );
   const html = await renderInActivityRoute(
-    'cycling',
+    'running',
     React.createElement(RunTable, {
       runs: [],
       locateActivity: () => {},
@@ -61,7 +61,7 @@ test('an empty activity snapshot renders a visible terminal state', async () => 
       'tbody [data-empty-state]'
     );
     assert.ok(emptyState);
-    assert.match(emptyState.textContent ?? '', /暂无骑行记录/);
+    assert.match(emptyState.textContent ?? '', /暂无跑步记录/);
   } finally {
     dom.window.close();
   }
@@ -76,24 +76,9 @@ test('each activity route exposes one absolute canonical URL', async () => {
   );
 
   const running = createSiteMetadata(getActivityProfile('running'));
-  const cycling = createSiteMetadata(getActivityProfile('cycling'));
-  const hiking = createSiteMetadata(getActivityProfile('hiking'));
 
   assert.equal(
     running.canonicalUrl,
     'https://running-page-zeta-lake.vercel.app/running'
-  );
-  assert.equal(
-    cycling.canonicalUrl,
-    'https://running-page-zeta-lake.vercel.app/cycling'
-  );
-  assert.equal(
-    hiking.canonicalUrl,
-    'https://running-page-zeta-lake.vercel.app/hiking'
-  );
-  assert.equal(
-    new Set([running.canonicalUrl, cycling.canonicalUrl, hiking.canonicalUrl])
-      .size,
-    3
   );
 });

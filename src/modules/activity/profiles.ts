@@ -71,9 +71,7 @@ const profiles: Record<ActivityMode, ActivityProfile> = {
   running: createProfile(profileSource.profiles.running),
 };
 
-export const ACTIVITY_MODES = Object.freeze([
-  profiles.running,
-]);
+export const ACTIVITY_MODES = Object.freeze([profiles.running]);
 
 export const isActivityMode = (value: unknown): value is ActivityMode =>
   value === 'running';

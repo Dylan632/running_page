@@ -56,14 +56,10 @@ const groupPosters = <T,>(source: Record<string, T>, mode: ActivityMode) => ({
 
 const posterAssets = {
   running: groupPosters(allPosterAssets, 'running'),
-  cycling: groupPosters(allPosterAssets, 'cycling'),
-  hiking: groupPosters(allPosterAssets, 'hiking'),
 };
 
 const posterComponents = {
   running: groupPosters(allPosterComponents, 'running'),
-  cycling: groupPosters(allPosterComponents, 'cycling'),
-  hiking: groupPosters(allPosterComponents, 'hiking'),
 };
 
 export const getPosterAssets = (mode: ActivityMode) => posterAssets[mode];

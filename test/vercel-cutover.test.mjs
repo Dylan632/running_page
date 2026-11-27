@@ -258,12 +258,12 @@ test('production workflow has no independent scheduled release trigger', async (
 test('browser diagnostics require the final mode marker and surface application failures', () => {
   const healthy = {
     origin: 'https://records.example',
-    mode: 'cycling',
+    mode: 'running',
     state: {
-      href: 'https://records.example/cycling',
+      href: 'https://records.example/running',
       rootHasContent: true,
-      markerMode: 'cycling',
-      currentModePath: '/cycling',
+      markerMode: 'running',
+      currentModePath: '/running',
       hasFatalUi: false,
       mapRenderer: 'maplibre',
       basemapStatus: 'ready',
@@ -429,7 +429,7 @@ test('browser diagnostics require the final mode marker and surface application 
         ...healthy,
         failedRequests: [
           {
-            url: 'https://records.example/data/cycling/manifest.json',
+            url: 'https://records.example/data/running/manifest.json',
             errorText: 'net::ERR_FAILED',
           },
         ],
@@ -440,7 +440,7 @@ test('browser diagnostics require the final mode marker and surface application 
     () =>
       validateBrowserProbe({
         ...healthy,
-        state: { ...healthy.state, href: 'https://records.example/running' },
+        state: { ...healthy.state, href: 'https://records.example/cycling' },
       }),
     /finished at/
   );
@@ -448,7 +448,7 @@ test('browser diagnostics require the final mode marker and surface application 
     () =>
       validateBrowserProbe({
         ...healthy,
-        state: { ...healthy.state, markerMode: 'running' },
+        state: { ...healthy.state, markerMode: 'cycling' },
       }),
     /mode-ready/
   );
@@ -640,8 +640,6 @@ test('deployment monitor checks SPA routes, cache policy, and publication freshn
     ]);
     assert.equal(result.code, 0, result.stderr);
     assert.match(result.stdout, /running.*fresh/);
-    assert.match(result.stdout, /cycling.*fresh/);
-    assert.match(result.stdout, /hiking.*fresh/);
     assert.match(result.stdout, /deployment monitor passed/);
   } finally {
     await new Promise((resolve, reject) =>
@@ -653,19 +651,24 @@ test('deployment monitor checks SPA routes, cache policy, and publication freshn
 test('deployment monitor rejects activities outside the published mode policy', async () => {
   const invalidCases = [
     {
-      name: 'a hike at the exact 1 km boundary',
-      mode: 'hiking',
-      activity: { run_id: 'boundary', type: 'Hiking', distance: 1_000 },
-    },
-    {
-      name: 'a non-Hiking walking activity',
-      mode: 'hiking',
-      activity: { run_id: 'walk', type: 'Walk', distance: 2_000 },
-    },
-    {
-      name: 'an indoor VirtualRun',
+      name: 'a Run at distance zero',
       mode: 'running',
-      activity: { run_id: 'indoor', type: 'VirtualRun', distance: 5_000 },
+      activity: { run_id: 'zero', type: 'Run', distance: 0 },
+    },
+    {
+      name: 'a non-running walking activity',
+      mode: 'running',
+      activity: { run_id: 'walk', type: 'Walk', distance: 5_000 },
+    },
+    {
+      name: 'an indoor Run',
+      mode: 'running',
+      activity: {
+        run_id: 'indoor',
+        type: 'Run',
+        subtype: 'indoor',
+        distance: 5_000,
+      },
     },
   ];
 
@@ -859,14 +862,6 @@ test('deployment monitor authenticates protected HTTP checks without leaking its
         '/data/running/manifest.json',
         '/data/running/metadata.json',
         '/data/running/routes/2026.json',
-        '/cycling',
-        '/data/cycling/manifest.json',
-        '/data/cycling/metadata.json',
-        '/data/cycling/routes/2026.json',
-        '/hiking',
-        '/data/hiking/manifest.json',
-        '/data/hiking/metadata.json',
-        '/data/hiking/routes/2026.json',
       ]
     );
     assert.ok(
@@ -962,13 +957,8 @@ test('deployment monitor rejects same-origin mode redirects', async () => {
   const server = createServer((request, response) => {
     const path = new URL(request.url, 'http://localhost').pathname;
     if (path === '/running') {
-      response.setHeader('content-type', 'text/html');
-      response.end('<div id="root">running</div>');
-      return;
-    }
-    if (path === '/cycling') {
       response.statusCode = 302;
-      response.setHeader('location', '/running');
+      response.setHeader('location', '/cycling');
       response.end();
       return;
     }
@@ -1016,7 +1006,7 @@ test('deployment monitor rejects same-origin mode redirects', async () => {
       '30',
     ]);
     assert.notEqual(result.code, 0);
-    assert.match(result.stderr, /redirected to .*\/running/i);
+    assert.match(result.stderr, /redirected to .*\/cycling/i);
   } finally {
     await new Promise((resolve, reject) =>
       server.close((error) => (error ? reject(error) : resolve()))

@@ -1,10 +1,7 @@
 {
   "profiles": {
     "running": {
-      "activityTypes": [
-        "Run",
-        "running"
-      ],
+      "activityTypes": ["Run", "running"],
       "copy": {
         "chineseVerb": "跑步",
         "countDescription": " Runs",
@@ -28,21 +25,13 @@
         "gridTitle": "Over 10km Runs",
         "minimumDistanceKm": 0.5,
         "outputNamespace": "running",
-        "specialDistancesKm": [
-          10,
-          21.0975
-        ],
+        "specialDistancesKm": [10, 21.0975],
         "sportType": "running",
         "title": "Dylan's Running Records"
       },
       "publication": {
         "excludeRunIds": [],
-        "excludeSubtypes": [
-          "indoor",
-          "treadmill",
-          "virtualrun",
-          "virtual_run"
-        ],
+        "excludeSubtypes": ["indoor", "treadmill", "virtualrun", "virtual_run"],
         "minDistanceMeters": 0,
         "minimumRouteRatio": 0.5
       },
