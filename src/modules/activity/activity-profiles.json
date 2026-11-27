@@ -1,1 +1,54 @@
-ewogICJwcm9maWxlcyI6IHsKICAgICJydW5uaW5nIjogewogICAgICAiYWN0aXZpdHlUeXBlcyI6IFsKICAgICAgICAiUnVuIiwKICAgICAgICAicnVubmluZyIKICAgICAgXSwKICAgICAgImNvcHkiOiB7CiAgICAgICAgImNoaW5lc2VWZXJiIjogIui3keatpSIsCiAgICAgICAgImNvdW50RGVzY3JpcHRpb24iOiAiIFJ1bnMiLAogICAgICAgICJoZWF0bWFwVGl0bGUiOiAiUnVubmluZyBIZWF0bWFwIiwKICAgICAgICAiam91cm5leVRpdGxlIjogIlJ1bm5pbmcgSm91cm5leSIsCiAgICAgICAgIm5hbWUiOiAiUnVuIgogICAgICB9LAogICAgICAiZGVzY3JpcHRpb24iOiAiRHlsYW4g55qE5Liq5Lq66LeR5q2l6K6w5b2V44CB6Lev57q/5ZKM6LaL5Yq/IiwKICAgICAgImxhYmVsIjogIui3keatpSIsCiAgICAgICJtb2RlIjogInJ1bm5pbmciLAogICAgICAicG9zdGVyIjogewogICAgICAgICJhY3Rpdml0eUxhYmVsIjogIlJ1bm5lciIsCiAgICAgICAgImNvbG9ycyI6IHsKICAgICAgICAgICJiYWNrZ3JvdW5kIjogIiMyMjIyMjIiLAogICAgICAgICAgInNwZWNpYWwiOiAiI2ZmYTQwMCIsCiAgICAgICAgICAic3BlY2lhbDIiOiAiI2ZmMDAwMCIsCiAgICAgICAgICAidGV4dCI6ICIjRkZGRkZGIiwKICAgICAgICAgICJ0cmFjayI6ICIjNEREMkZGIgogICAgICAgIH0sCiAgICAgICAgImdyaWRNaW5pbXVtRGlzdGFuY2VLbSI6IDEwLAogICAgICAgICJncmlkVGl0bGUiOiAiT3ZlciAxMGttIFJ1bnMiLAogICAgICAgICJtaW5pbXVtRGlzdGFuY2VLbSI6IDAuNSwKICAgICAgICAib3V0cHV0TmFtZXNwYWNlIjogInJ1bm5pbmciLAogICAgICAgICJzcGVjaWFsRGlzdGFuY2VzS20iOiBbCiAgICAgICAgICAxMCwKICAgICAgICAgIDIxLjA5NzUKICAgICAgICBdLAogICAgICAgICJzcG9ydFR5cGUiOiAicnVubmluZyIsCiAgICAgICAgInRpdGxlIjogIkR5bGFuJ3MgUnVubmluZyBSZWNvcmRzIgogICAgICB9LAogICAgICAicHVibGljYXRpb24iOiB7CiAgICAgICAgImV4Y2x1ZGVSdW5JZHMiOiBbXSwKICAgICAgICAiZXhjbHVkZVN1YnR5cGVzIjogWwogICAgICAgICAgImluZG9vciIsCiAgICAgICAgICAidHJlYWRtaWxsIiwKICAgICAgICAgICJ2aXJ0dWFscnVuIiwKICAgICAgICAgICJ2aXJ0dWFsX3J1biIKICAgICAgICBdLAogICAgICAgICJtaW5EaXN0YW5jZU1ldGVycyI6IDAsCiAgICAgICAgIm1pbmltdW1Sb3V0ZVJhdGlvIjogMC41CiAgICAgIH0sCiAgICAgICJyb3V0ZSI6ICIvcnVubmluZyIsCiAgICAgICJzaXRlVGl0bGUiOiAiRHlsYW4g55qE6LeR5q2l6K6w5b2VIgogICAgfQogIH0sCiAgInNjaGVtYVZlcnNpb24iOiAxCn0K
+{
+  "profiles": {
+    "running": {
+      "activityTypes": [
+        "Run",
+        "running"
+      ],
+      "copy": {
+        "chineseVerb": "跑步",
+        "countDescription": " Runs",
+        "heatmapTitle": "Running Heatmap",
+        "journeyTitle": "Running Journey",
+        "name": "Run"
+      },
+      "description": "Dylan 的个人跑步记录、路线和趋势",
+      "label": "跑步",
+      "mode": "running",
+      "poster": {
+        "activityLabel": "Runner",
+        "colors": {
+          "background": "#222222",
+          "special": "#ffa400",
+          "special2": "#ff0000",
+          "text": "#FFFFFF",
+          "track": "#4DD2FF"
+        },
+        "gridMinimumDistanceKm": 10,
+        "gridTitle": "Over 10km Runs",
+        "minimumDistanceKm": 0.5,
+        "outputNamespace": "running",
+        "specialDistancesKm": [
+          10,
+          21.0975
+        ],
+        "sportType": "running",
+        "title": "Dylan's Running Records"
+      },
+      "publication": {
+        "excludeRunIds": [],
+        "excludeSubtypes": [
+          "indoor",
+          "treadmill",
+          "virtualrun",
+          "virtual_run"
+        ],
+        "minDistanceMeters": 0,
+        "minimumRouteRatio": 0.5
+      },
+      "route": "/running",
+      "siteTitle": "Dylan 的跑步记录"
+    }
+  },
+  "schemaVersion": 1
+}
