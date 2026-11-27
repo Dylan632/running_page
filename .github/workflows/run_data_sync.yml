@@ -178,8 +178,9 @@ jobs:
   deploy:
     if: needs.ci.result == 'success'
     needs: [sync, ci]
-    uses: ./.github/workflows/vercel-production.yml
+    uses: ./.github/workflows/gh-pages.yml
     with:
       source_sha: ${{ needs.sync.outputs.source_sha }}
+      deployment_mode: full
       ci_preverified: true
     secrets: inherit

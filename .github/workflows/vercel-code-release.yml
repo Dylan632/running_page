@@ -1,4 +1,4 @@
-name: Deploy verified master to Vercel Production
+name: Deploy verified master to GitHub Pages
 
 on:
   workflow_run:
@@ -18,10 +18,9 @@ permissions:
 jobs:
   deploy:
     if: github.event.workflow_run.conclusion == 'success'
-    uses: ./.github/workflows/vercel-production.yml
+    uses: ./.github/workflows/gh-pages.yml
     with:
       source_sha: ${{ github.event.workflow_run.head_sha }}
-      # A push that also starts the publication pipeline can be superseded by
-      # that pipeline's newer commit; then production belongs to that commit.
-      supersede_on_newer_master: true
+      deployment_mode: full
+      ci_preverified: true
     secrets: inherit

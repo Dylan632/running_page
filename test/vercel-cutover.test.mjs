@@ -237,10 +237,12 @@ test('production workflow deploys an exact SHA after the parent CI workflow succ
     workflow,
     /supersede_on_newer_master:\n\s{8}description:[\s\S]*?default: false/
   );
-  assert.match(
-    await readFile('.github/workflows/vercel-code-release.yml', 'utf8'),
-    /supersede_on_newer_master: true/
+  const codeRelease = await readFile(
+    '.github/workflows/vercel-code-release.yml',
+    'utf8'
   );
+  assert.match(codeRelease, /uses: \.\/\.github\/workflows\/gh-pages\.yml/);
+  assert.match(codeRelease, /deployment_mode: full/);
 });
 
 test('production workflow has no independent scheduled release trigger', async () => {

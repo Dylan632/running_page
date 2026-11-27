@@ -312,7 +312,7 @@ test('Pages is manual and defaults to a canonical redirect while full publicatio
   }
 });
 
-test('activity sync publishes Running and calls exact-SHA CI and Vercel workflows', async () => {
+test('activity sync publishes Running and calls exact-SHA CI and GitHub Pages workflows', async () => {
   const [workflow, config] = await Promise.all([
     readFile('.github/workflows/run_data_sync.yml', 'utf8'),
     readFile('run_page/config.py', 'utf8'),
@@ -343,15 +343,13 @@ test('activity sync publishes Running and calls exact-SHA CI and Vercel workflow
     workflow,
     /source_sha: \$\{\{ needs\.sync\.outputs\.source_sha \}\}/
   );
-  assert.match(
-    workflow,
-    /uses: \.\/\.github\/workflows\/vercel-production\.yml/
-  );
+  assert.match(workflow, /uses: \.\/\.github\/workflows\/gh-pages\.yml/);
+  assert.match(workflow, /deployment_mode: full/);
   assert.match(workflow, /needs: \[sync, ci\]/);
   assert.doesNotMatch(workflow, /actions\/workflows\/ci\.yml\/dispatches/);
   assert.doesNotMatch(
     workflow,
-    /actions\/workflows\/vercel-production\.yml\/dispatches/
+    /actions\/workflows\/gh-pages\.yml\/dispatches/
   );
   assert.doesNotMatch(workflow, /workflow_run:/);
   assert.doesNotMatch(workflow, /#ffa400/i);
