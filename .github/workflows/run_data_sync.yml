@@ -1,4 +1,4 @@
-name: Publish Activity Data
+name: Publish Running Data
 
 on:
   workflow_dispatch:
@@ -44,7 +44,7 @@ env:
 
 jobs:
   sync:
-    name: Validate and publish all activity modes
+    name: Validate and publish running data
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -76,27 +76,15 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Capture one publication timestamp and all last-known-good snapshots
+      - name: Capture one publication timestamp and the last-known-good running snapshot
         shell: bash
         run: |
           set -euo pipefail
           PUBLICATION_TIMESTAMP="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           echo "PUBLICATION_TIMESTAMP=$PUBLICATION_TIMESTAMP" >> "$GITHUB_ENV"
-          mkdir -p \
-            "$RUNNER_TEMP/.activity-last-known-good/running" \
-            "$RUNNER_TEMP/.activity-last-known-good/cycling" \
-            "$RUNNER_TEMP/.activity-last-known-good/hiking"
+          mkdir -p "$RUNNER_TEMP/.activity-last-known-good/running"
           cp public/data/running/metadata.json \
             "$RUNNER_TEMP/.activity-last-known-good/running/activities.json"
-          cp public/data/cycling/metadata.json \
-            "$RUNNER_TEMP/.activity-last-known-good/cycling/activities.json"
-          if [ -f public/data/hiking/metadata.json ]; then
-            HIKING_PREVIOUS_SNAPSHOT="$RUNNER_TEMP/.activity-last-known-good/hiking/activities.json"
-            cp public/data/hiking/metadata.json "$HIKING_PREVIOUS_SNAPSHOT"
-            echo "HIKING_PREVIOUS_SNAPSHOT=$HIKING_PREVIOUS_SNAPSHOT" >> "$GITHUB_ENV"
-          else
-            echo "HIKING_PREVIOUS_SNAPSHOT=" >> "$GITHUB_ENV"
-          fi
 
       - name: Prepare an isolated running candidate
         run: |
@@ -132,156 +120,25 @@ jobs:
             --athlete "$ATHLETE" \
             --birth-month "$BIRTHDAY_MONTH"
 
-      - name: Load the cycling publication profile
-        run: |
-          node scripts/generate-activity-artifacts.mjs export-profile \
-            --mode cycling \
-            --github-env "$GITHUB_ENV"
-
-      - name: Prepare an isolated cycling candidate
-        run: |
-          rm -f run_page/data.db src/static/activities.json imported.json
-          rm -rf activities GPX_OUT TCX_OUT FIT_OUT
-          mkdir -p activities GPX_OUT TCX_OUT FIT_OUT src/static
-
-      - name: Sync Keep cycling data
-        run: |
-          python run_page/keep_sync.py \
-            "${{ secrets.KEEP_MOBILE }}" \
-            "${{ secrets.KEEP_PASSWORD }}" \
-            --sync-types cycling \
-            --min-distance "$ACTIVITY_MIN_DISTANCE_METERS"
-          python run_page/filter_activity_data.py \
-            --types $ACTIVITY_TYPES \
-            --min-distance "$ACTIVITY_MIN_DISTANCE_METERS" \
-            --exclude-run-ids $ACTIVITY_EXCLUDE_RUN_IDS
-
-      - name: Sync manual GPX cycling data
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -f "manual_gpx/taihu_route.polyline.b64" ]; then
-            python run_page/write_taihu_manual_gpx.py
-          fi
-          if compgen -G "manual_gpx/*.gpx" > /dev/null; then
-            cp manual_gpx/*.gpx GPX_OUT/
-          fi
-          if compgen -G "GPX_OUT/*.gpx" > /dev/null; then
-            python run_page/gpx_sync.py
-            python run_page/filter_activity_data.py \
-              --types $ACTIVITY_TYPES \
-              --min-distance "$ACTIVITY_MIN_DISTANCE_METERS" \
-              --exclude-run-ids $ACTIVITY_EXCLUDE_RUN_IDS
-          else
-            echo "No manual GPX cycling data found."
-          fi
-
-      - name: Backfill missing historical cycling tracks
-        shell: bash
-        run: |
-          set -euo pipefail
-          if compgen -G "manual_backfill/*.json" > /dev/null; then
-            python run_page/backfill_activity_data.py manual_backfill/*.json
-            python run_page/filter_activity_data.py \
-              --types $ACTIVITY_TYPES \
-              --min-distance "$ACTIVITY_MIN_DISTANCE_METERS" \
-              --exclude-run-ids $ACTIVITY_EXCLUDE_RUN_IDS
-          else
-            echo "No manual backfill cycling data found."
-          fi
-
-      - name: Validate the complete cycling candidate
-        run: |
-          python run_page/activity_snapshot.py validate \
-            --json src/static/activities.json \
-            --db run_page/data.db \
-            --previous-json "$RUNNER_TEMP/.activity-last-known-good/cycling/activities.json" \
-            --metadata "$RUNNER_TEMP/cycling-activity-snapshot.json"
-
-      - name: Generate profile-driven cycling artifacts
-        run: |
-          node scripts/generate-activity-artifacts.mjs generate \
-            --mode cycling \
-            --input src/static/activities.json \
-            --published-at "$PUBLICATION_TIMESTAMP" \
-            --data-output public/data \
-            --assets-output assets \
-            --python python \
-            --athlete "$ATHLETE" \
-            --birth-month "$BIRTHDAY_MONTH"
-
-      - name: Load the hiking publication profile
-        run: |
-          node scripts/generate-activity-artifacts.mjs export-profile \
-            --mode hiking \
-            --github-env "$GITHUB_ENV"
-
-      - name: Prepare an isolated hiking candidate
-        run: |
-          rm -f run_page/data.db src/static/activities.json imported.json
-          rm -rf activities GPX_OUT TCX_OUT FIT_OUT
-          mkdir -p activities GPX_OUT TCX_OUT FIT_OUT src/static
-
-      - name: Sync Keep hiking data
-        run: |
-          python run_page/keep_sync.py \
-            "${{ secrets.KEEP_MOBILE }}" \
-            "${{ secrets.KEEP_PASSWORD }}" \
-            --sync-types hiking \
-            --min-distance "$ACTIVITY_MIN_DISTANCE_METERS"
-          python run_page/filter_activity_data.py \
-            --types $ACTIVITY_TYPES \
-            --min-distance "$ACTIVITY_MIN_DISTANCE_METERS" \
-            --exclude-run-ids $ACTIVITY_EXCLUDE_RUN_IDS
-
-      - name: Validate the complete hiking candidate
-        shell: bash
-        run: |
-          set -euo pipefail
-          previous_snapshot_args=()
-          if [[ -n "${HIKING_PREVIOUS_SNAPSHOT:-}" ]]; then
-            previous_snapshot_args=(
-              --previous-json "$HIKING_PREVIOUS_SNAPSHOT"
-            )
-          fi
-          python run_page/activity_snapshot.py validate \
-            --json src/static/activities.json \
-            --db run_page/data.db \
-            "${previous_snapshot_args[@]}" \
-            --metadata "$RUNNER_TEMP/hiking-activity-snapshot.json"
-
-      - name: Generate profile-driven hiking artifacts
-        run: |
-          node scripts/generate-activity-artifacts.mjs generate \
-            --mode hiking \
-            --input src/static/activities.json \
-            --published-at "$PUBLICATION_TIMESTAMP" \
-            --data-output public/data \
-            --assets-output assets \
-            --python python \
-            --athlete "$ATHLETE" \
-            --birth-month "$BIRTHDAY_MONTH"
-
-      - name: Verify all namespaces before changing the repository
+      - name: Verify the running namespace before changing the repository
         run: |
           node scripts/generate-activity-artifacts.mjs verify \
             --data-output public/data \
             --assets-output assets
 
-      - name: Commit all validated modes atomically
+      - name: Commit the validated running artifacts atomically
         id: push
         shell: bash
         run: |
           set -euo pipefail
           git config --local user.email 'action@github.com'
           git config --local user.name 'GitHub Action'
-          git add public/data/running public/data/cycling public/data/hiking \
-            assets/running assets/cycling assets/hiking
+          git add public/data/running assets/running
           if git diff --cached --quiet; then
             echo 'Nothing to commit'
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
-            git commit -m 'publish validated activity artifacts'
+            git commit -m 'publish validated running artifacts'
             for attempt in 1 2 3; do
               set +e
               git push
@@ -307,11 +164,8 @@ jobs:
           name: activity-snapshots-${{ github.run_id }}
           path: |
             ${{ runner.temp }}/running-activity-snapshot.json
-            ${{ runner.temp }}/cycling-activity-snapshot.json
-            ${{ runner.temp }}/hiking-activity-snapshot.json
           retention-days: 30
 
-  # One release lane: the parent workflow attests the exact SHA for CI, Vercel, and Pages.
   ci:
     if: needs.sync.outputs.changed == 'true'
     needs: sync
@@ -327,8 +181,5 @@ jobs:
     uses: ./.github/workflows/vercel-production.yml
     with:
       source_sha: ${{ needs.sync.outputs.source_sha }}
-      # The release ci job above already verified this exact SHA, so the
-      # deploy lane must not demand a separate CI run that can never exist for
-      # a SHA this workflow just created (the manual-dispatch trap).
       ci_preverified: true
     secrets: inherit
