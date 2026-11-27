@@ -296,7 +296,7 @@ test('Pages is manual and defaults to a canonical redirect while full publicatio
     workflow,
     /ref: \$\{\{ inputs\.source_sha \|\| github\.sha \}\}/
   );
-  assert.match(workflow, /pnpm run ci/);
+  assert.match(workflow, /pnpm build/);
   assert.doesNotMatch(workflow, /KEEP_MOBILE|KEEP_PASSWORD/);
   assert.doesNotMatch(workflow, /generate-activity-artifacts\.mjs generate/);
 

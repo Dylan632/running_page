@@ -108,7 +108,7 @@ test('GitHub Pages deploys only the immutable artifact from a verified build job
   assert.match(workflow, /generate-activity-artifacts\.mjs verify/);
   assert.match(workflow, /Verify committed artifacts for all activity modes/);
   assert.doesNotMatch(workflow, /dual-mode/i);
-  assert.match(workflow, /pnpm run ci/);
+  assert.match(workflow, /pnpm build/);
   assert.equal(
     (workflow.match(/verify-github-ci\.mjs/g) ?? []).length,
     2,

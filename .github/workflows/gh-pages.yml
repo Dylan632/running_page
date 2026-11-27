@@ -151,14 +151,14 @@ jobs:
             --data-output public/data \
             --assets-output assets
 
-      - name: Run non-mutating checks and build the exact SHA
+      - name: Build the exact SHA Pages artifact
         env:
           PATH_PREFIX: /${{ github.event.repository.name }}/
         shell: bash
         run: |
           set -euo pipefail
           git status --porcelain --untracked-files=all > "$RUNNER_TEMP/before-delivery-status"
-          pnpm run ci
+          pnpm build
           git status --porcelain --untracked-files=all > "$RUNNER_TEMP/after-delivery-status"
           cmp "$RUNNER_TEMP/before-delivery-status" "$RUNNER_TEMP/after-delivery-status"
 
